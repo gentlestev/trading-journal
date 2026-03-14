@@ -519,6 +519,11 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
         Your credentials are saved locally on your device only — never sent anywhere except Myfxbook's official API.
       </div>
       <button class="mfx-connect-btn" id="mfxConnectBtn" onclick="mfxConnect()">Connect to Myfxbook</button>
+      <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:-6px;margin-bottom:6px;">
+        Make sure you can log in at 
+        <a href="https://www.myfxbook.com" target="_blank" style="color:var(--gold);">myfxbook.com</a> 
+        first, then try connecting here.
+      </div>
     </div>
 
     <div class="mfx-status-bar" id="mfxStatusBar"></div>
@@ -701,8 +706,14 @@ let mfxEmail     = localStorage.getItem('mfxEmail')   || '';
 let mfxAccounts  = JSON.parse(localStorage.getItem('mfxAccounts') || '[]');
 let mfxSyncTimer = null;
 let mfxSyncing   = false;
-const MFX_PROXY  = 'https://api.allorigins.win/get?url=';
 const MFX_BASE   = 'https://www.myfxbook.com/api';
+// Multiple CORS proxies — tries each one until one works
+const MFX_PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url => `https://thingproxy.freeboard.io/fetch/${url}`,
+];
 // Pre-configured account IDs (yours)
 const MFX_KNOWN  = [
   {id:'11970519', broker:'FTMO',     name:'FTMO DEMO2'},
@@ -2348,19 +2359,65 @@ function renderAcctBar(){
 // MYFXBOOK SYNC SYSTEM
 // ============================================================
 
-// Core API call through CORS proxy
+// Core API call — tries multiple CORS proxies until one works
 async function mfxCall(endpoint, params={}){
   let url = MFX_BASE + endpoint + '.json';
   if(mfxSession) params.session = mfxSession;
   const qs = Object.entries(params).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');
   if(qs) url += '?' + qs;
-  const proxyUrl = MFX_PROXY + encodeURIComponent(url);
-  const res = await fetch(proxyUrl);
-  const data = await res.json();
-  // allorigins wraps response in {contents: "..."}
-  const parsed = JSON.parse(data.contents);
-  if(parsed.error) throw new Error(parsed.message || 'Myfxbook API error');
-  return parsed;
+
+  let lastError = null;
+
+  for(let i = 0; i < MFX_PROXIES.length; i++){
+    try {
+      const proxyUrl = MFX_PROXIES[i](url);
+      const res = await fetch(proxyUrl, {
+        method: 'GET',
+        headers: {'Accept': 'application/json'},
+        signal: AbortSignal.timeout(10000), // 10s timeout per proxy
+      });
+
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const raw = await res.text();
+
+      // Parse response — different proxies wrap differently
+      let parsed;
+      try {
+        const json = JSON.parse(raw);
+        // allorigins wraps in {contents: "..."}
+        if(json.contents !== undefined){
+          parsed = JSON.parse(json.contents);
+        }
+        // corsproxy.io and others return direct JSON
+        else if(json.error !== undefined){
+          parsed = json;
+        }
+        // codetabs returns raw
+        else {
+          parsed = json;
+        }
+      } catch(e) {
+        // Try parsing as direct JSON
+        parsed = JSON.parse(raw);
+      }
+
+      if(parsed.error === true){
+        throw new Error(parsed.message || 'Myfxbook API error');
+      }
+
+      // Remember which proxy worked
+      if(i > 0) console.log(`Proxy ${i} worked:`, MFX_PROXIES[i](url).split('?')[0]);
+      return parsed;
+
+    } catch(err){
+      lastError = err;
+      console.warn(`Proxy ${i} failed:`, err.message);
+      // Continue to next proxy
+    }
+  }
+
+  throw new Error('All proxies failed. Last error: ' + (lastError?.message || 'Unknown'));
 }
 
 // Connect / Login
@@ -2383,7 +2440,14 @@ async function mfxConnect(){
     mfxShowStatus('✅ Connected! Loading your accounts...','ok');
     await mfxLoadAccounts();
   } catch(err){
-    mfxShowStatus('❌ Login failed: ' + err.message + '. Check your email and password.','err');
+    let msg = err.message || '';
+    let helpText = '';
+    if(msg.includes('All proxies failed') || msg.includes('fetch') || msg.includes('network')){
+      helpText = '<br><br>Connection issue — make sure you are online and try again. If it keeps failing, the CORS proxy may be temporarily down.';
+    } else if(msg.includes('password') || msg.includes('credentials') || msg.includes('Invalid')){
+      helpText = '<br><br>Double-check your Myfxbook email and password. Make sure you can log in at myfxbook.com first.';
+    }
+    mfxShowStatus('❌ Login failed: ' + msg + helpText, 'err');
     btn.disabled = false;
     btn.textContent = 'Connect to Myfxbook';
   }
