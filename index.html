@@ -505,6 +505,22 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 
     <!-- Login form — shown when not connected -->
     <div id="mfxLoginForm">
+
+      <!-- Step 1: Proxy URL (required) -->
+      <div style="background:rgba(240,180,41,0.06);border:1px solid rgba(240,180,41,0.2);border-radius:8px;padding:12px;margin-bottom:12px;">
+        <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:6px;">⚡ Step 1 — Enter your Proxy URL</div>
+        <div style="font-size:9px;color:var(--muted);margin-bottom:8px;line-height:1.7;">
+          Deploy the free proxy (see instructions below), then paste the URL here.<br>
+          Format: <span style="color:var(--text);">https://YOUR-SITE.netlify.app/.netlify/functions/mfxapi</span>
+        </div>
+        <input type="url" class="mfx-input" id="mfxProxyUrl"
+          placeholder="https://your-proxy.netlify.app/.netlify/functions/mfxapi"
+          id="mfxProxyUrlInput"
+          oninput="MFX_NETLIFY_PROXY=this.value.trim();localStorage.setItem('mfxProxyUrl',this.value.trim())">
+      </div>
+
+      <!-- Step 2: Credentials -->
+      <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:8px;">⚡ Step 2 — Enter Myfxbook credentials</div>
       <div class="mfx-input-row">
         <div>
           <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Myfxbook Email</div>
@@ -516,14 +532,9 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
         </div>
       </div>
       <div style="font-size:9px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
-        Your credentials are saved locally on your device only — never sent anywhere except Myfxbook's official API.
+        Credentials are saved locally on your device only.
       </div>
       <button class="mfx-connect-btn" id="mfxConnectBtn" onclick="mfxConnect()">Connect to Myfxbook</button>
-      <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:-6px;margin-bottom:6px;">
-        Make sure you can log in at 
-        <a href="https://www.myfxbook.com" target="_blank" style="color:var(--gold);">myfxbook.com</a> 
-        first, then try connecting here.
-      </div>
     </div>
 
     <div class="mfx-status-bar" id="mfxStatusBar"></div>
@@ -707,12 +718,15 @@ let mfxAccounts  = JSON.parse(localStorage.getItem('mfxAccounts') || '[]');
 let mfxSyncTimer = null;
 let mfxSyncing   = false;
 const MFX_BASE   = 'https://www.myfxbook.com/api';
-// Multiple CORS proxies — tries each one until one works
+// Netlify serverless proxy URL — update this after deploying your proxy
+// Deploy instructions: see the mfx-proxy.zip file
+let MFX_NETLIFY_PROXY = localStorage.getItem('mfxProxyUrl') || '';
+// Fallback CORS proxies (less reliable but work sometimes)
 const MFX_PROXIES = [
+  url => MFX_NETLIFY_PROXY ? MFX_NETLIFY_PROXY + '?action=' + url.split('/').pop().replace('.json','').replace('get-','') + '&' + url.split('?')[1] : null,
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
   url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-  url => `https://thingproxy.freeboard.io/fetch/${url}`,
 ];
 // Pre-configured account IDs (yours)
 const MFX_KNOWN  = [
@@ -2359,45 +2373,69 @@ function renderAcctBar(){
 // MYFXBOOK SYNC SYSTEM
 // ============================================================
 
-// Core API call — tries multiple CORS proxies with Safari-compatible fetch
-async function mfxFetch(targetUrl){
-  let lastError = null;
-  for(let i = 0; i < MFX_PROXIES.length; i++){
+// ── Netlify proxy call (most reliable — same IP for all calls) ──
+async function mfxNetlifyCall(action, params={}){
+  const proxyUrl = MFX_NETLIFY_PROXY;
+  if(!proxyUrl) throw new Error('No proxy configured');
+  const qs = Object.entries({action, ...params})
+    .map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');
+  const url = proxyUrl + '?' + qs;
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), 15000);
+  const res = await fetch(url, {method:'GET', mode:'cors', signal:controller.signal});
+  clearTimeout(timer);
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if(data.error === true) throw new Error(data.message || 'API error');
+  return data;
+}
+
+// ── Direct CORS proxy call (fallback) ──
+async function mfxProxyCall(targetUrl){
+  const proxies = [
+    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  ];
+  let lastErr = null;
+  for(const proxy of proxies){
     try {
-      const proxyUrl = MFX_PROXIES[i](targetUrl);
-      // Safari-safe fetch — no custom headers, no timeout signal (not supported on older iOS)
       const controller = new AbortController();
       const timer = setTimeout(()=>controller.abort(), 12000);
-      const res = await fetch(proxyUrl, {
-        method: 'GET',
-        mode: 'cors',
-        signal: controller.signal,
-      });
+      const res = await fetch(proxy(targetUrl), {method:'GET', mode:'cors', signal:controller.signal});
       clearTimeout(timer);
       if(!res.ok) throw new Error(`HTTP ${res.status}`);
       const raw = await res.text();
-      // Parse — handle allorigins wrapper or direct JSON
-      let parsed;
-      try {
-        const outer = JSON.parse(raw);
-        parsed = (outer.contents !== undefined) ? JSON.parse(outer.contents) : outer;
-      } catch(e){ parsed = JSON.parse(raw); }
+      const outer = JSON.parse(raw);
+      const parsed = (outer.contents !== undefined) ? JSON.parse(outer.contents) : outer;
       if(parsed.error === true) throw new Error(parsed.message || 'API error');
       return parsed;
-    } catch(err){
-      lastError = err;
-      console.warn(`MFX Proxy ${i} failed:`, err.message);
-    }
+    } catch(e){ lastErr=e; }
   }
-  throw new Error('All proxies failed — ' + (lastError?.message||'network error'));
+  throw new Error('All proxies failed — ' + (lastErr?.message||'network error'));
 }
 
+// ── Main API call — uses Netlify proxy if configured, falls back to CORS proxies ──
 async function mfxCall(endpoint, params={}){
+  const action = endpoint.replace('/','').replace('.json','').replace('get-','');
+
+  // Try Netlify proxy first (most reliable)
+  if(MFX_NETLIFY_PROXY){
+    try {
+      const allParams = {...params};
+      if(mfxSession && !allParams.session) allParams.session = mfxSession;
+      return await mfxNetlifyCall(action, allParams);
+    } catch(e){
+      console.warn('Netlify proxy failed, trying CORS proxies:', e.message);
+    }
+  }
+
+  // Fall back to direct CORS proxies
   let url = MFX_BASE + endpoint + '.json';
-  if(mfxSession) params.session = mfxSession;
+  if(mfxSession && !params.session) params.session = mfxSession;
   const qs = Object.entries(params).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');
   if(qs) url += '?' + qs;
-  return mfxFetch(url);
+  return mfxProxyCall(url);
 }
 
 // Connect / Login
@@ -2684,6 +2722,12 @@ function mfxSetDot(state){
 
 // Auto-restore session on load
 async function mfxAutoRestore(){
+  // Restore proxy URL
+  const savedProxy = localStorage.getItem('mfxProxyUrl')||'';
+  if(savedProxy){ MFX_NETLIFY_PROXY = savedProxy; }
+  const proxyEl = document.getElementById('mfxProxyUrl');
+  if(proxyEl) proxyEl.value = savedProxy;
+
   if(!mfxSession) return;
   // Restore saved email
   const emailEl = document.getElementById('mfxEmail');
