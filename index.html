@@ -714,7 +714,9 @@ let activeAcct='all'; // 'all' | 'hist' | 'live' | broker name e.g. 'FTMO' | 'Th
 // ── Myfxbook state ──
 let mfxSession   = localStorage.getItem('mfxSession') || null;
 let mfxEmail     = localStorage.getItem('mfxEmail')   || '';
+let mfxCookies   = localStorage.getItem('mfxCookies') || '';
 let mfxAccounts  = JSON.parse(localStorage.getItem('mfxAccounts') || '[]');
+let mfxCookies   = localStorage.getItem('mfxCookies') || '';
 let mfxSyncTimer = null;
 let mfxSyncing   = false;
 const MFX_BASE   = 'https://www.myfxbook.com/api';
@@ -2424,6 +2426,8 @@ async function mfxCall(endpoint, params={}){
     try {
       const allParams = {...params};
       if(mfxSession && !allParams.session) allParams.session = mfxSession;
+      // Always pass cookies if we have them
+      if(mfxCookies && !allParams.cookies) allParams.cookies = mfxCookies;
       return await mfxNetlifyCall(action, allParams);
     } catch(e){
       console.warn('Netlify proxy failed, trying CORS proxies:', e.message);
@@ -2463,11 +2467,28 @@ async function mfxConnect(){
 
     mfxSession = data.session;
     mfxEmail   = email;
+    mfxCookies = data.cookies || '';
     localStorage.setItem('mfxSession', mfxSession);
     localStorage.setItem('mfxEmail',   mfxEmail);
+    localStorage.setItem('mfxCookies', mfxCookies);
 
     // Accounts came back in same call
     mfxAccounts = data.accounts || [];
+
+    // If empty, fall back to known pre-configured accounts
+    if(!mfxAccounts.length){
+      console.log('No accounts from API — using pre-configured known accounts');
+      mfxAccounts = MFX_KNOWN.map(k => ({
+        id: k.id,
+        name: k.name,
+        broker: k.broker,
+        balance: 0,
+        equity: 0,
+        profit: 0,
+        gain: 0,
+        _manual: true,
+      }));
+    }
     localStorage.setItem('mfxAccounts', JSON.stringify(mfxAccounts));
 
     document.getElementById('mfxLoginForm').style.display    = 'none';
@@ -2578,15 +2599,16 @@ async function mfxSyncHistory(){
     for(const acc of mfxAccounts){
       const known  = MFX_KNOWN.find(k=>k.id===String(acc.id));
       const broker = known ? known.broker : (acc.broker || 'MT5');
+      console.log(`Syncing ${broker} (ID: ${acc.id})...`);
 
-      // Fetch closed trade history — retry once on failure
+      // Fetch closed trade history — pass cookies for session validation
       try {
         let hist;
         try {
-          hist = await mfxCall('/get-history', {id: acc.id});
+          hist = await mfxNetlifyCall('history', {session: mfxSession, id: acc.id, cookies: mfxCookies});
         } catch(e1) {
           await new Promise(r=>setTimeout(r,1500));
-          hist = await mfxCall('/get-history', {id: acc.id});
+          hist = await mfxNetlifyCall('history', {session: mfxSession, id: acc.id, cookies: mfxCookies});
         }
         const trades = hist.history || [];
 
@@ -2741,9 +2763,10 @@ function mfxSetDot(state){
 
 // Auto-restore session on load
 async function mfxAutoRestore(){
-  // Restore proxy URL
+  // Restore proxy URL and cookies
   const savedProxy = localStorage.getItem('mfxProxyUrl')||'';
   if(savedProxy){ MFX_NETLIFY_PROXY = savedProxy; }
+  mfxCookies = localStorage.getItem('mfxCookies')||'';
   const proxyEl = document.getElementById('mfxProxyUrl');
   if(proxyEl) proxyEl.value = savedProxy;
 
