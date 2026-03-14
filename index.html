@@ -44,6 +44,45 @@ body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospa
 .bal-l{font-size:9px;color:var(--muted);}
 .bal-v{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--green);}
 .disc-btn{padding:6px 12px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.25);border-radius:6px;color:var(--red);font-size:10px;cursor:pointer;font-family:'JetBrains Mono',monospace;}
+.help-btn{padding:6px 12px;background:rgba(61,155,255,0.1);border:1px solid rgba(61,155,255,0.25);border-radius:6px;color:var(--blue);font-size:10px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;}
+.help-btn:hover{background:rgba(61,155,255,0.2);}
+/* HELP PANEL */
+.help-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:300;display:none;align-items:flex-start;justify-content:flex-end;padding:16px;}
+.help-overlay.open{display:flex;}
+.help-drawer{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;position:relative;animation:slideLeft .25s ease;}
+@keyframes slideLeft{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:translateX(0);}}
+.help-header{padding:20px 22px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:5;}
+.help-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;}
+.help-title span{color:var(--green);}
+.help-close{background:var(--surface2);border:none;color:var(--muted);cursor:pointer;border-radius:6px;padding:4px 10px;font-size:17px;}
+.help-close:hover{color:var(--text);}
+.help-body{padding:20px 22px;}
+.help-section{margin-bottom:22px;}
+.help-section-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.help-section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.help-item{margin-bottom:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--border);}
+.help-item.green{border-left-color:var(--green);}
+.help-item.blue{border-left-color:var(--blue);}
+.help-item.gold{border-left-color:var(--gold);}
+.help-item.purple{border-left-color:var(--purple);}
+.help-item.red{border-left-color:var(--red);}
+.help-item-title{font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.help-item-body{font-size:10px;color:var(--muted);line-height:1.75;}
+.help-item-body strong{color:var(--text);}
+.help-tip{background:rgba(0,229,176,0.05);border:1px solid rgba(0,229,176,0.15);border-radius:8px;padding:10px 12px;font-size:10px;color:var(--muted);line-height:1.75;margin-top:12px;}
+.help-tip strong{color:var(--green);}
+.help-kbd{display:inline-block;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text);}
+.help-step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;}
+.help-step-num{width:20px;height:20px;border-radius:50%;background:var(--green);color:#000;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.help-step-txt{font-size:10px;color:var(--muted);line-height:1.7;}
+.help-step-txt strong{color:var(--text);}
+.help-search{width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;margin-bottom:16px;}
+.help-search:focus{border-color:rgba(0,229,176,0.4);}
+.help-search::placeholder{color:var(--muted);}
+.help-hidden{display:none;}
+.help-tab-row{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.help-tab{padding:5px 12px;border-radius:16px;font-size:10px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .2s;}
+.help-tab.active{background:rgba(0,229,176,0.1);border-color:rgba(0,229,176,0.3);color:var(--green);}
 .conn-bar{padding:5px 22px;font-size:10px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);}
 .conn-bar.live{background:rgba(0,229,176,0.05);color:var(--green);}
 .conn-bar.offline{background:rgba(255,77,106,0.05);color:var(--red);}
@@ -364,6 +403,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
     <div class="hright">
       <div class="bal-chip"><div class="bal-l">BALANCE</div><div class="bal-v" id="liveBal">—</div></div>
       <span class="import-badge" id="importBadge" style="display:none" onclick="showImportPanel()">📂 <span id="importBadgeText">MT5 Import</span></span>
+      <button class="help-btn" onclick="openHelp()">? Help</button>
       <button class="disc-btn" onclick="disconnect()">Disconnect</button>
     </div>
   </div>
@@ -2242,6 +2282,76 @@ function renderAcctBar(){
 }
 
 // ============================================================
+// ============================================================
+// HELP SYSTEM
+// ============================================================
+function openHelp(){
+  document.getElementById('helpOverlay').classList.add('open');
+  document.getElementById('helpSearch').value = '';
+  filterHelp('');
+  helpTab('all', document.querySelector('.help-tab'));
+}
+
+function closeHelp(e){
+  if(!e || e.target===document.getElementById('helpOverlay')){
+    document.getElementById('helpOverlay').classList.remove('open');
+  }
+}
+
+function helpTab(cat, btn){
+  document.querySelectorAll('.help-tab').forEach(t=>t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const sections = document.querySelectorAll('.help-section');
+  const items    = document.querySelectorAll('.help-item');
+  sections.forEach(s=>{
+    s.style.display = (cat==='all' || s.dataset.cat===cat) ? '' : 'none';
+  });
+  // Reset search when switching tabs
+  document.getElementById('helpSearch').value = '';
+  items.forEach(i=>i.classList.remove('help-hidden'));
+}
+
+function filterHelp(q){
+  const query = q.toLowerCase().trim();
+  const items = document.querySelectorAll('.help-item');
+  const sections = document.querySelectorAll('.help-section');
+
+  if(!query){
+    items.forEach(i=>i.classList.remove('help-hidden'));
+    sections.forEach(s=>s.style.display='');
+    return;
+  }
+
+  // Show all sections when searching
+  sections.forEach(s=>s.style.display='');
+  // Reset tabs
+  document.querySelectorAll('.help-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector('.help-tab').classList.add('active');
+
+  items.forEach(item=>{
+    const title    = item.querySelector('.help-item-title')?.textContent.toLowerCase()||'';
+    const body     = item.querySelector('.help-item-body')?.textContent.toLowerCase()||'';
+    const keywords = (item.dataset.keywords||'').toLowerCase();
+    const match    = title.includes(query)||body.includes(query)||keywords.includes(query);
+    item.classList.toggle('help-hidden', !match);
+  });
+
+  // Hide sections with no visible items
+  sections.forEach(s=>{
+    const visible = [...s.querySelectorAll('.help-item')].some(i=>!i.classList.contains('help-hidden'));
+    s.style.display = visible ? '' : 'none';
+  });
+}
+
+// Close help with Escape key
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){
+    const helpOv = document.getElementById('helpOverlay');
+    if(helpOv && helpOv.classList.contains('open')){ closeHelp(); return; }
+  }
+});
+
+// ============================================================
 // PERMANENT EVENT DELEGATION on document — never removed, survives all DOM re-renders
 document.addEventListener('click', function(e){
   const btn = e.target.closest('[data-action]');
@@ -2265,6 +2375,246 @@ window.addEventListener('load',()=>{
   if(saved){document.getElementById('tokenInput').value=saved;connectDeriv();}
 });
 </script>
+<!-- HELP DRAWER -->
+<div class="help-overlay" id="helpOverlay" onclick="closeHelp(event)">
+  <div class="help-drawer" id="helpDrawer">
+    <div class="help-header">
+      <div class="help-title">📖 Dashboard <span>Help Guide</span></div>
+      <button class="help-close" onclick="closeHelp()">✕</button>
+    </div>
+    <div class="help-body">
+
+      <!-- Search -->
+      <input type="text" class="help-search" id="helpSearch"
+        placeholder="Search help topics..."
+        oninput="filterHelp(this.value)">
+
+      <!-- Category tabs -->
+      <div class="help-tab-row">
+        <div class="help-tab active" onclick="helpTab('all',this)">All</div>
+        <div class="help-tab" onclick="helpTab('start',this)">Getting Started</div>
+        <div class="help-tab" onclick="helpTab('import',this)">Importing</div>
+        <div class="help-tab" onclick="helpTab('journal',this)">Journal</div>
+        <div class="help-tab" onclick="helpTab('stats',this)">Stats</div>
+      </div>
+
+      <!-- GETTING STARTED -->
+      <div class="help-section" data-cat="start">
+        <div class="help-section-title">🚀 Getting Started</div>
+
+        <div class="help-item green" data-keywords="connect deriv api token login start">
+          <div class="help-item-title">🔗 Connecting your Deriv account</div>
+          <div class="help-item-body">
+            <div class="help-step"><div class="help-step-num">1</div><div class="help-step-txt">Go to <strong>app.deriv.com/account/api-token</strong></div></div>
+            <div class="help-step"><div class="help-step-num">2</div><div class="help-step-txt">Create a token with <strong>Read</strong> + <strong>Trading information</strong> scopes</div></div>
+            <div class="help-step"><div class="help-step-num">3</div><div class="help-step-txt">On the login screen, select <strong>Deriv API</strong> tab and paste your token</div></div>
+            <div class="help-step"><div class="help-step-num">4</div><div class="help-step-txt">Your trades and balance sync automatically in real time</div></div>
+            <div class="help-tip"><strong>💡 Tip:</strong> Your token is saved in your browser — you won't need to paste it again next visit.</div>
+          </div>
+        </div>
+
+        <div class="help-item blue" data-keywords="view only skip historical no login">
+          <div class="help-item-title">👁 View historical data without connecting</div>
+          <div class="help-item-body">
+            Click <strong>View Only</strong> on the login screen to load the dashboard with pre-loaded historical Deriv trade data (Jan–Mar 2026) without connecting any account.
+          </div>
+        </div>
+
+        <div class="help-item blue" data-keywords="account switcher tabs deriv ftmo 5ers all">
+          <div class="help-item-title">🔄 Switching between accounts</div>
+          <div class="help-item-body">
+            Use the <strong>Account bar</strong> just below the connection status bar to switch between:<br><br>
+            • <strong>All</strong> — combined view of every account<br>
+            • <strong>Deriv</strong> — your Deriv historical + live trades<br>
+            • <strong>FTMO / The5ers</strong> — appear after importing files<br><br>
+            Every tab shows its own independent stats, charts, and journal.
+          </div>
+        </div>
+      </div>
+
+      <!-- IMPORTING -->
+      <div class="help-section" data-cat="import">
+        <div class="help-section-title">📂 Importing MT5 Trades</div>
+
+        <div class="help-item gold" data-keywords="import export mt5 html htm csv file ftmo 5ers prop firm">
+          <div class="help-item-title">📤 How to export from MT5</div>
+          <div class="help-item-body">
+            <div class="help-step"><div class="help-step-num">1</div><div class="help-step-txt">Open MT5 and press <span class="help-kbd">Ctrl+T</span> to open the Terminal</div></div>
+            <div class="help-step"><div class="help-step-num">2</div><div class="help-step-txt">Click the <strong>History</strong> tab at the bottom</div></div>
+            <div class="help-step"><div class="help-step-num">3</div><div class="help-step-txt">Right-click anywhere in the list → click <strong>All History</strong></div></div>
+            <div class="help-step"><div class="help-step-num">4</div><div class="help-step-txt">Right-click again → click <strong>Report</strong> → Save as <strong>HTML</strong></div></div>
+            <div class="help-step"><div class="help-step-num">5</div><div class="help-step-txt">Import the saved file into the dashboard</div></div>
+          </div>
+        </div>
+
+        <div class="help-item gold" data-keywords="import file dashboard how upload">
+          <div class="help-item-title">⬆️ How to import into the dashboard</div>
+          <div class="help-item-body">
+            <strong>Option A — On login screen:</strong> Select MT5 Import tab, choose your broker (FTMO / The5ers / Other), then drop or click to select your file.<br><br>
+            <strong>Option B — Already inside:</strong> Click the <strong>📂 badge</strong> in the top header, select your broker, then drop your file.<br><br>
+            The dashboard auto-detects the broker from the file content — so even if you select the wrong one, it will correct itself.
+          </div>
+        </div>
+
+        <div class="help-item gold" data-keywords="supported file formats csv htm html pdf">
+          <div class="help-item-title">📄 Supported file formats</div>
+          <div class="help-item-body">
+            • <strong>.HTML / .HTM</strong> — MT5 Report (recommended, most accurate)<br>
+            • <strong>.CSV</strong> — MT5 Export to Spreadsheet<br>
+            • <strong>.PDF</strong> — MT5 PDF report (trade rows must be present, not summary-only)<br><br>
+            <div class="help-tip"><strong>⚠️ Note:</strong> PDF summary reports (showing only charts and stats) cannot be parsed. Use HTML or CSV for best results.</div>
+          </div>
+        </div>
+
+        <div class="help-item gold" data-keywords="broker supported ftmo 5ers myfundedfx e8 topstep">
+          <div class="help-item-title">🏦 Supported prop firms / brokers</div>
+          <div class="help-item-body">
+            Automatically detected from file content:<br><br>
+            • 🏆 <strong>FTMO</strong><br>
+            • 5️⃣ <strong>The5ers</strong> (Five Percent Online)<br>
+            • <strong>MyFundedFX, E8 Funding, Topstep, FundedNext</strong><br>
+            • Any other MT5 broker — select <strong>Other</strong> and type the name
+          </div>
+        </div>
+
+        <div class="help-item red" data-keywords="delete remove import clear trades">
+          <div class="help-item-title">🗑 Removing an import</div>
+          <div class="help-item-body">
+            Click the <strong>📂 badge</strong> in the header → scroll to <strong>Import History</strong> → click <strong>✕</strong> next to the import you want to remove. This deletes all trades from that broker.
+          </div>
+        </div>
+      </div>
+
+      <!-- OVERVIEW & STATS -->
+      <div class="help-section" data-cat="stats">
+        <div class="help-section-title">📊 Understanding Your Stats</div>
+
+        <div class="help-item green" data-keywords="profit factor what is meaning target">
+          <div class="help-item-title">📈 Profit Factor</div>
+          <div class="help-item-body">
+            Gross Profit ÷ Gross Loss. A reading of <strong>1.0</strong> means breakeven.<br>
+            • <strong>Below 1.0</strong> — losing money overall<br>
+            • <strong>1.0 – 1.5</strong> — marginal, needs improvement<br>
+            • <strong>1.5+</strong> ✅ — passing FTMO / prop firm target<br>
+            • <strong>2.0+</strong> 🏆 — excellent performance
+          </div>
+        </div>
+
+        <div class="help-item green" data-keywords="win rate percentage wins losses">
+          <div class="help-item-title">🎯 Win Rate</div>
+          <div class="help-item-body">
+            Percentage of trades that closed in profit. A low win rate is fine if your <strong>RRR is high</strong>. For example: 35% win rate with a 2.5 RRR is still profitable. You only need ~29% win rate to break even with a 2.5 RRR.
+          </div>
+        </div>
+
+        <div class="help-item green" data-keywords="rrr risk reward ratio average">
+          <div class="help-item-title">⚖️ Average RRR (Risk:Reward Ratio)</div>
+          <div class="help-item-body">
+            Average win size ÷ average loss size. An RRR of <strong>2.0</strong> means your average win is twice your average loss. Higher is better — it means fewer wins are needed to be profitable.
+          </div>
+        </div>
+
+        <div class="help-item green" data-keywords="expectancy per trade expected value">
+          <div class="help-item-title">💰 Expectancy</div>
+          <div class="help-item-body">
+            The average amount you expect to make per trade. A <strong>positive expectancy</strong> means the strategy is profitable long-term. Calculated as: (Win Rate × Avg Win) − (Loss Rate × Avg Loss).
+          </div>
+        </div>
+
+        <div class="help-item blue" data-keywords="equity curve chart balance history">
+          <div class="help-item-title">📉 Equity Curve</div>
+          <div class="help-item-body">
+            Shows your running account balance over time. A smooth upward curve indicates consistent performance. Large dips indicate drawdown periods. The curve resets to the correct starting balance for each account (e.g. $5,000 for The5ers, $10,000 for Deriv).
+          </div>
+        </div>
+      </div>
+
+      <!-- JOURNAL -->
+      <div class="help-section" data-cat="journal">
+        <div class="help-section-title">📖 Trading Journal</div>
+
+        <div class="help-item purple" data-keywords="journal new entry create log trade">
+          <div class="help-item-title">✏️ Creating a journal entry</div>
+          <div class="help-item-body">
+            <strong>Method 1:</strong> Click <strong>Journal tab</strong> → click <strong>"+ New Journal Entry"</strong><br><br>
+            <strong>Method 2:</strong> Go to <strong>History tab</strong> → click <strong>"+ Log"</strong> next to any trade row<br><br>
+            <strong>Method 3:</strong> When a live trade closes, a popup appears asking if you want to log it — click <strong>Add Note</strong>
+          </div>
+        </div>
+
+        <div class="help-item purple" data-keywords="journal account specific ftmo deriv 5ers separate">
+          <div class="help-item-title">🔀 Account-specific journals</div>
+          <div class="help-item-body">
+            Each account has its own journal. When you're on the <strong>FTMO tab</strong>, only FTMO journal entries are shown and new entries are tagged as FTMO. Switch to <strong>The5ers</strong> and you see only The5ers journals. Select <strong>All</strong> to see every journal entry across all accounts.
+          </div>
+        </div>
+
+        <div class="help-item purple" data-keywords="chart screenshot image upload paste journal">
+          <div class="help-item-title">📸 Attaching chart screenshots</div>
+          <div class="help-item-body">
+            In the journal form, scroll to <strong>Chart Screenshots</strong> section. You can:<br><br>
+            • <strong>Click</strong> the upload zone to select images<br>
+            • <strong>Drag & drop</strong> images onto the zone<br>
+            • <strong>Paste</strong> directly with <span class="help-kbd">Ctrl+V</span> / <span class="help-kbd">Cmd+V</span><br><br>
+            Click any saved chart image to open it in the fullscreen lightbox viewer. Use arrow keys to navigate multiple images.
+          </div>
+        </div>
+
+        <div class="help-item purple" data-keywords="journal saved storage browser local data">
+          <div class="help-item-title">💾 Where is journal data stored?</div>
+          <div class="help-item-body">
+            All journal entries (including images) are saved in your <strong>browser's local storage</strong>. They persist across visits as long as you use the same browser. They are private to your device and never sent anywhere. <strong>Do not clear browser data</strong> or you will lose your entries.
+          </div>
+        </div>
+
+        <div class="help-item purple" data-keywords="mood emotion star rating quality session">
+          <div class="help-item-title">⭐ Session rating & emotions</div>
+          <div class="help-item-body">
+            Rate your session quality with 1–5 stars. Tag your emotional state (Confident, Anxious, FOMO, Disciplined, etc.). Over time this helps identify which emotional states correlate with winning or losing trades.
+          </div>
+        </div>
+      </div>
+
+      <!-- TIPS -->
+      <div class="help-section" data-cat="start">
+        <div class="help-section-title">💡 Pro Tips</div>
+
+        <div class="help-item blue" data-keywords="tip keyboard shortcut lightbox navigation">
+          <div class="help-item-title">⌨️ Keyboard shortcuts</div>
+          <div class="help-item-body">
+            <span class="help-kbd">Esc</span> — Close any modal or lightbox<br>
+            <span class="help-kbd">← →</span> — Navigate between chart images in lightbox<br>
+            <span class="help-kbd">Ctrl+V</span> — Paste screenshot into journal form
+          </div>
+        </div>
+
+        <div class="help-item blue" data-keywords="re-import update new trades add more">
+          <div class="help-item-title">🔄 Updating your imported trades</div>
+          <div class="help-item-body">
+            You can re-import a newer export file at any time. The dashboard automatically skips duplicates and only adds new trades. Your existing journal entries are never affected by re-importing.
+          </div>
+        </div>
+
+        <div class="help-item blue" data-keywords="mobile phone access anywhere url link">
+          <div class="help-item-title">📱 Accessing from your phone</div>
+          <div class="help-item-body">
+            Your dashboard is live at <strong style="color:var(--green);">gentlestev.github.io/trading-journal</strong> — bookmark this on any device. It works on mobile browsers. Note: journal entries saved on your phone won't sync to your computer (they use separate browser storage).
+          </div>
+        </div>
+
+        <div class="help-item green" data-keywords="created by contact osita email">
+          <div class="help-item-title">👤 About this dashboard</div>
+          <div class="help-item-body">
+            Built by <strong style="color:var(--green);">Osita Onyeje</strong> · © 2026<br>
+            Contact: <a href="mailto:stevenonyeje@gmail.com" style="color:var(--green);">stevenonyeje@gmail.com</a>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end help-body -->
+  </div><!-- end help-drawer -->
+</div><!-- end help-overlay -->
+
 <!-- FOOTER -->
 <div style="text-align:center;padding:28px 22px 20px;border-top:1px solid var(--border);margin-top:32px;">
   <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">
