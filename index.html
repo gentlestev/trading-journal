@@ -221,22 +221,83 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 .lightbox-nav.next{right:16px;}
 .lightbox-caption{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:11px;background:rgba(0,0,0,0.5);padding:4px 12px;border-radius:20px;white-space:nowrap;}
 .paste-hint{font-size:10px;color:var(--muted);margin-top:6px;text-align:center;}
+/* LOGIN OPTION TABS */
+.login-opts{display:flex;gap:6px;margin-bottom:20px;}
+.login-opt{flex:1;padding:10px 6px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:center;font-family:'JetBrains Mono',monospace;}
+.login-opt.active{border-color:rgba(0,229,176,0.4);background:rgba(0,229,176,0.08);color:var(--green);}
+.login-opt:hover:not(.active){border-color:var(--muted);color:var(--text);}
+.login-pane{display:none;}.login-pane.active{display:block;}
+/* CSV IMPORT */
+.csv-drop-zone{border:2px dashed var(--border);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;margin-bottom:12px;}
+.csv-drop-zone:hover,.csv-drop-zone.dragover{border-color:rgba(0,229,176,0.5);background:rgba(0,229,176,0.04);}
+.csv-drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.csv-icon{font-size:32px;margin-bottom:8px;}
+.csv-drop-text{font-size:11px;color:var(--muted);line-height:1.8;}
+.csv-drop-text strong{color:var(--green);}
+.import-status{font-size:11px;padding:10px 14px;border-radius:8px;margin-bottom:12px;display:none;}
+.import-status.ok{background:rgba(0,229,176,0.08);border:1px solid rgba(0,229,176,0.2);color:var(--green);}
+.import-status.err{background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);color:var(--red);}
+.import-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(61,155,255,0.1);border:1px solid rgba(61,155,255,0.25);border-radius:5px;padding:3px 10px;font-size:9px;color:var(--blue);letter-spacing:1px;cursor:pointer;}
+.import-badge:hover{background:rgba(61,155,255,0.18);}
+.import-list{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;max-height:140px;overflow-y:auto;}
+.import-item{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:10px;}
+.import-item:last-child{border:none;}
+.import-item-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:0 4px;}
+.broker-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:8px;font-weight:600;letter-spacing:1px;}
+.broker-tag.ftmo{background:rgba(240,180,41,0.15);color:var(--gold);}
+.broker-tag.five{background:rgba(167,139,250,0.15);color:var(--purple);}
+.broker-tag.mt5{background:rgba(61,155,255,0.15);color:var(--blue);}
+.broker-tag.deriv{background:rgba(0,229,176,0.15);color:var(--green);}
 </style>
 </head>
 <body>
 
 <div class="login-overlay" id="loginOverlay">
-  <div class="login-box">
+  <div class="login-box" style="max-width:460px;">
     <div class="login-logo">Trading <span>Dashboard</span></div>
-    <p class="login-desc">Connect your Deriv account for live trades and auto-sync. Your token is saved locally on your device only.</p>
-    <input type="password" class="token-input" id="tokenInput" placeholder="Paste your Deriv API token here...">
-    <button class="connect-btn" id="connectBtn" onclick="connectDeriv()">Connect to Deriv</button>
-    <div class="spin-wrap" id="spinWrap"><span class="sdot">●</span>&nbsp; Connecting...</div>
-    <div class="login-error" id="loginErr"></div>
-    <div class="login-note">
-      Get token at <a href="https://app.deriv.com/account/api-token" target="_blank">app.deriv.com/account/api-token</a><br>
-      Scopes needed: <strong>Read</strong> + <strong>Trading information</strong><br><br>
-      <a href="#" onclick="skipLogin();return false;" style="color:var(--muted);">Skip — view historical data only →</a>
+    <p class="login-desc" style="margin-bottom:16px;">Choose how to connect your trading account</p>
+
+    <!-- Option tabs -->
+    <div class="login-opts">
+      <div class="login-opt active" onclick="switchLoginOpt('api',this)">🔗 Deriv API</div>
+      <div class="login-opt" onclick="switchLoginOpt('csv',this)">📂 MT5 Import</div>
+      <div class="login-opt" onclick="skipLogin()">👁 View Only</div>
+    </div>
+
+    <!-- PANE A: Deriv API -->
+    <div class="login-pane active" id="pane-api">
+      <p style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.7;">Live connection · Auto-syncs all trades in real time · Works with Deriv demo &amp; real accounts</p>
+      <input type="password" class="token-input" id="tokenInput" placeholder="Paste your Deriv API token here...">
+      <button class="connect-btn" id="connectBtn" onclick="connectDeriv()">Connect to Deriv</button>
+      <div class="spin-wrap" id="spinWrap"><span class="sdot">●</span>&nbsp; Connecting...</div>
+      <div class="login-error" id="loginErr"></div>
+      <div class="login-note">
+        Get token at <a href="https://app.deriv.com/account/api-token" target="_blank">app.deriv.com/account/api-token</a><br>
+        Scopes: <strong>Read</strong> + <strong>Trading information</strong>
+      </div>
+    </div>
+
+    <!-- PANE B: MT5 CSV Import -->
+    <div class="login-pane" id="pane-csv">
+      <p style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.7;">Works with <strong style="color:var(--gold);">FTMO</strong>, <strong style="color:var(--purple);">The5ers</strong>, and any MT5 broker · Export from MT5 → import here</p>
+      <div class="import-status" id="loginImportStatus"></div>
+      <div class="csv-drop-zone" id="loginCsvZone"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="handleLoginCsvDrop(event)">
+        <input type="file" id="loginCsvFile" accept=".csv,.htm,.html" onchange="handleLoginCsvFile(this.files[0])">
+        <div class="csv-icon">📊</div>
+        <div class="csv-drop-text">
+          <strong>Click to select</strong> or drag &amp; drop your MT5 export<br>
+          Supports <strong>.CSV</strong> and <strong>.HTM report</strong> files
+        </div>
+      </div>
+      <div class="login-note" style="margin-top:8px;">
+        <strong style="color:var(--text);">How to export from MT5:</strong><br>
+        History tab → Right-click → Save as Report (.htm) or<br>
+        History tab → Right-click → Export to Spreadsheet (.csv)
+      </div>
+      <button class="connect-btn" style="margin-top:12px;background:var(--blue);color:#fff;" onclick="skipLogin()">Continue to Dashboard →</button>
     </div>
   </div>
 </div>
@@ -275,6 +336,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
     </div>
     <div class="hright">
       <div class="bal-chip"><div class="bal-l">BALANCE</div><div class="bal-v" id="liveBal">—</div></div>
+      <span class="import-badge" id="importBadge" style="display:none" onclick="showImportPanel()">📂 <span id="importBadgeText">MT5 Import</span></span>
       <button class="disc-btn" onclick="disconnect()">Disconnect</button>
     </div>
   </div>
@@ -391,6 +453,50 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
   <div id="calWrap"></div>
 </div>
 
+<!-- IMPORT PANEL -->
+<div id="importPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:150;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;position:relative;">
+    <button onclick="hideImportPanel()" style="position:absolute;top:12px;right:12px;background:var(--surface2);border:none;color:var(--muted);cursor:pointer;border-radius:6px;padding:3px 9px;font-size:17px;">✕</button>
+    <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;">📂 MT5 Trade Import</div>
+    <p style="font-size:10px;color:var(--muted);margin-bottom:16px;line-height:1.7;">Import trades from <strong style="color:var(--gold);">FTMO</strong>, <strong style="color:var(--purple);">The5ers</strong>, or any MT5 broker. Imported trades merge with existing data — duplicates are skipped automatically.</p>
+
+    <!-- Broker selector -->
+    <div style="margin-bottom:14px;">
+      <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Select Broker / Account</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="login-opt active" id="brokerFTMO" onclick="selectBroker('FTMO',this)" style="flex:none;padding:7px 14px;">🏆 FTMO</button>
+        <button class="login-opt" id="brokerFIVE" onclick="selectBroker('The5ers',this)" style="flex:none;padding:7px 14px;">5️⃣ The5ers</button>
+        <button class="login-opt" id="brokerMT5" onclick="selectBroker('MT5',this)" style="flex:none;padding:7px 14px;">📈 Other MT5</button>
+      </div>
+    </div>
+
+    <!-- Drop zone -->
+    <div class="import-status" id="panelImportStatus"></div>
+    <div class="csv-drop-zone" id="panelCsvZone"
+      ondragover="event.preventDefault();this.classList.add('dragover')"
+      ondragleave="this.classList.remove('dragover')"
+      ondrop="handlePanelCsvDrop(event)">
+      <input type="file" id="panelCsvFile" accept=".csv,.htm,.html" onchange="handlePanelCsvFile(this.files[0])">
+      <div class="csv-icon">📊</div>
+      <div class="csv-drop-text"><strong>Click to select</strong> or drag &amp; drop<br>Supports <strong>.CSV</strong> and <strong>.HTM</strong> MT5 exports</div>
+    </div>
+
+    <!-- Import history -->
+    <div id="importHistoryWrap" style="display:none;margin-top:14px;">
+      <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Import History</div>
+      <div class="import-list" id="importHistoryList"></div>
+    </div>
+
+    <!-- How to export instructions -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:14px;font-size:10px;line-height:1.9;color:var(--muted);">
+      <div style="color:var(--text);font-weight:600;margin-bottom:6px;">📋 How to export from MT5</div>
+      <div><strong style="color:var(--text);">CSV:</strong> History tab → Right-click any trade → Export to Spreadsheet</div>
+      <div><strong style="color:var(--text);">HTM:</strong> History tab → Right-click any trade → Save as Report</div>
+      <div style="margin-top:6px;color:var(--gold);">⚡ Tip: Set date range to "All History" before exporting to get all trades</div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================================
 // DATA — ALL TRADES (Jan + Feb + Mar)
@@ -466,10 +572,22 @@ const WSURL='wss://ws.binaryws.com/websockets/v3?app_id=1089';
 let ws=null,tok=null,acct={},isConn=false,ping=null;
 let liveTrades=[],openPos=[],cRange='all',cFilter='all',sCol='date',sDir='desc',ch={};
 let journalEntries=JSON.parse(localStorage.getItem('journalEntries')||'[]');
+let importedTrades=JSON.parse(localStorage.getItem('importedTrades')||'[]');
+let importHistory=JSON.parse(localStorage.getItem('importHistory')||'[]');
+let selectedBroker='FTMO';
 let editingJournalId=null,jFilter='all',selectedStars=0,selectedMoods=[],selectedImages=[];
 let lbImages=[],lbIndex=0;
 
-function all(){const ids=new Set(liveTrades.map(t=>t.id));return[...liveTrades,...seed.filter(t=>!ids.has(t.id))].sort((a,b)=>b.date.localeCompare(a.date));}
+function all(){
+  const liveIds=new Set(liveTrades.map(t=>t.id));
+  const impIds=new Set(importedTrades.map(t=>t.id));
+  const allIds=new Set([...liveIds,...impIds]);
+  return[
+    ...liveTrades,
+    ...importedTrades.filter(t=>!liveIds.has(t.id)),
+    ...seed.filter(t=>!allIds.has(t.id))
+  ].sort((a,b)=>b.date.localeCompare(a.date));
+}
 function stats(d){
   const w=d.filter(t=>t.pnl>0),l=d.filter(t=>t.pnl<0);
   const tot=d.reduce((s,t)=>s+t.pnl,0);
@@ -704,7 +822,7 @@ function renderTable(){
   document.getElementById('tCnt').textContent=d.length+' trades · P/L: '+fK(d.reduce((s,t)=>s+t.pnl,0));
   const tb=document.getElementById('tBody');
   if(!d.length){tb.innerHTML='<tr><td colspan="8"><div class="empty">No trades match</div></td></tr>';return;}
-  tb.innerHTML=d.map(t=>`<tr class="${t.pnl>0?'wr':'lr'}" onclick="openTradeModal('${t.id}')"><td>${t.instrument}${t.src==='live'?'<span class="lbadge">LIVE</span>':''}</td><td><span class="pill ${t.direction==='BUY'?'b':'s'}">${t.direction}</span></td><td>${t.lots}</td><td>${t.open?t.open.toLocaleString():'-'}</td><td>${t.close?t.close.toLocaleString():'-'}</td><td>${t.date.slice(5).replace('-','/')}</td><td class="${t.pnl>0?'pp':'pn'}">${t.pnl>0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</td><td><span class="jbadge" onclick="event.stopPropagation();openJournalForTrade('${t.id}')">${hasJournal(t.id)?'📖 View':'+ Log'}</span></td></tr>`).join('');
+  tb.innerHTML=d.map(t=>`<tr class="${t.pnl>0?'wr':'lr'}" onclick="openTradeModal('${t.id}')"><td>${t.instrument}${t.src==='live'?'<span class="lbadge">LIVE</span>':''}${t.broker?`<span class="broker-tag ${t.broker==='FTMO'?'ftmo':t.broker==='The5ers'?'five':'mt5'}">${t.broker}</span>`:''}</td><td><span class="pill ${t.direction==='BUY'?'b':'s'}">${t.direction}</span></td><td>${t.lots}</td><td>${t.open?t.open.toLocaleString():'-'}</td><td>${t.close?t.close.toLocaleString():'-'}</td><td>${t.date.slice(5).replace('-','/')}</td><td class="${t.pnl>0?'pp':'pn'}">${t.pnl>0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</td><td><span class="jbadge" onclick="event.stopPropagation();openJournalForTrade('${t.id}')">${hasJournal(t.id)?'📖 View':'+ Log'}</span></td></tr>`).join('');
 }
 function setFilter(f,b){cFilter=f;document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderTable();}
 function setRange(r,b){cRange=r;document.querySelectorAll('.rbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderTable();}
@@ -1112,6 +1230,310 @@ function switchTab(n){
 
 function refreshAll(){renderKPIs();renderTable();renderTodayKPIs();updateInsight();buildEq();buildDay();buildIdx();buildMo();}
 
+// ============================================================
+// LOGIN OPTION SWITCHER
+// ============================================================
+function switchLoginOpt(opt, btn){
+  document.querySelectorAll('.login-opt').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.login-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pane-'+opt).classList.add('active');
+}
+
+// ============================================================
+// MT5 CSV / HTM PARSER
+// ============================================================
+function parseMT5File(text, broker){
+  // Detect format: HTM report or CSV
+  if(text.trim().startsWith('<') || text.includes('<html') || text.includes('<table')){
+    return parseMT5HTM(text, broker);
+  } else {
+    return parseMT5CSV(text, broker);
+  }
+}
+
+function parseMT5CSV(text, broker){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  const trades = [];
+  // Find header row
+  let headerIdx = -1;
+  let headers = [];
+  for(let i=0;i<lines.length;i++){
+    const lower = lines[i].toLowerCase();
+    if(lower.includes('ticket') || lower.includes('order') || lower.includes('symbol')){
+      headerIdx = i;
+      headers = lines[i].split(/[,;\t]/).map(h=>h.trim().replace(/"/g,'').toLowerCase());
+      break;
+    }
+  }
+  if(headerIdx < 0) return [];
+
+  const col = (row, names) => {
+    for(const n of names){
+      const i = headers.findIndex(h=>h.includes(n));
+      if(i>=0 && row[i]!==undefined) return row[i].replace(/"/g,'').trim();
+    }
+    return '';
+  };
+
+  for(let i=headerIdx+1;i<lines.length;i++){
+    const row = lines[i].split(/[,;\t]/).map(c=>c.replace(/"/g,'').trim());
+    if(row.length < 5) continue;
+    const type = col(row,['type','action','direction']).toLowerCase();
+    const pnlRaw = col(row,['profit','p/l','pnl','net']);
+    const pnl = parseFloat(pnlRaw.replace(/[^\d.-]/g,'')) || 0;
+    const sym = col(row,['symbol','instrument','pair']);
+    if(!sym || sym.toLowerCase()==='balance' || sym.toLowerCase()==='deposit') continue;
+    const openP = parseFloat(col(row,['open price','entry','open']).replace(/[^\d.-]/g,'')) || 0;
+    const closeP = parseFloat(col(row,['close price','exit','close']).replace(/[^\d.-]/g,'')) || 0;
+    const lots = parseFloat(col(row,['lots','volume','size','qty']).replace(/[^\d.-]/g,'')) || 1;
+    const openTime = col(row,['open time','open date','date','time','opentime']);
+    const ticket = col(row,['ticket','order','id','#']);
+    const dateStr = parseDate(openTime);
+    const dir = type.includes('buy')||type.includes('long')||type==='0'?'BUY':'SELL';
+    const idx = symToIdx(sym);
+    trades.push({
+      id:'imp_'+(ticket||i)+'_'+broker,
+      instrument: symToName(sym),
+      idx,
+      direction: dir,
+      lots,
+      open: openP,
+      close: closeP,
+      date: dateStr,
+      pnl,
+      src:'import',
+      broker,
+    });
+  }
+  return trades.filter(t=>t.date && t.pnl!==undefined);
+}
+
+function parseMT5HTM(text, broker){
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'text/html');
+  const tables = doc.querySelectorAll('table');
+  const trades = [];
+  
+  tables.forEach(table=>{
+    const rows = table.querySelectorAll('tr');
+    let headers = [];
+    rows.forEach((row, ri)=>{
+      const cells = [...row.querySelectorAll('th,td')].map(c=>c.textContent.trim());
+      if(ri===0 || (headers.length===0 && cells.some(c=>c.toLowerCase().includes('symbol')||c.toLowerCase().includes('ticket')))){
+        headers = cells.map(c=>c.toLowerCase());
+        return;
+      }
+      if(!headers.length || cells.length < 5) return;
+      const col = (names)=>{
+        for(const n of names){
+          const i=headers.findIndex(h=>h.includes(n));
+          if(i>=0&&cells[i]) return cells[i].trim();
+        }
+        return '';
+      };
+      const sym = col(['symbol','instrument']);
+      if(!sym||sym.toLowerCase()==='balance'||sym.toLowerCase()==='deposit') return;
+      const type = col(['type','action']).toLowerCase();
+      const pnl = parseFloat(col(['profit','p/l','pnl']).replace(/[^\d.-]/g,'')) || 0;
+      const openP = parseFloat(col(['open price','price open','entry']).replace(/[^\d.-]/g,'')) || 0;
+      const closeP = parseFloat(col(['close price','price close','exit']).replace(/[^\d.-]/g,'')) || 0;
+      const lots = parseFloat(col(['lots','volume','size']).replace(/[^\d.-]/g,'')) || 1;
+      const openTime = col(['open time','time open','time','date']);
+      const ticket = col(['ticket','order','#','id']);
+      const dateStr = parseDate(openTime);
+      const dir = type.includes('buy')||type.includes('long')?'BUY':'SELL';
+      const idx = symToIdx(sym);
+      if(dateStr) trades.push({
+        id:'imp_'+(ticket||ri)+'_'+broker,
+        instrument: symToName(sym),
+        idx,
+        direction: dir,
+        lots,
+        open: openP,
+        close: closeP,
+        date: dateStr,
+        pnl,
+        src:'import',
+        broker,
+      });
+    });
+  });
+  return trades.filter(t=>t.pnl!==undefined);
+}
+
+function parseDate(str){
+  if(!str) return new Date().toISOString().slice(0,10);
+  // Try various date formats
+  const clean = str.trim();
+  // 2024.03.15 or 2024.03.15 12:34
+  let m = clean.match(/(\d{4})[.\/\-](\d{1,2})[.\/\-](\d{1,2})/);
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  // 15/03/2024
+  m = clean.match(/(\d{1,2})[.\/\-](\d{1,2})[.\/\-](\d{4})/);
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  // Try JS Date
+  const d = new Date(clean);
+  if(!isNaN(d)) return d.toISOString().slice(0,10);
+  return new Date().toISOString().slice(0,10);
+}
+
+function symToIdx(sym){
+  const s = sym.toUpperCase().replace(/\s/g,'');
+  if(s.includes('R_10')||s.includes('1HZ10')||s.includes('VOL10')||s.includes('V10')) return 'V10';
+  if(s.includes('R_25')||s.includes('1HZ25')||s.includes('VOL25')||s.includes('V25')) return 'V25';
+  if(s.includes('R_50')||s.includes('1HZ50')||s.includes('VOL50')||s.includes('V50')) return 'V50';
+  if(s.includes('R_75')||s.includes('1HZ75')||s.includes('VOL75')||s.includes('V75')) return 'V75';
+  if(s.includes('R_100')||s.includes('1HZ100')||s.includes('VOL100')||s.includes('V100')) return 'V100';
+  return s.slice(0,6)||'OTHER';
+}
+
+function symToName(sym){
+  const idx = symToIdx(sym);
+  const names={V10:'Volatility 10 Index',V25:'Volatility 25 Index',V50:'Volatility 50 Index',V75:'Volatility 75 Index',V100:'Volatility 100 Index'};
+  return names[idx] || sym;
+}
+
+// ============================================================
+// IMPORT HANDLERS
+// ============================================================
+function handleLoginCsvDrop(e){
+  e.preventDefault();
+  document.getElementById('loginCsvZone').classList.remove('dragover');
+  handleLoginCsvFile(e.dataTransfer.files[0]);
+}
+function handleLoginCsvFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => processImport(ev.target.result, selectedBroker, 'loginImportStatus', true);
+  reader.readAsText(file);
+}
+
+function handlePanelCsvDrop(e){
+  e.preventDefault();
+  document.getElementById('panelCsvZone').classList.remove('dragover');
+  handlePanelCsvFile(e.dataTransfer.files[0]);
+}
+function handlePanelCsvFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => processImport(ev.target.result, selectedBroker, 'panelImportStatus', false);
+  reader.readAsText(file);
+}
+
+function processImport(text, broker, statusId, fromLogin){
+  const statusEl = document.getElementById(statusId);
+  statusEl.style.display='block';
+  statusEl.className='import-status';
+  statusEl.textContent='Parsing file...';
+
+  try {
+    const parsed = parseMT5File(text, broker);
+    if(!parsed.length){
+      statusEl.className='import-status err';
+      statusEl.textContent='❌ No trades found. Make sure you exported from History tab in MT5.';
+      return;
+    }
+
+    // Deduplicate
+    const existingIds = new Set(importedTrades.map(t=>t.id));
+    const newTrades = parsed.filter(t=>!existingIds.has(t.id));
+    const dupes = parsed.length - newTrades.length;
+
+    importedTrades = [...importedTrades, ...newTrades];
+    localStorage.setItem('importedTrades', JSON.stringify(importedTrades));
+
+    // Log import history
+    const histEntry = {
+      id: 'ih_'+Date.now(),
+      broker,
+      date: new Date().toLocaleDateString(),
+      total: parsed.length,
+      added: newTrades.length,
+      dupes,
+    };
+    importHistory.unshift(histEntry);
+    localStorage.setItem('importHistory', JSON.stringify(importHistory));
+
+    statusEl.className='import-status ok';
+    statusEl.textContent=`✅ Imported ${newTrades.length} trades from ${broker}${dupes?' ('+dupes+' duplicates skipped)':''}`;
+
+    // Update badge
+    updateImportBadge();
+    renderImportHistory();
+    refreshAll();
+
+    if(fromLogin){
+      setTimeout(()=>skipLogin(), 1200);
+    }
+  } catch(err) {
+    statusEl.className='import-status err';
+    statusEl.textContent='❌ Parse error: '+err.message;
+  }
+}
+
+function updateImportBadge(){
+  const badge = document.getElementById('importBadge');
+  const txt = document.getElementById('importBadgeText');
+  if(importedTrades.length > 0){
+    badge.style.display='inline-flex';
+    const brokers = [...new Set(importedTrades.map(t=>t.broker).filter(Boolean))];
+    txt.textContent = brokers.join(' + ') + ' · ' + importedTrades.length + ' trades';
+  } else {
+    badge.style.display='none';
+  }
+}
+
+function selectBroker(b, btn){
+  selectedBroker = b;
+  document.querySelectorAll('#importPanel .login-opt').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function showImportPanel(){
+  const panel = document.getElementById('importPanel');
+  panel.style.display='flex';
+  renderImportHistory();
+}
+function hideImportPanel(){
+  document.getElementById('importPanel').style.display='none';
+}
+// Close on backdrop click
+document.getElementById('importPanel').addEventListener('click', function(e){
+  if(e.target===this) hideImportPanel();
+});
+
+function renderImportHistory(){
+  const wrap = document.getElementById('importHistoryWrap');
+  const list = document.getElementById('importHistoryList');
+  if(!importHistory.length){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  list.innerHTML = importHistory.map(h=>`
+    <div class="import-item">
+      <div>
+        <span class="broker-tag ${h.broker==='FTMO'?'ftmo':h.broker==='The5ers'?'five':'mt5'}">${h.broker}</span>
+        <span style="margin-left:6px;color:var(--text);">${h.added} trades added</span>
+        <span style="color:var(--muted);margin-left:6px;">${h.date}</span>
+      </div>
+      <button class="import-item-del" data-action="delimport" data-id="${h.id}">✕</button>
+    </div>`).join('');
+}
+
+function deleteImport(histId){
+  const h = importHistory.find(x=>x.id===histId);
+  if(!h) return;
+  if(!confirm('Remove all '+h.broker+' trades from this import?')) return;
+  // Remove trades from this broker that were added around this time
+  importedTrades = importedTrades.filter(t=>t.broker!==h.broker);
+  importHistory = importHistory.filter(x=>x.id!==histId);
+  localStorage.setItem('importedTrades', JSON.stringify(importedTrades));
+  localStorage.setItem('importHistory', JSON.stringify(importHistory));
+  updateImportBadge();
+  renderImportHistory();
+  refreshAll();
+}
+
+// ============================================================
 // PERMANENT EVENT DELEGATION on document — never removed, survives all DOM re-renders
 document.addEventListener('click', function(e){
   const btn = e.target.closest('[data-action]');
@@ -1121,9 +1543,14 @@ document.addEventListener('click', function(e){
   if(action === 'edit'){ e.stopPropagation(); showJournalForm(null, id); }
   if(action === 'delete'){ e.stopPropagation(); deleteJournalEntry(id); }
   if(action === 'removeimg'){ e.stopPropagation(); removeImg(parseInt(id)); }
+  if(action === 'delimport'){ e.stopPropagation(); deleteImport(id); }
 });
 
 window.addEventListener('load',()=>{
+  // Restore imported trades from storage
+  importedTrades = JSON.parse(localStorage.getItem('importedTrades')||'[]');
+  importHistory = JSON.parse(localStorage.getItem('importHistory')||'[]');
+  updateImportBadge();
   refreshAll();
   renderJournal();
   const saved=localStorage.getItem('dtok');
