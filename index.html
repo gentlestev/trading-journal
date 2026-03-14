@@ -193,6 +193,34 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 .mood-btn{padding:5px 10px;border-radius:20px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);transition:all .2s;}
 .mood-btn:hover{border-color:var(--muted);}
 .mood-btn.active{border-color:var(--gold);background:rgba(240,180,41,0.1);}
+/* CHART IMAGE UPLOAD */
+.img-upload-zone{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;margin-top:4px;position:relative;}
+.img-upload-zone:hover,.img-upload-zone.dragover{border-color:rgba(0,229,176,0.5);background:rgba(0,229,176,0.04);}
+.img-upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.img-upload-icon{font-size:28px;margin-bottom:6px;}
+.img-upload-text{font-size:11px;color:var(--muted);line-height:1.7;}
+.img-upload-text strong{color:var(--green);}
+.img-previews{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:10px;}
+.img-preview-wrap{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border);aspect-ratio:16/10;background:var(--surface2);}
+.img-preview-wrap img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;transition:opacity .2s;}
+.img-preview-wrap img:hover{opacity:0.85;}
+.img-preview-wrap .img-del{position:absolute;top:4px;right:4px;background:rgba(255,77,106,0.85);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+.img-preview-wrap .img-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);padding:3px 6px;font-size:9px;color:rgba(255,255,255,0.7);}
+.j-charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-top:8px;}
+.j-chart-img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:7px;border:1px solid var(--border);cursor:pointer;transition:all .2s;display:block;}
+.j-chart-img:hover{border-color:var(--green);transform:scale(1.02);}
+/* LIGHTBOX */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
+.lightbox.open{display:flex;}
+.lightbox img{max-width:95vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 0 60px rgba(0,0,0,0.8);}
+.lightbox-close{position:absolute;top:16px;right:20px;color:#fff;font-size:28px;cursor:pointer;opacity:0.7;background:none;border:none;}
+.lightbox-close:hover{opacity:1;}
+.lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:24px;cursor:pointer;padding:12px 16px;border-radius:8px;transition:background .2s;}
+.lightbox-nav:hover{background:rgba(255,255,255,0.2);}
+.lightbox-nav.prev{left:16px;}
+.lightbox-nav.next{right:16px;}
+.lightbox-caption{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:11px;background:rgba(0,0,0,0.5);padding:4px 12px;border-radius:20px;white-space:nowrap;}
+.paste-hint{font-size:10px;color:var(--muted);margin-top:6px;text-align:center;}
 </style>
 </head>
 <body>
@@ -211,6 +239,15 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       <a href="#" onclick="skipLogin();return false;" style="color:var(--muted);">Skip — view historical data only →</a>
     </div>
   </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button class="lightbox-nav prev" onclick="event.stopPropagation();lbNav(-1)">‹</button>
+  <img id="lbImg" src="" alt="Chart">
+  <button class="lightbox-nav next" onclick="event.stopPropagation();lbNav(1)">›</button>
+  <div class="lightbox-caption" id="lbCaption"></div>
 </div>
 
 <div class="modal-overlay" id="tradeModal">
@@ -429,7 +466,8 @@ const WSURL='wss://ws.binaryws.com/websockets/v3?app_id=1089';
 let ws=null,tok=null,acct={},isConn=false,ping=null;
 let liveTrades=[],openPos=[],cRange='all',cFilter='all',sCol='date',sDir='desc',ch={};
 let journalEntries=JSON.parse(localStorage.getItem('journalEntries')||'[]');
-let editingJournalId=null,jFilter='all',selectedStars=0,selectedMoods=[];
+let editingJournalId=null,jFilter='all',selectedStars=0,selectedMoods=[],selectedImages=[];
+let lbImages=[],lbIndex=0;
 
 function all(){const ids=new Set(liveTrades.map(t=>t.id));return[...liveTrades,...seed.filter(t=>!ids.has(t.id))].sort((a,b)=>b.date.localeCompare(a.date));}
 function stats(d){
@@ -685,7 +723,10 @@ function openTradeModal(id){
     <div class="mrow"><span class="mlbl">Close</span><span class="mval">${t.close?t.close.toLocaleString():'-'}</span></div>
     <div class="mrow"><span class="mlbl">P/L</span><span class="mval" style="color:${t.pnl>0?'var(--green)':'var(--red)'}">${t.pnl>0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</span></div>
     <div class="mrow"><span class="mlbl">Result</span><span class="mval" style="color:${t.pnl>0?'var(--green)':'var(--red)'}">${t.pnl>0?'✅ WIN':'❌ LOSS'}</span></div>
-    ${j?`<div style="margin-top:12px;padding:10px;background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.15);border-radius:8px;font-size:11px;"><div style="color:var(--purple);font-weight:600;margin-bottom:6px;">📖 Journal Note</div><div style="color:var(--muted);">${j.reflection||j.setup||'(entry saved)'}</div></div>`:''}
+    ${j?`<div style="margin-top:12px;padding:10px;background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.15);border-radius:8px;font-size:11px;">
+      <div style="color:var(--purple);font-weight:600;margin-bottom:6px;">📖 Journal Note</div>
+      <div style="color:var(--muted);margin-bottom:${j.images&&j.images.length?'8':'0'}px;">${j.reflection||j.setup||'(entry saved)'}</div>
+      ${j.images&&j.images.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;">${j.images.map((img,i)=>`<img src="${img.data}" onclick="openLightbox(${JSON.stringify(j.images.map((x,k)=>({src:x.data,caption:'Chart '+(k+1)}))).replace(/"/g,"'")},${i})" style="width:80px;height:50px;object-fit:cover;border-radius:5px;border:1px solid var(--border);cursor:pointer;">`).join('')}</div>`:''}</div>`:''}
     <div style="margin-top:12px;"><button onclick="closeModal('tradeModal');openJournalForTrade('${t.id}')" style="padding:8px 16px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);border-radius:6px;color:var(--purple);font-size:11px;cursor:pointer;">${j?'Edit Journal Entry':'+ Add Journal Entry'}</button></div>
   `;
   document.getElementById('tradeModal').classList.add('open');
@@ -776,6 +817,22 @@ function showJournalForm(tradeId=null,existingId=null){
           ${['😤 Frustrated','😰 Anxious','😎 Confident','🧊 Calm','🎯 Focused','😴 Tired','🤑 Greedy','😱 FOMO','💪 Disciplined'].map(m=>`<button class="mood-btn ${selectedMoods.includes(m)?'active':''}" onclick="toggleMood('${m}',this)">${m}</button>`).join('')}
         </div>
       </div>
+      <div class="jf-full">
+        <div class="jf-label">📸 Chart Screenshots</div>
+        <div class="img-upload-zone" id="imgDropZone"
+          ondragover="event.preventDefault();this.classList.add('dragover')"
+          ondragleave="this.classList.remove('dragover')"
+          ondrop="handleImgDrop(event)">
+          <input type="file" id="imgFileInput" accept="image/*" multiple onchange="handleImgFiles(this.files)">
+          <div class="img-upload-icon">📊</div>
+          <div class="img-upload-text">
+            <strong>Click to upload</strong> or drag & drop your chart screenshots<br>
+            PNG, JPG, WebP supported · Multiple images allowed
+          </div>
+        </div>
+        <div class="paste-hint">💡 Tip: You can also <strong>paste</strong> a screenshot directly (Ctrl+V / Cmd+V)</div>
+        <div class="img-previews" id="imgPreviews"></div>
+      </div>
       <div>
         <button class="save-btn" onclick="saveJournalEntry()">Save Entry</button>
         <button class="cancel-btn" onclick="cancelJournalForm()">Cancel</button>
@@ -785,6 +842,11 @@ function showJournalForm(tradeId=null,existingId=null){
   document.getElementById('panel-journal').scrollTop=0;
   if(document.getElementById('panel-journal').classList.contains('active')){}
   else switchTab('journal');
+  // Load existing images if editing
+  selectedImages = existing ? (existing.images ? [...existing.images] : []) : [];
+  renderImgPreviews();
+  // Paste listener
+  document.addEventListener('paste', handlePaste);
 }
 
 function setStar(n){
@@ -811,6 +873,7 @@ function saveJournalEntry(){
     lesson: document.getElementById('jLesson').value.trim(),
     rating: selectedStars,
     moods: [...selectedMoods],
+    images: [...selectedImages],
     savedAt: new Date().toISOString(),
   };
   if(editingJournalId){const i=journalEntries.findIndex(j=>j.id===editingJournalId);if(i>=0)journalEntries[i]=entry;}
@@ -823,8 +886,110 @@ function saveJournalEntry(){
 
 function cancelJournalForm(){
   document.getElementById('journalFormWrap').style.display='none';
-  editingJournalId=null;selectedStars=0;selectedMoods=[];
+  editingJournalId=null;selectedStars=0;selectedMoods=[];selectedImages=[];
+  document.removeEventListener('paste',handlePaste);
 }
+
+// ============================================================
+// IMAGE UPLOAD FUNCTIONS
+// ============================================================
+function handleImgFiles(files){
+  [...files].forEach(f=>{
+    if(!f.type.startsWith('image/'))return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      selectedImages.push({data:e.target.result,name:f.name,type:f.type});
+      renderImgPreviews();
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+function handleImgDrop(e){
+  e.preventDefault();
+  document.getElementById('imgDropZone').classList.remove('dragover');
+  handleImgFiles(e.dataTransfer.files);
+}
+
+function handlePaste(e){
+  const items=e.clipboardData?.items;
+  if(!items)return;
+  let found=false;
+  [...items].forEach(item=>{
+    if(item.type.startsWith('image/')){
+      found=true;
+      const f=item.getAsFile();
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        selectedImages.push({data:ev.target.result,name:'pasted-chart-'+Date.now()+'.png',type:item.type});
+        renderImgPreviews();
+      };
+      reader.readAsDataURL(f);
+    }
+  });
+  if(found){
+    // Flash feedback
+    const zone=document.getElementById('imgDropZone');
+    if(zone){zone.style.borderColor='var(--green)';setTimeout(()=>zone.style.borderColor='',800);}
+  }
+}
+
+function removeImg(idx){
+  selectedImages.splice(idx,1);
+  renderImgPreviews();
+}
+
+function renderImgPreviews(){
+  const el=document.getElementById('imgPreviews');
+  if(!el)return;
+  if(!selectedImages.length){el.innerHTML='';return;}
+  el.innerHTML=selectedImages.map((img,i)=>`
+    <div class="img-preview-wrap">
+      <img src="${img.data}" alt="${img.name}" onclick="openLightboxFromPreviews(${i})">
+      <button class="img-del" onclick="removeImg(${i})">✕</button>
+      <div class="img-label">Chart ${i+1}</div>
+    </div>`).join('');
+}
+
+function openLightboxFromPreviews(idx){
+  lbImages=selectedImages.map(img=>({src:img.data,caption:img.name}));
+  lbIndex=idx;
+  showLightbox();
+}
+
+// ============================================================
+// LIGHTBOX
+// ============================================================
+function openLightbox(images,idx){
+  lbImages=images;
+  lbIndex=idx||0;
+  showLightbox();
+}
+
+function showLightbox(){
+  if(!lbImages.length)return;
+  document.getElementById('lbImg').src=lbImages[lbIndex].src;
+  document.getElementById('lbCaption').textContent=`${lbIndex+1} / ${lbImages.length}${lbImages[lbIndex].caption?' · '+lbImages[lbIndex].caption:''}`;
+  document.getElementById('lightbox').classList.add('open');
+  // Show/hide nav
+  document.querySelector('.lightbox-nav.prev').style.display=lbImages.length>1?'block':'none';
+  document.querySelector('.lightbox-nav.next').style.display=lbImages.length>1?'block':'none';
+}
+
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+
+function lbNav(dir){
+  lbIndex=(lbIndex+dir+lbImages.length)%lbImages.length;
+  showLightbox();
+}
+
+// Keyboard nav for lightbox
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('lightbox').classList.contains('open'))return;
+  if(e.key==='Escape')closeLightbox();
+  if(e.key==='ArrowLeft')lbNav(-1);
+  if(e.key==='ArrowRight')lbNav(1);
+});
 
 function deleteJournalEntry(id){
   if(!confirm('Delete this journal entry?'))return;
@@ -900,6 +1065,13 @@ function renderJournal(){
       ${j.mistake?`<div class="j-section"><div class="j-section-title" style="color:var(--red);">⚠️ Mistake</div><div class="j-section-body" style="color:rgba(255,77,106,0.8);">${j.mistake}</div></div>`:''}
       ${j.lesson?`<div class="j-section"><div class="j-section-title" style="color:var(--gold);">💡 Lesson</div><div class="j-section-body" style="color:rgba(240,180,41,0.9);">${j.lesson}</div></div>`:''}
       ${j.moods&&j.moods.length?`<div class="j-emotions">${j.moods.map(m=>`<span class="j-emotion">${m}</span>`).join('')}</div>`:''}
+      ${j.images&&j.images.length?`
+        <div class="j-section">
+          <div class="j-section-title">📸 Chart Screenshots (${j.images.length})</div>
+          <div class="j-charts-grid">
+            ${j.images.map((img,i)=>`<img class="j-chart-img" src="${img.data}" alt="Chart ${i+1}" onclick="openLightbox(${JSON.stringify(j.images.map((x,k)=>({src:x.data,caption:'Chart '+(k+1)+' · '+j.instrument}))).replace(/"/g,'&quot;')},${i})">`).join('')}
+          </div>
+        </div>`:''}
       <div class="j-actions">
         <button class="j-edit-btn" onclick="showJournalForm(null,'${j.id}')">✏️ Edit</button>
         <button class="j-del-btn" onclick="deleteJournalEntry('${j.id}')">Delete</button>
