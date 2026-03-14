@@ -294,7 +294,20 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 
     <!-- PANE B: MT5 CSV Import -->
     <div class="login-pane" id="pane-csv">
-      <p style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.7;">Works with <strong style="color:var(--gold);">FTMO</strong>, <strong style="color:var(--purple);">The5ers</strong>, and any MT5 broker · Export from MT5 → import here</p>
+      <p style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.7;">Works with <strong style="color:var(--gold);">FTMO</strong>, <strong style="color:var(--purple);">The5ers</strong>, and any MT5 broker</p>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Who is this file from?</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="login-opt active" id="loginBrokerFTMO" onclick="setLoginBroker('FTMO',this)">🏆 FTMO</button>
+          <button class="login-opt" id="loginBrokerFIVE" onclick="setLoginBroker('The5ers',this)">5️⃣ The5ers</button>
+          <button class="login-opt" id="loginBrokerOTHER" onclick="setLoginBroker('Other',this)">📈 Other</button>
+        </div>
+        <div id="loginOtherWrap" style="display:none;margin-top:8px;">
+          <input type="text" class="token-input" id="loginOtherName" style="margin-bottom:0;font-size:11px;"
+            placeholder="Enter firm name e.g. MyFundedFX, E8..."
+            oninput="selectedBroker=this.value.trim()||'Other'">
+        </div>
+      </div>
       <div class="import-status" id="loginImportStatus"></div>
       <div class="csv-drop-zone" id="loginCsvZone"
         ondragover="event.preventDefault();this.classList.add('dragover')"
@@ -309,8 +322,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       </div>
       <div class="login-note" style="margin-top:8px;">
         <strong style="color:var(--text);">How to export from MT5:</strong><br>
-        History tab → Right-click → Save as Report (.htm) or<br>
-        History tab → Right-click → Export to Spreadsheet (.csv)
+        History tab → Right-click → <strong>Save as Report</strong> (.htm/.html)
       </div>
       <button class="connect-btn" style="margin-top:12px;background:var(--blue);color:#fff;" onclick="skipLogin()">Continue to Dashboard →</button>
     </div>
@@ -771,12 +783,32 @@ function disconnect(){isConn=false;if(ws)ws.close();if(ping)clearInterval(ping);
 // CHARTS
 const CD={c:'rgba(232,234,240,0.8)',g:'rgba(28,32,50,0.8)'};
 function dc(id){if(ch[id]){ch[id].destroy();delete ch[id];}}
+function getStartingBalance(){
+  // Starting balance per account
+  switch(activeAcct){
+    case 'all':  return 10000; // Deriv seed starting balance
+    case 'hist': return 10000;
+    case 'live': return 10000;
+    default:{
+      // For imported accounts, use accountBalance - total P/L = starting balance
+      const impTrades = importedTrades.filter(t=>t.broker===activeAcct);
+      const storedBal = impTrades.find(t=>t.accountBalance)?.accountBalance;
+      if(storedBal){
+        const totalPnl = impTrades.reduce((s,t)=>s+t.pnl,0);
+        return parseFloat((storedBal - totalPnl).toFixed(2));
+      }
+      return 5000; // default prop firm starting balance
+    }
+  }
+}
+
 function buildEq(){
   dc('eq');
   const s=[...all()].sort((a,b)=>a.date.localeCompare(b.date));
-  let c=10000;const lb=['Start'],dt=[c];
+  const startBal = getStartingBalance();
+  let c=startBal;const lb=['Start'],dt=[c];
   s.forEach(t=>{c+=t.pnl;lb.push(t.date.slice(5));dt.push(parseFloat(c.toFixed(2)));});
-  const acctLabels2={all:'All',hist:'Deriv Hist',live:'Deriv Live'};
+  const acctLabels2={all:'All',hist:'Deriv',live:'Deriv Live'};
   const acctLbl=acctLabels2[activeAcct]||activeAcct;
   document.getElementById('eqLbl').textContent=acctLbl+' · $'+dt[dt.length-1].toLocaleString();
   const ctx=document.getElementById('eqChart').getContext('2d');
@@ -813,7 +845,7 @@ function buildChartsTab(){
   const ctx2=document.getElementById('ipChart').getContext('2d');
   ch['ip']=new Chart(ctx2,{type:'bar',data:{labels:ids.map(i=>'Vol '+i.slice(1)),datasets:[{data:pn.map(v=>parseFloat(v.toFixed(2))),backgroundColor:pn.map(v=>v>=0?'rgba(0,229,176,0.7)':'rgba(255,77,106,0.7)'),borderRadius:6}]},options:{responsive:true,indexAxis:'y',plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1117',borderColor:'#1c2032',borderWidth:1,callbacks:{label:c=>(c.parsed.x>=0?'+':'')+'$'+c.parsed.x.toFixed(2)}}},scales:{x:{ticks:{color:CD.c,font:{size:9},callback:v=>'$'+v},grid:{color:CD.g}},y:{ticks:{color:CD.c,font:{size:9}},grid:{display:false}}}}});
   const so=[...all()].sort((a,b)=>a.date.localeCompare(b.date));
-  let cc=10000;const ll=['Start'],dd=[cc];
+  let cc=getStartingBalance();const ll=['Start'],dd=[cc];
   so.forEach((t,i)=>{cc+=t.pnl;ll.push('#'+(i+1));dd.push(parseFloat(cc.toFixed(2)));});
   const ctx3=document.getElementById('feChart').getContext('2d');
   const gg=ctx3.createLinearGradient(0,0,0,230);gg.addColorStop(0,'rgba(0,229,176,0.18)');gg.addColorStop(1,'rgba(0,229,176,0)');
@@ -840,9 +872,21 @@ function renderKPIs(){
   const monthKeys = Object.keys(months).sort();
 
   // Account label for subtitle
-  const acctSub = activeAcct==='all' ? 'All accounts' :
-    activeAcct==='hist' ? 'Deriv Historical' :
-    activeAcct==='live' ? 'Deriv Live' : activeAcct;
+  const acctSub = activeAcct==='all'  ? 'All accounts combined' :
+                  activeAcct==='hist' ? 'Deriv (Historical)' :
+                  activeAcct==='live' ? 'Deriv Live' : activeAcct+' Account';
+
+  // For prop firm accounts — show balance info
+  let balanceKpi = null;
+  if(activeAcct !== 'all' && activeAcct !== 'hist' && activeAcct !== 'live'){
+    const impTrades = importedTrades.filter(t=>t.broker===activeAcct);
+    const storedBal = impTrades.find(t=>t.accountBalance)?.accountBalance;
+    const startBal  = getStartingBalance();
+    if(storedBal){
+      balanceKpi = {l:'Account Balance', v:'$'+storedBal.toLocaleString(), c:'b',
+        sub:'Started at $'+startBal.toLocaleString()};
+    }
+  }
 
   // Base KPIs
   const kpis = [
@@ -874,6 +918,7 @@ function renderKPIs(){
     kpis.push({l:'Deriv', v:fK(ds.tot), c:ds.tot>=0?'g':'r', sub:`${ds.n} trades`});
   }
 
+  if(balanceKpi) kpis.splice(1, 0, balanceKpi); // insert after Net P/L
   kpis.push({l:'Journal',v:journalEntries.length,c:'p',sub:'Logged entries'});
 
   document.getElementById('kpiGrid').innerHTML = kpis.map(k=>
@@ -1596,19 +1641,24 @@ function parseMT5HTM(text, broker){
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'text/html');
 
-  // Auto-detect broker from file content if not specified or 'Other'
+  // ALWAYS auto-detect broker from file content — file never lies
   const bodyText = doc.body ? doc.body.textContent : '';
-  if(broker === 'FTMO' && (bodyText.includes('Five Percent') || bodyText.includes('FivePercent'))){
+  // Detect in order of specificity
+  if(bodyText.includes('Five Percent') || bodyText.includes('FivePercent') ||
+     bodyText.includes('FivePercentOnline')){
     broker = 'The5ers';
-  }
-  if(broker === 'Other' || broker === 'MT5'){
-    // Try to detect from company name in file
-    if(bodyText.includes('FTMO')) broker = 'FTMO';
-    else if(bodyText.includes('Five Percent') || bodyText.includes('FivePercent')) broker = 'The5ers';
-    else if(bodyText.includes('MyFundedFX')) broker = 'MyFundedFX';
-    else if(bodyText.includes('E8 Funding')) broker = 'E8';
-    else if(bodyText.includes('Topstep')) broker = 'Topstep';
-    // otherwise keep as 'Other' or custom name
+  } else if(bodyText.includes('FTMO s.r.o') || bodyText.includes('ftmo.com') ||
+            bodyText.includes('FTMO Global') ||
+            (bodyText.includes('FTMO') && !bodyText.includes('Five Percent'))){
+    broker = 'FTMO';
+  } else if(bodyText.includes('MyFundedFX')){ broker = 'MyFundedFX';
+  } else if(bodyText.includes('E8 Funding')){ broker = 'E8';
+  } else if(bodyText.includes('Topstep')){    broker = 'Topstep';
+  } else if(bodyText.includes('Funded Next')){ broker = 'FundedNext';
+  } else if(bodyText.includes('True Forex')){ broker = 'TrueFunded';
+  } else {
+    // Keep user-selected broker if no match found in file
+    // (broker param already set from user selection)
   }
 
   // Extract account metadata from header rows
@@ -1860,10 +1910,18 @@ function processImport(text, broker, statusId, fromLogin){
     importHistory.unshift(histEntry);
     localStorage.setItem('importHistory', JSON.stringify(importHistory));
 
+    // Get actual broker detected from file (may differ from selectedBroker)
+    const detectedBroker = parsed[0]?.broker || broker;
     const acctBal = parsed.find(t=>t.accountBalance)?.accountBalance;
-    const balStr  = acctBal ? ` · Balance: $${acctBal.toLocaleString()}` : '';
+    const startBal = acctBal ? (() => {
+      const totalP = parsed.reduce((s,t)=>s+t.pnl,0);
+      return parseFloat((acctBal-totalP).toFixed(2));
+    })() : null;
+    const balStr = acctBal
+      ? ` · Start: $${startBal?.toLocaleString()} → Balance: $${acctBal.toLocaleString()}`
+      : '';
     statusEl.className='import-status ok';
-    statusEl.textContent=`✅ ${broker}: ${newTrades.length} trades imported${balStr}${dupes?' · '+dupes+' skipped':''}`;
+    statusEl.innerHTML=`✅ <strong>${detectedBroker}</strong> detected · ${newTrades.length} trades imported${balStr}${dupes?' · '+dupes+' skipped':''}`;
 
     // Update badge
     updateImportBadge();
@@ -1970,6 +2028,18 @@ function selectBroker(b, btn){
   }
 }
 
+function setLoginBroker(b, btn){
+  selectedBroker = b;
+  document.querySelectorAll('#pane-csv .login-opt').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  const wrap = document.getElementById('loginOtherWrap');
+  if(wrap) wrap.style.display = (b==='Other') ? 'block' : 'none';
+  if(b!=='Other'){
+    const inp = document.getElementById('loginOtherName');
+    if(inp) inp.value = '';
+  }
+}
+
 function showImportPanel(){
   const panel = document.getElementById('importPanel');
   panel.style.display='flex';
@@ -2002,12 +2072,15 @@ function renderImportHistory(){
 function deleteImport(histId){
   const h = importHistory.find(x=>x.id===histId);
   if(!h) return;
-  if(!confirm('Remove all '+h.broker+' trades from this import?')) return;
-  // Remove trades from this broker that were added around this time
+  if(!confirm('Remove all '+h.broker+' trades from this import? This cannot be undone.')) return;
+  // Remove ONLY trades belonging to this specific broker
   importedTrades = importedTrades.filter(t=>t.broker!==h.broker);
-  importHistory = importHistory.filter(x=>x.id!==histId);
+  // Remove all import history entries for this broker
+  importHistory = importHistory.filter(x=>x.broker!==h.broker);
   localStorage.setItem('importedTrades', JSON.stringify(importedTrades));
   localStorage.setItem('importHistory', JSON.stringify(importHistory));
+  // If we were viewing this broker, switch to All
+  if(activeAcct===h.broker) activeAcct='all';
   updateImportBadge();
   renderImportHistory();
   refreshAll();
@@ -2037,9 +2110,10 @@ function renderAcctBar(){
   const pnlSum = trades => trades.reduce((s,t)=>s+t.pnl,0);
   const fmt    = n => (n>=0?'+':'')+fK(n);
 
-  // --- Deriv (seed + live) ---
+  // --- Deriv (seed historical + live API trades) ---
   const derivTrades = raw.filter(t=>t.src==='hist'||t.src==='live');
-  document.getElementById('ap-hist').textContent = derivTrades.length ? fmt(pnlSum(derivTrades)) : '';
+  const derivPnl    = pnlSum(derivTrades);
+  document.getElementById('ap-hist').textContent = derivTrades.length ? fmt(derivPnl) : '';
 
   // --- Live Deriv ---
   const liveTx  = raw.filter(t=>t.src==='live');
