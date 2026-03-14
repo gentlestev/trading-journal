@@ -2444,21 +2444,40 @@ async function mfxConnect(){
   const pass  = document.getElementById('mfxPassword').value.trim();
   if(!email || !pass){ mfxShowStatus('Please enter your Myfxbook email and password.','err'); return; }
 
+  const proxyUrl = document.getElementById('mfxProxyUrl')?.value?.trim() || MFX_NETLIFY_PROXY;
+  if(proxyUrl){ MFX_NETLIFY_PROXY = proxyUrl; localStorage.setItem('mfxProxyUrl', proxyUrl); }
+
   const btn = document.getElementById('mfxConnectBtn');
   btn.disabled = true;
   btn.textContent = 'Connecting...';
-  mfxShowStatus('<span class="spin">⟳</span> Logging in to Myfxbook...','info');
+  mfxShowStatus('<span class="spin">⟳</span> Connecting to Myfxbook...','info');
 
   try {
-    const data = await mfxCall('/login', {email, password: pass});
+    // Use combined loginandaccounts action — login + get accounts in ONE server call
+    // This avoids the session IP mismatch issue entirely
+    const data = await mfxNetlifyCall('loginandaccounts', {email, password: pass});
+
+    if(!data.session){
+      throw new Error(data.message || 'Login failed — check your email and password');
+    }
+
     mfxSession = data.session;
     mfxEmail   = email;
     localStorage.setItem('mfxSession', mfxSession);
     localStorage.setItem('mfxEmail',   mfxEmail);
-    mfxShowStatus('✅ Logged in! Loading accounts...','ok');
-    // Small delay before next call — helps on mobile Safari
-    await new Promise(r => setTimeout(r, 800));
-    await mfxLoadAccounts();
+
+    // Accounts came back in same call
+    mfxAccounts = data.accounts || [];
+    localStorage.setItem('mfxAccounts', JSON.stringify(mfxAccounts));
+
+    document.getElementById('mfxLoginForm').style.display    = 'none';
+    document.getElementById('mfxAccountsWrap').style.display = 'block';
+    document.getElementById('mfxSyncBtn').style.display      = 'flex';
+
+    mfxSetDot('connected');
+    mfxRenderAccounts();
+    mfxShowStatus('✅ Connected! Syncing trade history...','ok');
+    await mfxSyncHistory();
   } catch(err){
     let msg = err.message || '';
     let helpText = '';
