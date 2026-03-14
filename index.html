@@ -2359,65 +2359,45 @@ function renderAcctBar(){
 // MYFXBOOK SYNC SYSTEM
 // ============================================================
 
-// Core API call — tries multiple CORS proxies until one works
+// Core API call — tries multiple CORS proxies with Safari-compatible fetch
+async function mfxFetch(targetUrl){
+  let lastError = null;
+  for(let i = 0; i < MFX_PROXIES.length; i++){
+    try {
+      const proxyUrl = MFX_PROXIES[i](targetUrl);
+      // Safari-safe fetch — no custom headers, no timeout signal (not supported on older iOS)
+      const controller = new AbortController();
+      const timer = setTimeout(()=>controller.abort(), 12000);
+      const res = await fetch(proxyUrl, {
+        method: 'GET',
+        mode: 'cors',
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const raw = await res.text();
+      // Parse — handle allorigins wrapper or direct JSON
+      let parsed;
+      try {
+        const outer = JSON.parse(raw);
+        parsed = (outer.contents !== undefined) ? JSON.parse(outer.contents) : outer;
+      } catch(e){ parsed = JSON.parse(raw); }
+      if(parsed.error === true) throw new Error(parsed.message || 'API error');
+      return parsed;
+    } catch(err){
+      lastError = err;
+      console.warn(`MFX Proxy ${i} failed:`, err.message);
+    }
+  }
+  throw new Error('All proxies failed — ' + (lastError?.message||'network error'));
+}
+
 async function mfxCall(endpoint, params={}){
   let url = MFX_BASE + endpoint + '.json';
   if(mfxSession) params.session = mfxSession;
   const qs = Object.entries(params).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');
   if(qs) url += '?' + qs;
-
-  let lastError = null;
-
-  for(let i = 0; i < MFX_PROXIES.length; i++){
-    try {
-      const proxyUrl = MFX_PROXIES[i](url);
-      const res = await fetch(proxyUrl, {
-        method: 'GET',
-        headers: {'Accept': 'application/json'},
-        signal: AbortSignal.timeout(10000), // 10s timeout per proxy
-      });
-
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const raw = await res.text();
-
-      // Parse response — different proxies wrap differently
-      let parsed;
-      try {
-        const json = JSON.parse(raw);
-        // allorigins wraps in {contents: "..."}
-        if(json.contents !== undefined){
-          parsed = JSON.parse(json.contents);
-        }
-        // corsproxy.io and others return direct JSON
-        else if(json.error !== undefined){
-          parsed = json;
-        }
-        // codetabs returns raw
-        else {
-          parsed = json;
-        }
-      } catch(e) {
-        // Try parsing as direct JSON
-        parsed = JSON.parse(raw);
-      }
-
-      if(parsed.error === true){
-        throw new Error(parsed.message || 'Myfxbook API error');
-      }
-
-      // Remember which proxy worked
-      if(i > 0) console.log(`Proxy ${i} worked:`, MFX_PROXIES[i](url).split('?')[0]);
-      return parsed;
-
-    } catch(err){
-      lastError = err;
-      console.warn(`Proxy ${i} failed:`, err.message);
-      // Continue to next proxy
-    }
-  }
-
-  throw new Error('All proxies failed. Last error: ' + (lastError?.message || 'Unknown'));
+  return mfxFetch(url);
 }
 
 // Connect / Login
@@ -2437,17 +2417,24 @@ async function mfxConnect(){
     mfxEmail   = email;
     localStorage.setItem('mfxSession', mfxSession);
     localStorage.setItem('mfxEmail',   mfxEmail);
-    mfxShowStatus('✅ Connected! Loading your accounts...','ok');
+    mfxShowStatus('✅ Logged in! Loading accounts...','ok');
+    // Small delay before next call — helps on mobile Safari
+    await new Promise(r => setTimeout(r, 800));
     await mfxLoadAccounts();
   } catch(err){
     let msg = err.message || '';
     let helpText = '';
-    if(msg.includes('All proxies failed') || msg.includes('fetch') || msg.includes('network')){
-      helpText = '<br><br>Connection issue — make sure you are online and try again. If it keeps failing, the CORS proxy may be temporarily down.';
-    } else if(msg.includes('password') || msg.includes('credentials') || msg.includes('Invalid')){
-      helpText = '<br><br>Double-check your Myfxbook email and password. Make sure you can log in at myfxbook.com first.';
+    if(msg.includes('All proxies failed') || msg.includes('Load failed') || msg.includes('fetch') || msg.includes('network')){
+      helpText = `<br><br>
+        <strong>Try these steps:</strong><br>
+        1. Check you are online<br>
+        2. Disable any VPN or ad blocker<br>
+        3. Try on a different browser (Chrome works best)<br>
+        4. Try again — proxies sometimes have brief outages`;
+    } else if(msg.includes('password') || msg.includes('credentials') || msg.includes('Invalid') || msg.includes('Wrong')){
+      helpText = '<br><br>Wrong email or password. Make sure you can log in at <a href="https://www.myfxbook.com" target="_blank" style="color:var(--gold)">myfxbook.com</a> first.';
     }
-    mfxShowStatus('❌ Login failed: ' + msg + helpText, 'err');
+    mfxShowStatus('❌ ' + msg + helpText, 'err');
     btn.disabled = false;
     btn.textContent = 'Connect to Myfxbook';
   }
@@ -2466,6 +2453,8 @@ async function mfxLoadAccounts(){
 
     mfxSetDot('connected');
     mfxRenderAccounts();
+    mfxShowStatus('✅ Accounts loaded! Syncing trade history...', 'ok');
+    await new Promise(r => setTimeout(r, 600));
     await mfxSyncHistory();
 
     // Auto-sync every 10 minutes
@@ -2533,9 +2522,15 @@ async function mfxSyncHistory(){
       const known  = MFX_KNOWN.find(k=>k.id===String(acc.id));
       const broker = known ? known.broker : (acc.broker || 'MT5');
 
-      // Fetch closed trade history
+      // Fetch closed trade history — retry once on failure
       try {
-        const hist = await mfxCall('/get-history', {id: acc.id});
+        let hist;
+        try {
+          hist = await mfxCall('/get-history', {id: acc.id});
+        } catch(e1) {
+          await new Promise(r=>setTimeout(r,1500));
+          hist = await mfxCall('/get-history', {id: acc.id});
+        }
         const trades = hist.history || [];
 
         trades.forEach(t => {
