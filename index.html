@@ -919,7 +919,8 @@ function renderKPIs(){
   }
 
   if(balanceKpi) kpis.splice(1, 0, balanceKpi); // insert after Net P/L
-  kpis.push({l:'Journal',v:journalEntries.length,c:'p',sub:'Logged entries'});
+  const aj=activeJournals();
+  kpis.push({l:'Journal',v:aj.length,c:'p',sub:(activeAcct==='all'?'All accounts':acctSub)+' entries'});
 
   document.getElementById('kpiGrid').innerHTML = kpis.map(k=>
     `<div class="kpi ${k.c}"><div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div><div class="kpi-sub">${k.sub}</div></div>`
@@ -974,7 +975,10 @@ function filt(){
     return r&&f&&s;
   }).sort((a,b)=>{let va=a[sCol],vb=b[sCol];if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}return sDir==='asc'?(va>vb?1:-1):(va<vb?1:-1);});
 }
-function hasJournal(id){return journalEntries.some(j=>j.tradeId===id);}
+function hasJournal(id){
+  // Only show journal badge for entries belonging to current account
+  return activeJournals().some(j=>j.tradeId===id);
+}
 function renderTable(){
   const d=filt();
   document.getElementById('tCnt').textContent=d.length+' trades · P/L: '+fK(d.reduce((s,t)=>s+t.pnl,0));
@@ -1030,6 +1034,10 @@ function showJournalForm(tradeId=null,existingId=null){
   wrap.innerHTML=`
     <div class="journal-form">
       <div class="jf-title">${existing?'Edit Journal Entry':'New Journal Entry'}</div>
+      <div style="font-size:9px;margin-bottom:12px;padding:3px 10px;display:inline-block;border-radius:12px;background:var(--surface2);border:1px solid var(--border);">
+        <span style="color:var(--muted);">Account: </span>
+        <span style="color:${({'all':'var(--text)','hist':'var(--green)','live':'var(--green)','FTMO':'var(--gold)','The5ers':'var(--purple)'})[activeAcct]||'var(--blue)'};">${({'all':'All Accounts','hist':'Deriv','live':'Deriv Live'})[activeAcct]||activeAcct}</span>
+      </div>
       <input type="hidden" id="jTradeId" value="${tradeId||existing?.tradeId||''}">
       <div class="jf-row">
         <div>
@@ -1154,6 +1162,8 @@ function saveJournalEntry(){
     moods: [...selectedMoods],
     images: [...selectedImages],
     savedAt: new Date().toISOString(),
+    // Tag with current active account — journal is account-specific
+    account: activeAcct,
   };
   if(editingJournalId){const i=journalEntries.findIndex(j=>j.id===editingJournalId);if(i>=0)journalEntries[i]=entry;}
   else journalEntries.unshift(entry);
@@ -1277,8 +1287,10 @@ function deleteJournalEntry(id){
 }
 
 function openJournalForTrade(tradeId){
-  const existing=journalEntries.find(j=>j.tradeId===tradeId);
-  if(existing)showJournalForm(null,existing.id);
+  // Search active account journals first, fall back to all
+  const existing = activeJournals().find(j=>j.tradeId===tradeId)
+                || journalEntries.find(j=>j.tradeId===tradeId);
+  if(existing) showJournalForm(null,existing.id);
   else showJournalForm(tradeId);
 }
 
@@ -1304,30 +1316,70 @@ function filterJournal(f,btn){
   renderJournal();
 }
 
+// Returns journal entries filtered to current active account
+// 'all' account shows ALL journals across all accounts
+function activeJournals(){
+  if(activeAcct==='all') return journalEntries;
+  return journalEntries.filter(j=>{
+    // Entries tagged with current account
+    if(j.account === activeAcct) return true;
+    // Legacy entries (no account tag) belong to Deriv/hist
+    if(!j.account && (activeAcct==='hist'||activeAcct==='live')) return true;
+    return false;
+  });
+}
+
 function renderJournalStats(){
   const el=document.getElementById('jStatsRow');
-  if(!journalEntries.length){el.innerHTML='';return;}
-  const wins=journalEntries.filter(j=>j.outcome==='win');
-  const avgRating=journalEntries.filter(j=>j.rating>0).reduce((s,j)=>s+j.rating,0)/(journalEntries.filter(j=>j.rating>0).length||1);
-  const hasMistake=journalEntries.filter(j=>j.mistake&&j.mistake.trim()).length;
+  const aj=activeJournals();
+  if(!aj.length){el.innerHTML='';return;}
+  const wins=aj.filter(j=>j.outcome==='win');
+  const avgRating=aj.filter(j=>j.rating>0).reduce((s,j)=>s+j.rating,0)/(aj.filter(j=>j.rating>0).length||1);
+  const hasMistake=aj.filter(j=>j.mistake&&j.mistake.trim()).length;
+  // Account label for stats header
+  const acctNames={all:'All Accounts',hist:'Deriv',live:'Deriv Live'};
+  const acctLbl=acctNames[activeAcct]||activeAcct;
   el.innerHTML=[
-    {v:journalEntries.length,l:'Total Entries'},
-    {v:wins.length,l:'Winning Days Logged'},
-    {v:'★'.repeat(Math.round(avgRating))+'☆'.repeat(5-Math.round(avgRating)),l:'Avg Session Quality'},
-    {v:hasMistake,l:'Mistakes Logged'},
+    {v:aj.length,     l:acctLbl+' Entries'},
+    {v:wins.length,   l:'Winning Entries'},
+    {v:'★'.repeat(Math.round(avgRating))+'☆'.repeat(5-Math.round(avgRating)),l:'Avg Quality'},
+    {v:hasMistake,    l:'Mistakes Logged'},
   ].map(s=>`<div class="j-stat"><div class="j-stat-v">${s.v}</div><div class="j-stat-l">${s.l}</div></div>`).join('');
 }
 
 function renderJournal(){
   renderJournalStats();
   const el=document.getElementById('jEntries');
-  let entries=[...journalEntries];
-  if(jFilter==='win')entries=entries.filter(j=>j.outcome==='win');
-  else if(jFilter==='loss')entries=entries.filter(j=>j.outcome==='loss');
-  else if(jFilter==='plan')entries=entries.filter(j=>j.setup&&j.setup.trim());
-  else if(jFilter==='mistake')entries=entries.filter(j=>j.mistake&&j.mistake.trim());
-  if(!entries.length){el.innerHTML=`<div class="empty">No journal entries yet.<br>Click "+ New Journal Entry" to start logging your trades.</div>`;return;}
-  el.innerHTML=entries.map(j=>`
+
+  // Update new entry button label to show which account
+  const acctNames={all:'All Accounts',hist:'Deriv',live:'Deriv Live'};
+  const acctLbl = acctNames[activeAcct]||activeAcct;
+  const newBtn = document.querySelector('.new-entry-btn');
+  if(newBtn) newBtn.textContent = `+ New Journal Entry (${acctLbl})`;
+
+  // Show account badge above journal list
+  const colors={hist:'var(--green)',live:'var(--green)',all:'var(--text)',
+    FTMO:'var(--gold)',The5ers:'var(--purple)'};
+  const badgeColor = colors[activeAcct]||'var(--blue)';
+  const badge = activeAcct==='all'
+    ? `<div style="font-size:10px;color:var(--muted);margin-bottom:10px;">Showing journals from all accounts</div>`
+    : `<div style="display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid ${badgeColor}40;border-radius:20px;padding:4px 12px;font-size:10px;color:${badgeColor};margin-bottom:12px;">
+        <span style="width:7px;height:7px;border-radius:50%;background:${badgeColor};display:inline-block;"></span>
+        ${acctLbl} Journal
+      </div>`;
+
+  let entries=[...activeJournals()];
+  if(jFilter==='win')    entries=entries.filter(j=>j.outcome==='win');
+  else if(jFilter==='loss')    entries=entries.filter(j=>j.outcome==='loss');
+  else if(jFilter==='plan')    entries=entries.filter(j=>j.setup&&j.setup.trim());
+  else if(jFilter==='mistake') entries=entries.filter(j=>j.mistake&&j.mistake.trim());
+
+  if(!entries.length){
+    el.innerHTML=badge+`<div class="empty">No journal entries yet for ${acctLbl}.<br>Switch to this account tab and click "+ New Journal Entry".</div>`;
+    return;
+  }
+  el.innerHTML = badge;
+  el.innerHTML += entries.map(j=>`
     <div class="j-entry">
       <div class="j-entry-header">
         <div>
@@ -1372,7 +1424,7 @@ function buildCal(){
     days.forEach(d=>{html+=`<div class="cl">${d}</div>`;});
     const first=new Date(y,mo-1,1).getDay(),total=new Date(y,mo,0).getDate();
     for(let i=0;i<first;i++)html+=`<div class="cd empty-d"></div>`;
-    for(let d=1;d<=total;d++){const ds=`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const pnl=m[ds];const jd=journalEntries.find(j=>j.date===ds);const cl=pnl===undefined?'':(pnl>0?'profit':'loss');html+=`<div class="cd ${cl}" title="${ds}${pnl!==undefined?' · '+(pnl>0?'+':'')+'$'+Math.abs(pnl).toFixed(0):''}"><div class="cdn">${d}${jd?'📖':''}</div>${pnl!==undefined?`<div class="cdp" style="color:${pnl>0?'var(--green)':'var(--red)'}">${pnl>0?'+':''}$${Math.abs(pnl).toFixed(0)}</div>`:''}</div>`;}
+    for(let d=1;d<=total;d++){const ds=`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const pnl=m[ds];const jd=activeJournals().find(j=>j.date===ds);const cl=pnl===undefined?'':(pnl>0?'profit':'loss');html+=`<div class="cd ${cl}" title="${ds}${pnl!==undefined?' · '+(pnl>0?'+':'')+'$'+Math.abs(pnl).toFixed(0):''}"><div class="cdn">${d}${jd?'📖':''}</div>${pnl!==undefined?`<div class="cdp" style="color:${pnl>0?'var(--green)':'var(--red)'}">${pnl>0?'+':''}$${Math.abs(pnl).toFixed(0)}</div>`:''}</div>`;}
     html+=`</div></div>`;
   });
   document.getElementById('calWrap').innerHTML=html;
@@ -2097,7 +2149,7 @@ function switchAcct(acct, btn){
   if(btn) btn.classList.add('active');
   // Refresh all views
   refreshAll();
-  renderJournal();
+  renderJournal(); // re-render journal for new account
   // Re-render charts tab if open
   const chartsPanel = document.getElementById('panel-charts');
   if(chartsPanel && chartsPanel.classList.contains('active')) buildChartsTab();
