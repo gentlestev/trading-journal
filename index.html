@@ -45,6 +45,42 @@ body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospa
 .bal-v{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--green);}
 .disc-btn{padding:6px 12px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.25);border-radius:6px;color:var(--red);font-size:10px;cursor:pointer;font-family:'JetBrains Mono',monospace;}
 .help-btn{padding:6px 12px;background:rgba(61,155,255,0.1);border:1px solid rgba(61,155,255,0.25);border-radius:6px;color:var(--blue);font-size:10px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;}
+.sync-btn{padding:6px 12px;background:rgba(240,180,41,0.1);border:1px solid rgba(240,180,41,0.25);border-radius:6px;color:var(--gold);font-size:10px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;}
+.sync-btn:hover{background:rgba(240,180,41,0.2);}
+.sync-btn.syncing{opacity:0.6;cursor:not-allowed;}
+/* MYFXBOOK PANEL */
+.mfx-panel{background:var(--surface);border:1px solid rgba(240,180,41,0.2);border-radius:12px;padding:18px;margin-bottom:14px;}
+.mfx-title{font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.mfx-status{display:flex;align-items:center;gap:6px;font-size:10px;}
+.mfx-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.mfx-dot.connected{background:var(--green);animation:pulse 2s infinite;}
+.mfx-dot.error{background:var(--red);}
+.mfx-dot.syncing{background:var(--gold);animation:blink 0.8s infinite;}
+.mfx-input-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+@media(max-width:520px){.mfx-input-row{grid-template-columns:1fr;}}
+.mfx-input{width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;outline:none;transition:border-color .2s;}
+.mfx-input:focus{border-color:rgba(240,180,41,0.4);}
+.mfx-input::placeholder{color:var(--muted);}
+.mfx-connect-btn{width:100%;padding:10px;background:var(--gold);color:#000;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:opacity .2s;margin-bottom:10px;}
+.mfx-connect-btn:hover{opacity:0.85;}
+.mfx-connect-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.mfx-status-bar{padding:8px 12px;border-radius:7px;font-size:10px;margin-bottom:10px;display:none;line-height:1.6;}
+.mfx-status-bar.ok{background:rgba(0,229,176,0.08);border:1px solid rgba(0,229,176,0.2);color:var(--green);}
+.mfx-status-bar.err{background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);color:var(--red);}
+.mfx-status-bar.info{background:rgba(240,180,41,0.08);border:1px solid rgba(240,180,41,0.2);color:var(--gold);}
+.mfx-account-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;transition:border-color .2s;}
+.mfx-account-card:hover{border-color:var(--muted);}
+.mfx-account-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.mfx-account-name{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;}
+.mfx-account-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
+.mfx-stat{text-align:center;}
+.mfx-stat-v{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;}
+.mfx-stat-l{font-size:8px;color:var(--muted);margin-top:2px;}
+.mfx-sync-info{font-size:9px;color:var(--muted);margin-top:8px;display:flex;justify-content:space-between;align-items:center;}
+.mfx-toggle{display:flex;align-items:center;gap:6px;font-size:10px;cursor:pointer;}
+.mfx-toggle input{cursor:pointer;}
+.spin{display:inline-block;animation:spin 1s linear infinite;}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 .help-btn:hover{background:rgba(61,155,255,0.2);}
 /* HELP PANEL */
 .help-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:300;display:none;align-items:flex-start;justify-content:flex-end;padding:16px;}
@@ -403,6 +439,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
     <div class="hright">
       <div class="bal-chip"><div class="bal-l">BALANCE</div><div class="bal-v" id="liveBal">—</div></div>
       <span class="import-badge" id="importBadge" style="display:none" onclick="showImportPanel()">📂 <span id="importBadgeText">MT5 Import</span></span>
+      <button class="sync-btn" id="mfxSyncBtn" onclick="mfxSyncNow()" style="display:none">⟳ Sync</button>
       <button class="help-btn" onclick="openHelp()">? Help</button>
       <button class="disc-btn" onclick="disconnect()">Disconnect</button>
     </div>
@@ -455,12 +492,57 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 
 <!-- LIVE -->
 <div class="panel" id="panel-live">
+
+  <!-- MYFXBOOK SYNC PANEL -->
+  <div class="mfx-panel" id="mfxPanel">
+    <div class="mfx-title">
+      <span>🔄 Myfxbook Live Sync</span>
+      <div class="mfx-status">
+        <div class="mfx-dot" id="mfxDot"></div>
+        <span id="mfxStatusText" style="color:var(--muted);">Not connected</span>
+      </div>
+    </div>
+
+    <!-- Login form — shown when not connected -->
+    <div id="mfxLoginForm">
+      <div class="mfx-input-row">
+        <div>
+          <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Myfxbook Email</div>
+          <input type="email" class="mfx-input" id="mfxEmail" placeholder="your@email.com">
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Myfxbook Password</div>
+          <input type="password" class="mfx-input" id="mfxPassword" placeholder="••••••••">
+        </div>
+      </div>
+      <div style="font-size:9px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
+        Your credentials are saved locally on your device only — never sent anywhere except Myfxbook's official API.
+      </div>
+      <button class="mfx-connect-btn" id="mfxConnectBtn" onclick="mfxConnect()">Connect to Myfxbook</button>
+    </div>
+
+    <div class="mfx-status-bar" id="mfxStatusBar"></div>
+
+    <!-- Connected accounts — shown after login -->
+    <div id="mfxAccountsWrap" style="display:none;">
+      <div id="mfxAccountsList"></div>
+      <div class="mfx-sync-info">
+        <span id="mfxLastSync" style="color:var(--muted);">Never synced</span>
+        <div style="display:flex;gap:8px;">
+          <button onclick="mfxSyncNow()" style="padding:4px 12px;background:rgba(240,180,41,0.1);border:1px solid rgba(240,180,41,0.25);border-radius:5px;color:var(--gold);font-size:10px;cursor:pointer;">⟳ Sync Now</button>
+          <button onclick="mfxDisconnect()" style="padding:4px 12px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);border-radius:5px;color:var(--red);font-size:10px;cursor:pointer;">Disconnect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deriv open positions -->
   <div class="open-card">
-    <div class="open-title"><span class="ldot"></span>Open Positions <span id="opCnt" style="color:var(--green)"></span></div>
+    <div class="open-title"><span class="ldot"></span>Deriv Open Positions <span id="opCnt" style="color:var(--green)"></span></div>
     <div id="openPos"><div class="empty">No open positions</div></div>
   </div>
   <div class="feed-card">
-    <div style="font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span class="ldot"></span>Recently Closed</div>
+    <div style="font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span class="ldot"></span>Recently Closed (Deriv)</div>
     <div class="feed-scroll" id="liveFeed"><div style="font-size:10px;color:var(--muted);text-align:center;padding:12px;">Waiting for trades...</div></div>
   </div>
   <div class="kpi-grid" id="todayKpis"></div>
@@ -472,9 +554,9 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
     <button class="rbtn active" onclick="setRange('all',this)">All</button>
     <button class="rbtn" onclick="setRange('today',this)">Today</button>
     <button class="rbtn" onclick="setRange('week',this)">This Week</button>
-    <button class="rbtn" onclick="setRange('jan',this)">January</button>
-    <button class="rbtn" onclick="setRange('feb',this)">February</button>
-    <button class="rbtn" onclick="setRange('mar',this)">March</button>
+    <button class="rbtn" onclick="setRange('month',this)">This Month</button>
+    <button class="rbtn" onclick="setRange('3month',this)">Last 3 Months</button>
+    <button class="rbtn" onclick="setRange('year',this)">This Year</button>
   </div>
   <div class="filters">
     <button class="fbtn active" onclick="setFilter('all',this)">All</button>
@@ -599,69 +681,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 // ============================================================
 // DATA — ALL TRADES (Jan + Feb + Mar)
 // ============================================================
-const seed = [
-  // JANUARY
-  {id:'j1',instrument:"Volatility 25 Index",idx:"V25",direction:"BUY",lots:150,open:2379.067,close:2379.370,date:"2026-01-01",pnl:45.45,src:'hist'},
-  {id:'j2',instrument:"Volatility 25 Index",idx:"V25",direction:"BUY",lots:190,open:2376.910,close:2374.139,date:"2026-01-01",pnl:-526.49,src:'hist'},
-  {id:'j3',instrument:"Volatility 75 Index",idx:"V75",direction:"BUY",lots:1.25,open:42958.92,close:43534.64,date:"2026-01-04",pnl:719.66,src:'hist'},
-  {id:'j4',instrument:"Volatility 75 Index",idx:"V75",direction:"BUY",lots:2.25,open:42866.87,close:42640.01,date:"2026-01-04",pnl:-510.44,src:'hist'},
-  {id:'j5',instrument:"Volatility 50 Index",idx:"V50",direction:"BUY",lots:760,open:126.6321,close:125.9749,date:"2026-01-04",pnl:-499.47,src:'hist'},
-  {id:'j6',instrument:"Volatility 25 Index",idx:"V25",direction:"BUY",lots:180,open:2431.240,close:2431.542,date:"2026-01-04",pnl:54.36,src:'hist'},
-  {id:'j7',instrument:"Volatility 25 Index",idx:"V25",direction:"BUY",lots:170,open:2426.276,close:2423.312,date:"2026-01-05",pnl:-503.88,src:'hist'},
-  {id:'j8',instrument:"Volatility 25 Index",idx:"V25",direction:"BUY",lots:170,open:2423.354,close:2425.791,date:"2026-01-05",pnl:414.29,src:'hist'},
-  {id:'j9',instrument:"Volatility 100 Index",idx:"V100",direction:"SELL",lots:70,open:754.71,close:759.241,date:"2026-01-06",pnl:-317.20,src:'hist'},
-  {id:'j10',instrument:"Volatility 50 Index",idx:"V50",direction:"SELL",lots:1000,open:128.6702,close:128.6965,date:"2026-01-06",pnl:-26.30,src:'hist'},
-  {id:'j11',instrument:"Volatility 100 Index",idx:"V100",direction:"BUY",lots:21,open:896.08,close:890.84,date:"2026-01-10",pnl:-110.04,src:'hist'},
-  {id:'j12',instrument:"Volatility 25 Index",idx:"V25",direction:"BUY",lots:40,open:2483.496,close:2488.022,date:"2026-01-20",pnl:181.04,src:'hist'},
-  {id:'j13',instrument:"Volatility 25 Index",idx:"V25",direction:"SELL",lots:25,open:2515.268,close:2519.356,date:"2026-01-22",pnl:-102.20,src:'hist'},
-  {id:'j14',instrument:"Volatility 100 Index",idx:"V100",direction:"BUY",lots:15,open:1089.95,close:1081.74,date:"2026-01-22",pnl:-123.15,src:'hist'},
-  // FEBRUARY
-  {id:'s44',instrument:"Volatility 50 Index",idx:"V50",direction:"SELL",lots:370,open:118.7383,close:113.7116,date:"2026-02-06",pnl:1859.88,src:'hist'},
-  {id:'s39',instrument:"Volatility 75 Index",idx:"V75",direction:"BUY",lots:4,open:27380.94,close:27219.58,date:"2026-02-07",pnl:-645.44,src:'hist'},
-  {id:'s40',instrument:"Volatility 25 Index",idx:"V25",direction:"SELL",lots:75,open:2700.808,close:2708.933,date:"2026-02-07",pnl:-609.38,src:'hist'},
-  {id:'s41',instrument:"Volatility 25 Index",idx:"V25",direction:"SELL",lots:66,open:2691.289,close:2703.006,date:"2026-02-07",pnl:-773.32,src:'hist'},
-  {id:'s42',instrument:"Volatility 25 Index",idx:"V25",direction:"SELL",lots:66,open:2695.307,close:2703.006,date:"2026-02-07",pnl:-508.13,src:'hist'},
-  {id:'s43',instrument:"Volatility 75 Index",idx:"V75",direction:"SELL",lots:2.1,open:27595.01,close:27888.37,date:"2026-02-07",pnl:-616.06,src:'hist'},
-  {id:'s38',instrument:"Volatility 75 Index",idx:"V75",direction:"SELL",lots:1.8,open:27332.40,close:26038.45,date:"2026-02-10",pnl:2329.11,src:'hist'},
-  {id:'s37',instrument:"Volatility 75 Index",idx:"V75",direction:"SELL",lots:2.7,open:26818.96,close:26038.45,date:"2026-02-10",pnl:2107.38,src:'hist'},
-  {id:'s36',instrument:"Volatility 25 Index",idx:"V25",direction:"BUY",lots:125,open:2801.672,close:2813.642,date:"2026-02-12",pnl:1496.25,src:'hist'},
-  {id:'s35',instrument:"Volatility 50 Index",idx:"V50",direction:"BUY",lots:1300,open:119.737,close:119.2678,date:"2026-02-19",pnl:-609.96,src:'hist'},
-  {id:'s32',instrument:"Volatility 25 Index",idx:"V25",direction:"BUY",lots:93,open:2902.427,close:2895.963,date:"2026-02-20",pnl:-601.15,src:'hist'},
-  {id:'s33',instrument:"Volatility 25 Index",idx:"V25",direction:"SELL",lots:87,open:2918.839,close:2903.391,date:"2026-02-20",pnl:1343.98,src:'hist'},
-  {id:'s34',instrument:"Volatility 100 Index",idx:"V100",direction:"SELL",lots:65,open:913.39,close:923.00,date:"2026-02-20",pnl:-624.65,src:'hist'},
-  {id:'s31',instrument:"Volatility 25 Index",idx:"V25",direction:"SELL",lots:75,open:2879.567,close:2887.482,date:"2026-02-21",pnl:-593.63,src:'hist'},
-  {id:'s27',instrument:"Volatility 50 Index",idx:"V50",direction:"SELL",lots:1500,open:110.9676,close:110.969,date:"2026-02-22",pnl:-2.10,src:'hist'},
-  {id:'s28',instrument:"Volatility 50 Index",idx:"V50",direction:"BUY",lots:1300,open:110.0364,close:109.6113,date:"2026-02-22",pnl:-552.63,src:'hist'},
-  {id:'s29',instrument:"Volatility 50 Index",idx:"V50",direction:"BUY",lots:950,open:110.6353,close:109.9819,date:"2026-02-22",pnl:-620.73,src:'hist'},
-  {id:'s30',instrument:"Volatility 50 Index",idx:"V50",direction:"BUY",lots:1300,open:110.6312,close:110.1469,date:"2026-02-22",pnl:-629.59,src:'hist'},
-  {id:'s23',instrument:"Volatility 75 Index",idx:"V75",direction:"SELL",lots:1.9,open:34635.09,close:34970.23,date:"2026-02-23",pnl:-636.77,src:'hist'},
-  {id:'s24',instrument:"Volatility 10 Index",idx:"V10",direction:"BUY",lots:90,open:5053.993,close:5047.148,date:"2026-02-23",pnl:-616.05,src:'hist'},
-  {id:'s25',instrument:"Volatility 50 Index",idx:"V50",direction:"SELL",lots:1300,open:108.8534,close:109.3117,date:"2026-02-23",pnl:-595.79,src:'hist'},
-  {id:'s26',instrument:"Volatility 50 Index",idx:"V50",direction:"SELL",lots:1500,open:108.1501,close:108.5533,date:"2026-02-23",pnl:-604.80,src:'hist'},
-  {id:'s21',instrument:"Volatility 75 Index",idx:"V75",direction:"BUY",lots:1.5,open:34529.81,close:36071.62,date:"2026-02-26",pnl:2312.72,src:'hist'},
-  {id:'s20',instrument:"Volatility 100 Index",idx:"V100",direction:"SELL",lots:33,open:867.27,close:876.68,date:"2026-02-26",pnl:-310.53,src:'hist'},
-  {id:'s22',instrument:"Volatility 25 Index",idx:"V25",direction:"SELL",lots:45,open:2860.833,close:2860.916,date:"2026-02-26",pnl:-3.74,src:'hist'},
-  {id:'s16',instrument:"Volatility 25 Index",idx:"V25",direction:"SELL",lots:17,open:2886.817,close:2886.725,date:"2026-02-28",pnl:1.56,src:'hist'},
-  {id:'s17',instrument:"Volatility 25 Index",idx:"V25",direction:"SELL",lots:47,open:2876.882,close:2889.711,date:"2026-02-28",pnl:-602.96,src:'hist'},
-  {id:'s18',instrument:"Volatility 75 Index",idx:"V75",direction:"SELL",lots:1.9,open:36085.00,close:35210.28,date:"2026-02-28",pnl:1661.97,src:'hist'},
-  {id:'s19',instrument:"Volatility 75 Index",idx:"V75",direction:"SELL",lots:1,open:37064.79,close:35210.28,date:"2026-02-28",pnl:1854.51,src:'hist'},
-  // MARCH
-  {id:'s15',instrument:"Volatility 50 Index",idx:"V50",direction:"SELL",lots:600,open:111.9115,close:109.4726,date:"2026-03-01",pnl:1463.34,src:'hist'},
-  {id:'s14',instrument:"Volatility 100 Index",idx:"V100",direction:"BUY",lots:40,open:842.00,close:826.92,date:"2026-03-02",pnl:-603.20,src:'hist'},
-  {id:'s12',instrument:"Volatility 10 Index",idx:"V10",direction:"SELL",lots:52,open:5016.935,close:5026.784,date:"2026-03-02",pnl:-512.15,src:'hist'},
-  {id:'s13',instrument:"Volatility 25 Index",idx:"V25",direction:"BUY",lots:49,open:2924.784,close:2912.105,date:"2026-03-02",pnl:-621.27,src:'hist'},
-  {id:'s11',instrument:"Volatility 10 Index",idx:"V10",direction:"SELL",lots:80,open:5016.573,close:4999.289,date:"2026-03-03",pnl:1382.72,src:'hist'},
-  {id:'s9',instrument:"Volatility 25 Index",idx:"V25",direction:"SELL",lots:45,open:2874.616,close:2831.207,date:"2026-03-04",pnl:1953.41,src:'hist'},
-  {id:'s10',instrument:"Volatility 75 Index",idx:"V75",direction:"SELL",lots:1.25,open:35751.80,close:34461.45,date:"2026-03-04",pnl:1612.94,src:'hist'},
-  {id:'s8',instrument:"Volatility 50 Index",idx:"V50",direction:"SELL",lots:700,open:110.8826,close:109.1358,date:"2026-03-05",pnl:1222.76,src:'hist'},
-  {id:'s7',instrument:"Volatility 10 Index",idx:"V10",direction:"BUY",lots:60,open:5072.406,close:5062.404,date:"2026-03-06",pnl:-600.12,src:'hist'},
-  {id:'s6',instrument:"Volatility 25 Index",idx:"V25",direction:"BUY",lots:38,open:2896.194,close:2928.402,date:"2026-03-09",pnl:1223.90,src:'hist'},
-  {id:'s5',instrument:"Volatility 10 Index",idx:"V10",direction:"BUY",lots:105,open:5103.93,close:5097.633,date:"2026-03-11",pnl:-661.19,src:'hist'},
-  {id:'s4',instrument:"Volatility 75 Index",idx:"V75",direction:"SELL",lots:1.15,open:34390.94,close:34928.16,date:"2026-03-12",pnl:-617.80,src:'hist'},
-  {id:'s2',instrument:"Volatility 10 Index",idx:"V10",direction:"BUY",lots:90,open:5080.22,close:5096.826,date:"2026-03-13",pnl:1494.54,src:'hist'},
-  {id:'s3',instrument:"Volatility 100 Index",idx:"V100",direction:"SELL",lots:82,open:628.38,close:614.12,date:"2026-03-13",pnl:1169.32,src:'hist'},
-  {id:'s1',instrument:"Volatility 75 Index",idx:"V75",direction:"SELL",lots:2.5,open:37009.12,close:36520.51,date:"2026-03-14",pnl:1221.53,src:'hist'},
-];
+const seed = []; // No built-in seed data — each user imports their own trades
 
 // ============================================================
 // STATE
@@ -674,6 +694,20 @@ let importedTrades=JSON.parse(localStorage.getItem('importedTrades')||'[]');
 let importHistory=JSON.parse(localStorage.getItem('importHistory')||'[]');
 let selectedBroker='FTMO';
 let activeAcct='all'; // 'all' | 'hist' | 'live' | broker name e.g. 'FTMO' | 'The5ers'
+
+// ── Myfxbook state ──
+let mfxSession   = localStorage.getItem('mfxSession') || null;
+let mfxEmail     = localStorage.getItem('mfxEmail')   || '';
+let mfxAccounts  = JSON.parse(localStorage.getItem('mfxAccounts') || '[]');
+let mfxSyncTimer = null;
+let mfxSyncing   = false;
+const MFX_PROXY  = 'https://api.allorigins.win/get?url=';
+const MFX_BASE   = 'https://www.myfxbook.com/api';
+// Pre-configured account IDs (yours)
+const MFX_KNOWN  = [
+  {id:'11970519', broker:'FTMO',     name:'FTMO DEMO2'},
+  {id:'11970510', broker:'The5ers',  name:'The5ers'},
+];
 let editingJournalId=null,jFilter='all',selectedStars=0,selectedMoods=[],selectedImages=[];
 let lbImages=[],lbIndex=0;
 
@@ -824,22 +858,29 @@ function disconnect(){isConn=false;if(ws)ws.close();if(ping)clearInterval(ping);
 const CD={c:'rgba(232,234,240,0.8)',g:'rgba(28,32,50,0.8)'};
 function dc(id){if(ch[id]){ch[id].destroy();delete ch[id];}}
 function getStartingBalance(){
-  // Starting balance per account
-  switch(activeAcct){
-    case 'all':  return 10000; // Deriv seed starting balance
-    case 'hist': return 10000;
-    case 'live': return 10000;
-    default:{
-      // For imported accounts, use accountBalance - total P/L = starting balance
-      const impTrades = importedTrades.filter(t=>t.broker===activeAcct);
-      const storedBal = impTrades.find(t=>t.accountBalance)?.accountBalance;
-      if(storedBal){
-        const totalPnl = impTrades.reduce((s,t)=>s+t.pnl,0);
-        return parseFloat((storedBal - totalPnl).toFixed(2));
-      }
-      return 5000; // default prop firm starting balance
+  // For imported accounts: use stored balance - total P/L
+  if(activeAcct !== 'all' && activeAcct !== 'hist' && activeAcct !== 'live'){
+    const impTrades = importedTrades.filter(t=>t.broker===activeAcct);
+    const storedBal = impTrades.find(t=>t.accountBalance)?.accountBalance;
+    if(storedBal){
+      const totalPnl = impTrades.reduce((s,t)=>s+t.pnl,0);
+      return parseFloat((storedBal - totalPnl).toFixed(2));
     }
+    return 5000; // default prop firm starting balance
   }
+  // For Deriv live account
+  if(activeAcct === 'live'){
+    const totalPnl = liveTrades.reduce((s,t)=>s+t.pnl,0);
+    const bal = parseFloat(document.getElementById('liveBal')?.textContent?.replace(/[^0-9.]/g,'')||'0');
+    return bal > 0 ? parseFloat((bal - totalPnl).toFixed(2)) : 10000;
+  }
+  // For 'all' or 'hist' — use Deriv live trades or default
+  if(liveTrades.length){
+    const totalPnl = liveTrades.reduce((s,t)=>s+t.pnl,0);
+    const bal = parseFloat(document.getElementById('liveBal')?.textContent?.replace(/[^0-9.]/g,'')||'0');
+    return bal > 0 ? parseFloat((bal - totalPnl).toFixed(2)) : 10000;
+  }
+  return 10000; // default fallback
 }
 
 function buildEq(){
@@ -984,6 +1025,15 @@ function updateInsight(){
   const ok = s.pf >= 1.5;
   const statusColor = ok ? 'var(--green)' : 'var(--red)';
   const statusTxt   = ok ? '✅ PASSING' : '⚠️ BELOW TARGET';
+  if(!s.n){
+    document.getElementById('insightBox').innerHTML=`
+      <strong>👋 Welcome to your Trading Dashboard!</strong>
+      No trades loaded yet. Connect your <strong style="color:var(--green);">Deriv API</strong> for live trades,
+      or import an <strong style="color:var(--gold);">MT5 report file</strong> from FTMO, The5ers, or any prop firm.
+      Click <strong>? Help</strong> in the top right for a full guide.
+    `;
+    return;
+  }
   document.getElementById('insightBox').innerHTML=`
     <strong>⚡ ${label} — ${statusTxt}</strong>
     Net P/L: <strong style="color:${s.tot>=0?'var(--green)':'var(--red)'}">${f$(s.tot,0)}</strong> ·
@@ -998,12 +1048,17 @@ function updateInsight(){
 
 // TABLE
 function rfilt(t){
-  const td=new Date().toISOString().slice(0,10),wa=new Date(Date.now()-7*86400000).toISOString().slice(0,10);
-  if(cRange==='today')return t.date===td;
-  if(cRange==='week')return t.date>=wa;
-  if(cRange==='jan')return t.date.startsWith('2026-01');
-  if(cRange==='feb')return t.date.startsWith('2026-02');
-  if(cRange==='mar')return t.date.startsWith('2026-03');
+  const now  = new Date();
+  const td   = now.toISOString().slice(0,10);
+  const wa   = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+  const ms   = new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+  const m3   = new Date(now.getFullYear(),now.getMonth()-3,1).toISOString().slice(0,10);
+  const ys   = new Date(now.getFullYear(),0,1).toISOString().slice(0,10);
+  if(cRange==='today')  return t.date===td;
+  if(cRange==='week')   return t.date>=wa;
+  if(cRange==='month')  return t.date>=ms;
+  if(cRange==='3month') return t.date>=m3;
+  if(cRange==='year')   return t.date>=ys;
   return true;
 }
 function filt(){
@@ -1026,7 +1081,14 @@ function renderTable(){
   if(lbl){const labels={all:'All Accounts',hist:'Deriv Historical',live:'Deriv Live'};
     lbl.textContent=labels[activeAcct]||activeAcct;}
   const tb=document.getElementById('tBody');
-  if(!d.length){tb.innerHTML='<tr><td colspan="8"><div class="empty">No trades match</div></td></tr>';return;}
+  if(!d.length){
+    const noImports = !importedTrades.length && !liveTrades.length;
+    const msg = noImports
+      ? '📂 No trades yet — connect your Deriv API or import an MT5 file to get started'
+      : 'No trades match the current filter';
+    tb.innerHTML=`<tr><td colspan="8"><div class="empty">${msg}</div></td></tr>`;
+    return;
+  }
   tb.innerHTML=d.map(t=>`<tr class="${t.pnl>0?'wr':'lr'}" onclick="openTradeModal('${t.id}')"><td>${t.instrument}${t.src==='live'?'<span class="lbadge">LIVE</span>':''}${t.broker?`<span class="broker-tag ${t.broker==='FTMO'?'ftmo':t.broker==='The5ers'?'five':'mt5'}">${t.broker}</span>`:''}</td><td><span class="pill ${t.direction==='BUY'?'b':'s'}">${t.direction}</span></td><td>${t.lots}</td><td>${t.open?t.open.toLocaleString():'-'}</td><td>${t.close?t.close.toLocaleString():'-'}</td><td>${t.date.slice(5).replace('-','/')}</td><td class="${t.pnl>0?'pp':'pn'}">${t.pnl>0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</td><td><span class="jbadge" onclick="event.stopPropagation();openJournalForTrade('${t.id}')">${hasJournal(t.id)?'📖 View':'+ Log'}</span></td></tr>`).join('');
 }
 function setFilter(f,b){cFilter=f;document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderTable();}
@@ -2283,6 +2345,303 @@ function renderAcctBar(){
 
 // ============================================================
 // ============================================================
+// MYFXBOOK SYNC SYSTEM
+// ============================================================
+
+// Core API call through CORS proxy
+async function mfxCall(endpoint, params={}){
+  let url = MFX_BASE + endpoint + '.json';
+  if(mfxSession) params.session = mfxSession;
+  const qs = Object.entries(params).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');
+  if(qs) url += '?' + qs;
+  const proxyUrl = MFX_PROXY + encodeURIComponent(url);
+  const res = await fetch(proxyUrl);
+  const data = await res.json();
+  // allorigins wraps response in {contents: "..."}
+  const parsed = JSON.parse(data.contents);
+  if(parsed.error) throw new Error(parsed.message || 'Myfxbook API error');
+  return parsed;
+}
+
+// Connect / Login
+async function mfxConnect(){
+  const email = document.getElementById('mfxEmail').value.trim();
+  const pass  = document.getElementById('mfxPassword').value.trim();
+  if(!email || !pass){ mfxShowStatus('Please enter your Myfxbook email and password.','err'); return; }
+
+  const btn = document.getElementById('mfxConnectBtn');
+  btn.disabled = true;
+  btn.textContent = 'Connecting...';
+  mfxShowStatus('<span class="spin">⟳</span> Logging in to Myfxbook...','info');
+
+  try {
+    const data = await mfxCall('/login', {email, password: pass});
+    mfxSession = data.session;
+    mfxEmail   = email;
+    localStorage.setItem('mfxSession', mfxSession);
+    localStorage.setItem('mfxEmail',   mfxEmail);
+    mfxShowStatus('✅ Connected! Loading your accounts...','ok');
+    await mfxLoadAccounts();
+  } catch(err){
+    mfxShowStatus('❌ Login failed: ' + err.message + '. Check your email and password.','err');
+    btn.disabled = false;
+    btn.textContent = 'Connect to Myfxbook';
+  }
+}
+
+// Load accounts after login
+async function mfxLoadAccounts(){
+  try {
+    const data = await mfxCall('/get-my-accounts');
+    mfxAccounts = data.accounts || [];
+    localStorage.setItem('mfxAccounts', JSON.stringify(mfxAccounts));
+
+    document.getElementById('mfxLoginForm').style.display   = 'none';
+    document.getElementById('mfxAccountsWrap').style.display = 'block';
+    document.getElementById('mfxSyncBtn').style.display      = 'flex';
+
+    mfxSetDot('connected');
+    mfxRenderAccounts();
+    await mfxSyncHistory();
+
+    // Auto-sync every 10 minutes
+    if(mfxSyncTimer) clearInterval(mfxSyncTimer);
+    mfxSyncTimer = setInterval(mfxSyncHistory, 10 * 60 * 1000);
+
+  } catch(err){
+    mfxShowStatus('❌ Failed to load accounts: ' + err.message,'err');
+  }
+}
+
+// Render connected accounts
+function mfxRenderAccounts(){
+  const list = document.getElementById('mfxAccountsList');
+  if(!mfxAccounts.length){ list.innerHTML = '<div class="empty">No accounts found</div>'; return; }
+
+  list.innerHTML = mfxAccounts.map(acc => {
+    // Find known broker name
+    const known  = MFX_KNOWN.find(k=>k.id===String(acc.id));
+    const broker = known ? known.broker : (acc.broker || 'MT5');
+    const bColors= {FTMO:'var(--gold)',The5ers:'var(--purple)'};
+    const col    = bColors[broker] || 'var(--blue)';
+    const gain   = parseFloat(acc.gain||0);
+    const profit = parseFloat(acc.profit||0);
+    const bal    = parseFloat(acc.balance||0);
+
+    return `<div class="mfx-account-card">
+      <div class="mfx-account-header">
+        <div>
+          <div class="mfx-account-name">${acc.name||broker}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;">${acc.server||''} · ID: ${acc.id}</div>
+        </div>
+        <span style="padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;background:${col}20;color:${col};">${broker}</span>
+      </div>
+      <div class="mfx-account-stats">
+        <div class="mfx-stat">
+          <div class="mfx-stat-v" style="color:${bal>=0?'var(--green)':'var(--red)'}">$${bal.toLocaleString()}</div>
+          <div class="mfx-stat-l">Balance</div>
+        </div>
+        <div class="mfx-stat">
+          <div class="mfx-stat-v" style="color:${profit>=0?'var(--green)':'var(--red)'}">${profit>=0?'+':''}$${Math.abs(profit).toLocaleString()}</div>
+          <div class="mfx-stat-l">Profit</div>
+        </div>
+        <div class="mfx-stat">
+          <div class="mfx-stat-v" style="color:${gain>=0?'var(--green)':'var(--red)'}">${gain>=0?'+':''}${gain.toFixed(2)}%</div>
+          <div class="mfx-stat-l">Gain</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Sync trade history from Myfxbook
+async function mfxSyncHistory(){
+  if(mfxSyncing) return;
+  mfxSyncing = true;
+  mfxSetDot('syncing');
+  const syncBtn = document.getElementById('mfxSyncBtn');
+  if(syncBtn){ syncBtn.classList.add('syncing'); syncBtn.textContent = '⟳ Syncing...'; }
+
+  let totalNew = 0;
+
+  try {
+    for(const acc of mfxAccounts){
+      const known  = MFX_KNOWN.find(k=>k.id===String(acc.id));
+      const broker = known ? known.broker : (acc.broker || 'MT5');
+
+      // Fetch closed trade history
+      try {
+        const hist = await mfxCall('/get-history', {id: acc.id});
+        const trades = hist.history || [];
+
+        trades.forEach(t => {
+          const trade = mfxTradeToLocal(t, broker, acc);
+          if(trade && !importedTrades.find(x=>x.id===trade.id)){
+            importedTrades.push(trade);
+            totalNew++;
+          }
+        });
+      } catch(e){ console.warn('History fetch failed for', acc.id, e); }
+
+      // Fetch open trades
+      try {
+        const open = await mfxCall('/get-open-trades', {id: acc.id});
+        // Open trades go to openPositions display
+        mfxUpdateOpenTrades(open.openTrades || [], broker);
+      } catch(e){ /* open trades may not be available */ }
+    }
+
+    if(totalNew > 0){
+      localStorage.setItem('importedTrades', JSON.stringify(importedTrades));
+      refreshAll();
+      renderAcctBar();
+    }
+
+    const now = new Date().toLocaleTimeString();
+    document.getElementById('mfxLastSync').textContent = `Last synced: ${now} · ${totalNew} new trades`;
+    mfxShowStatus(`✅ Synced at ${now}${totalNew?' · '+totalNew+' new trades':'  · Up to date'}`, 'ok');
+    mfxSetDot('connected');
+
+    // Add import history entry if new trades found
+    if(totalNew > 0){
+      const brokers = [...new Set(importedTrades.map(t=>t.broker).filter(Boolean))];
+      brokers.forEach(b=>{
+        const exists = importHistory.find(h=>h.broker===b && h.source==='myfxbook');
+        if(!exists){
+          importHistory.unshift({id:'ih_mfx_'+b,broker:b,date:new Date().toLocaleDateString(),
+            total:importedTrades.filter(t=>t.broker===b).length,added:totalNew,source:'myfxbook'});
+          localStorage.setItem('importHistory', JSON.stringify(importHistory));
+        }
+      });
+    }
+
+  } catch(err){
+    mfxShowStatus('⚠️ Sync error: ' + err.message,'err');
+    mfxSetDot('error');
+    // Session may have expired — try to re-login
+    if(err.message.includes('session') || err.message.includes('Session')){
+      mfxSession = null;
+      localStorage.removeItem('mfxSession');
+    }
+  }
+
+  mfxSyncing = false;
+  if(syncBtn){ syncBtn.classList.remove('syncing'); syncBtn.textContent = '⟳ Sync'; }
+}
+
+// Convert Myfxbook trade to dashboard format
+function mfxTradeToLocal(t, broker, acc){
+  if(!t || !t.openTime) return null;
+  const sym    = (t.symbol||'').toUpperCase();
+  const type   = (t.action||t.type||'').toLowerCase();
+  const pnl    = parseFloat(t.profit||0);
+  const lots   = parseFloat(t.sizing?.value || t.lots || 1);
+  const openP  = parseFloat(t.openPrice||0);
+  const closeP = parseFloat(t.closePrice||0);
+  const date   = parseDate(t.closeTime || t.openTime);
+  const dir    = type.includes('buy') ? 'BUY' : 'SELL';
+  const idx    = symToIdx(sym);
+  const bal    = parseFloat(acc.balance||0);
+
+  return {
+    id:             'mfx_' + (t.openOrderId||t.id||Math.random()) + '_' + broker,
+    instrument:     symToName(sym),
+    idx,
+    symbol:         sym,
+    direction:      dir,
+    lots,
+    open:           openP,
+    close:          closeP,
+    date,
+    pnl,
+    src:            'import',
+    broker,
+    accountBalance: bal,
+    source:         'myfxbook',
+  };
+}
+
+// Show Myfxbook open trades in live panel
+function mfxUpdateOpenTrades(trades, broker){
+  // Merge with existing openPos display
+  const mfxOpen = trades.map(t=>({
+    id:     'mfx_open_' + t.openOrderId,
+    name:   (t.symbol||'') + ' (' + broker + ')',
+    type:   (t.action||'').toUpperCase(),
+    bp:     parseFloat(t.openPrice||0),
+    cur:    parseFloat(t.currentPrice||0),
+    pnl:    parseFloat(t.profit||0),
+    dt:     t.openTime||'',
+    broker,
+  }));
+  // Add to openPos if not already there
+  mfxOpen.forEach(t=>{
+    if(!openPos.find(p=>p.id===t.id)) openPos.push(t);
+  });
+  renderOpenPos();
+}
+
+// Sync now (manual button)
+async function mfxSyncNow(){
+  if(!mfxSession){ switchTab('live'); return; }
+  await mfxSyncHistory();
+}
+
+// Disconnect Myfxbook
+function mfxDisconnect(){
+  if(!confirm('Disconnect Myfxbook? Your imported trades will remain but live sync will stop.')) return;
+  if(mfxSyncTimer) clearInterval(mfxSyncTimer);
+  mfxSession = null;
+  localStorage.removeItem('mfxSession');
+  localStorage.removeItem('mfxAccounts');
+  mfxAccounts = [];
+  document.getElementById('mfxLoginForm').style.display    = 'block';
+  document.getElementById('mfxAccountsWrap').style.display = 'none';
+  document.getElementById('mfxSyncBtn').style.display      = 'none';
+  document.getElementById('mfxConnectBtn').disabled = false;
+  document.getElementById('mfxConnectBtn').textContent = 'Connect to Myfxbook';
+  mfxSetDot('');
+  document.getElementById('mfxStatusText').textContent = 'Not connected';
+  mfxShowStatus('','');
+}
+
+// UI helpers
+function mfxShowStatus(msg, type){
+  const el = document.getElementById('mfxStatusBar');
+  if(!msg){ el.style.display='none'; return; }
+  el.style.display = 'block';
+  el.className = 'mfx-status-bar ' + (type||'info');
+  el.innerHTML = msg;
+}
+
+function mfxSetDot(state){
+  const dot  = document.getElementById('mfxDot');
+  const txt  = document.getElementById('mfxStatusText');
+  if(!dot) return;
+  dot.className = 'mfx-dot' + (state?' '+state:'');
+  const labels = {connected:'Connected · Auto-sync on', syncing:'Syncing...', error:'Sync error'};
+  if(txt && labels[state]) txt.textContent = labels[state];
+}
+
+// Auto-restore session on load
+async function mfxAutoRestore(){
+  if(!mfxSession) return;
+  // Restore saved email
+  const emailEl = document.getElementById('mfxEmail');
+  if(emailEl) emailEl.value = mfxEmail;
+
+  mfxShowStatus('<span class="spin">⟳</span> Restoring Myfxbook session...','info');
+  try {
+    await mfxLoadAccounts();
+  } catch(e){
+    // Session expired — clear it
+    mfxSession = null;
+    localStorage.removeItem('mfxSession');
+    mfxShowStatus('Session expired — please reconnect.','err');
+  }
+}
+
+// ============================================================
 // HELP SYSTEM
 // ============================================================
 function openHelp(){
@@ -2367,12 +2726,21 @@ document.addEventListener('click', function(e){
 window.addEventListener('load',()=>{
   // Restore imported trades from storage
   importedTrades = JSON.parse(localStorage.getItem('importedTrades')||'[]');
-  importHistory = JSON.parse(localStorage.getItem('importHistory')||'[]');
+  importHistory  = JSON.parse(localStorage.getItem('importHistory')||'[]');
   updateImportBadge();
   refreshAll();
   renderJournal();
+
+  // Restore Deriv connection
   const saved=localStorage.getItem('dtok');
   if(saved){document.getElementById('tokenInput').value=saved;connectDeriv();}
+
+  // Restore Myfxbook session
+  mfxAutoRestore();
+
+  // Pre-fill Myfxbook email if saved
+  const mfxEmailEl = document.getElementById('mfxEmail');
+  if(mfxEmailEl && mfxEmail) mfxEmailEl.value = mfxEmail;
 });
 </script>
 <!-- HELP DRAWER -->
@@ -2598,7 +2966,21 @@ window.addEventListener('load',()=>{
         <div class="help-item blue" data-keywords="mobile phone access anywhere url link">
           <div class="help-item-title">📱 Accessing from your phone</div>
           <div class="help-item-body">
-            Your dashboard is live at <strong style="color:var(--green);">gentlestev.github.io/trading-journal</strong> — bookmark this on any device. It works on mobile browsers. Note: journal entries saved on your phone won't sync to your computer (they use separate browser storage).
+            Bookmark this dashboard URL on any device for quick access. It works on mobile browsers. Note: journal entries and imports saved on your phone are stored separately from your computer — they won't sync between devices (each browser has its own local storage).
+          </div>
+        </div>
+
+        <div class="help-item gold" data-keywords="myfxbook sync live auto ftmo 5ers prop">
+          <div class="help-item-title">🔄 Myfxbook Live Sync</div>
+          <div class="help-item-body">
+            Connect your Myfxbook account for automatic trade sync from FTMO, The5ers and any MT5 prop firm.<br><br>
+            <strong>Setup:</strong><br>
+            1. Create a free account at <strong>myfxbook.com</strong><br>
+            2. Add your MT5 accounts (Auto Update option — free)<br>
+            3. Go to <strong>Live tab</strong> in this dashboard<br>
+            4. Enter your Myfxbook email + password<br>
+            5. Trades sync automatically every <strong>10 minutes</strong><br><br>
+            <div class="help-tip"><strong>⚡ Note:</strong> MT5 must be open on your computer for Myfxbook to receive new trades.</div>
           </div>
         </div>
 
