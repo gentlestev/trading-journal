@@ -1244,9 +1244,18 @@ function switchLoginOpt(opt, btn){
 // ============================================================
 // MT5 CSV / HTM PARSER
 // ============================================================
+// Polyfill findLastIndex for older browsers
+if(!Array.prototype.findLastIndex){
+  Array.prototype.findLastIndex = function(fn){
+    for(let i=this.length-1;i>=0;i--){ if(fn(this[i],i,this)) return i; }
+    return -1;
+  };
+}
+
 function parseMT5File(text, broker){
   // Detect format: HTM report or CSV (PDF is handled separately via parsePDF)
-  if(text.trim().startsWith('<') || text.includes('<html') || text.includes('<table')){
+  const trimmed = text.trim();
+  if(trimmed.startsWith('<') || trimmed.includes('<html') || trimmed.includes('<table') || trimmed.includes('<HTML')){
     return parseMT5HTM(text, broker);
   } else {
     return parseMT5CSV(text, broker);
@@ -1473,52 +1482,127 @@ function parseMT5HTM(text, broker){
   const doc = parser.parseFromString(text, 'text/html');
   const tables = doc.querySelectorAll('table');
   const trades = [];
-  
+
   tables.forEach(table=>{
-    const rows = table.querySelectorAll('tr');
-    let headers = [];
+    const rows = [...table.querySelectorAll('tr')];
+    let headerIdx = -1;
+    let colMap = null;
+
+    // Find the header row
     rows.forEach((row, ri)=>{
-      const cells = [...row.querySelectorAll('th,td')].map(c=>c.textContent.trim());
-      if(ri===0 || (headers.length===0 && cells.some(c=>c.toLowerCase().includes('symbol')||c.toLowerCase().includes('ticket')))){
-        headers = cells.map(c=>c.toLowerCase());
-        return;
-      }
-      if(!headers.length || cells.length < 5) return;
-      const col = (names)=>{
-        for(const n of names){
-          const i=headers.findIndex(h=>h.includes(n));
-          if(i>=0&&cells[i]) return cells[i].trim();
+      const cells = [...row.querySelectorAll('th,td')].map(c=>c.textContent.trim().toLowerCase());
+      if(cells.includes('symbol') && cells.includes('type') && cells.includes('profit')){
+        headerIdx = ri;
+
+        // Build exact column map based on actual header positions
+        // MT5 History Report exact format:
+        // Time | Position/Ticket | Symbol | Type | (blank) | Volume | S/L | T/P | OpenPrice | CloseTime | ClosePrice | Commission | Swap | Profit
+        // OR some variants — detect dynamically
+        const timeIdxs    = cells.reduce((a,c,i)=>c==='time'?[...a,i]:a, []);
+        const priceIdxs   = cells.reduce((a,c,i)=>c==='price'?[...a,i]:a, []);
+        const volumeIdx   = cells.findIndex(c=>c==='volume'||c==='vol');
+
+        colMap = {
+          openTime:   timeIdxs[0] ?? 0,
+          ticket:     cells.findIndex(c=>c==='position'||c==='ticket'||c==='order'||c==='#'),
+          symbol:     cells.findIndex(c=>c==='symbol'),
+          type:       cells.findIndex(c=>c==='type'),
+          volume:     volumeIdx,
+          openPrice:  priceIdxs[0] ?? 5,
+          closeTime:  timeIdxs[1] ?? 9,
+          closePrice: priceIdxs[1] ?? 10,
+          commission: cells.findIndex(c=>c==='commission'),
+          swap:       cells.findIndex(c=>c==='swap'),
+          profit:     cells.findLastIndex(c=>c==='profit'),
+          numCols:    cells.length,
+        };
+
+        // Special case: The5ers / MT5 14-col format
+        // col[0]=openTime, col[1]=ticket, col[2]=symbol, col[3]=type
+        // col[4]=blank, col[5]=volume, col[6]=SL, col[7]=TP
+        // col[8]=openPrice, col[9]=closeTime, col[10]=closePrice
+        // col[11]=commission, col[12]=swap, col[13]=profit
+        if(cells.length >= 13 && cells[4]==='' || cells[4]==='volume'){
+          colMap.volume     = 5;
+          colMap.openPrice  = 8;
+          colMap.closeTime  = 9;
+          colMap.closePrice = 10;
+          colMap.commission = 11;
+          colMap.swap       = 12;
+          colMap.profit     = 13;
         }
-        return '';
-      };
-      const sym = col(['symbol','instrument']);
-      if(!sym||sym.toLowerCase()==='balance'||sym.toLowerCase()==='deposit') return;
-      const type = col(['type','action']).toLowerCase();
-      const pnl = parseFloat(col(['profit','p/l','pnl']).replace(/[^\d.-]/g,'')) || 0;
-      const openP = parseFloat(col(['open price','price open','entry']).replace(/[^\d.-]/g,'')) || 0;
-      const closeP = parseFloat(col(['close price','price close','exit']).replace(/[^\d.-]/g,'')) || 0;
-      const lots = parseFloat(col(['lots','volume','size']).replace(/[^\d.-]/g,'')) || 1;
-      const openTime = col(['open time','time open','time','date']);
-      const ticket = col(['ticket','order','#','id']);
-      const dateStr = parseDate(openTime);
-      const dir = type.includes('buy')||type.includes('long')?'BUY':'SELL';
-      const idx = symToIdx(sym);
-      if(dateStr) trades.push({
-        id:'imp_'+(ticket||ri)+'_'+broker,
+      }
+    });
+
+    if(headerIdx < 0 || !colMap) return;
+
+    let stopParsing = false;
+    rows.slice(headerIdx+1).forEach((row, ri)=>{
+      if(stopParsing) return;
+      const cells = [...row.querySelectorAll('th,td')].map(c=>c.textContent.trim());
+      if(cells.length < 2) return;
+
+      // Stop at section markers (Orders, Deals sections contain balance rows)
+      const firstCell = cells[0].trim();
+      if(firstCell==='Orders'||firstCell==='Deals'||firstCell==='Summary'){
+        stopParsing = true; return;
+      }
+      // Also stop if we hit the summary statistics rows
+      if(firstCell.includes('Drawdown')||firstCell.includes('Total Trades')) {
+        stopParsing = true; return;
+      }
+
+      if(cells.length < 8) return;
+
+      const sym  = cells[colMap.symbol] || '';
+      const type = (cells[colMap.type] || '').toLowerCase();
+
+      // Skip non-trade rows
+      if(!sym || sym==='' || sym.toLowerCase()==='symbol') return;
+      const lsym = sym.toLowerCase();
+      if(lsym==='balance'||lsym==='deposit'||lsym==='withdrawal'||
+         lsym==='orders'||lsym==='positions'||lsym==='credit'||
+         lsym.includes('drawdown')||lsym.includes('total')) return;
+      if(!type.includes('buy') && !type.includes('sell')) return;
+
+      // Volume: try mapped col first, then scan nearby cols
+      let lots = parseFloat(cells[colMap.volume]) || 0;
+      if(!lots || isNaN(lots)){
+        for(let c=colMap.type+1; c<Math.min(colMap.type+5, cells.length); c++){
+          const v = parseFloat(cells[c]);
+          if(!isNaN(v) && v>0 && v<100000 && cells[c]!=='') { lots=v; break; }
+        }
+      }
+      if(!lots) lots = 1;
+
+      const cleanNum = s => parseFloat((s||'').replace(/\s/g,'').replace(/,(?=\d{3})/g,'')) || 0;
+      const openPrice  = cleanNum(cells[colMap.openPrice]);
+      const closePrice = cleanNum(cells[colMap.closePrice]);
+      const pnl        = cleanNum(cells[colMap.profit]);
+      const openTime   = cells[colMap.openTime] || '';
+      const ticket     = cells[colMap.ticket]   || String(ri);
+      const dateStr    = parseDate(openTime);
+      const dir        = type.includes('buy') ? 'BUY' : 'SELL';
+      const idx2       = symToIdx(sym);
+
+      trades.push({
+        id:         'imp_' + ticket + '_' + broker,
         instrument: symToName(sym),
-        idx,
-        direction: dir,
+        idx:        idx2,
+        symbol:     sym,
+        direction:  dir,
         lots,
-        open: openP,
-        close: closeP,
-        date: dateStr,
+        open:       openPrice,
+        close:      closePrice,
+        date:       dateStr,
         pnl,
-        src:'import',
+        src:        'import',
         broker,
       });
     });
   });
-  return trades.filter(t=>t.pnl!==undefined);
+
+  return trades.filter(t => t.date && !isNaN(t.pnl));
 }
 
 function parseDate(str){
@@ -1539,18 +1623,38 @@ function parseDate(str){
 
 function symToIdx(sym){
   const s = sym.toUpperCase().replace(/\s/g,'');
-  if(s.includes('R_10')||s.includes('1HZ10')||s.includes('VOL10')||s.includes('V10')) return 'V10';
-  if(s.includes('R_25')||s.includes('1HZ25')||s.includes('VOL25')||s.includes('V25')) return 'V25';
-  if(s.includes('R_50')||s.includes('1HZ50')||s.includes('VOL50')||s.includes('V50')) return 'V50';
-  if(s.includes('R_75')||s.includes('1HZ75')||s.includes('VOL75')||s.includes('V75')) return 'V75';
-  if(s.includes('R_100')||s.includes('1HZ100')||s.includes('VOL100')||s.includes('V100')) return 'V100';
+  if(s.includes('R_10')||s.includes('1HZ10')||s.includes('VOL10')||s==='V10') return 'V10';
+  if(s.includes('R_25')||s.includes('1HZ25')||s.includes('VOL25')||s==='V25') return 'V25';
+  if(s.includes('R_50')||s.includes('1HZ50')||s.includes('VOL50')||s==='V50') return 'V50';
+  if(s.includes('R_75')||s.includes('1HZ75')||s.includes('VOL75')||s==='V75') return 'V75';
+  if(s.includes('R_100')||s.includes('1HZ100')||s.includes('VOL100')||s==='V100') return 'V100';
+  // Forex & crypto — return symbol itself as category
+  if(s.length===6 && /^[A-Z]+$/.test(s)) return s; // EURUSD, USDJPY etc.
+  if(s.includes('BTC')||s.includes('ETH')||s.includes('XAU')||s.includes('XAG')) return s.slice(0,6);
   return s.slice(0,6)||'OTHER';
 }
 
 function symToName(sym){
   const idx = symToIdx(sym);
   const names={V10:'Volatility 10 Index',V25:'Volatility 25 Index',V50:'Volatility 50 Index',V75:'Volatility 75 Index',V100:'Volatility 100 Index'};
-  return names[idx] || sym;
+  return names[idx] || sym; // For forex/crypto pairs, return symbol as-is
+}
+
+function symToDisplay(sym){
+  // Human-readable name for any symbol
+  const volatility = symToName(sym);
+  if(volatility !== sym) return volatility;
+  // Forex pairs
+  const forex = {
+    'EURUSD':'Euro / US Dollar','GBPUSD':'Pound / US Dollar',
+    'USDJPY':'US Dollar / Yen','USDCHF':'US Dollar / Swiss Franc',
+    'AUDUSD':'Australian Dollar / USD','NZDUSD':'New Zealand Dollar / USD',
+    'USDCAD':'US Dollar / Canadian Dollar','EURGBP':'Euro / Pound',
+    'EURJPY':'Euro / Yen','GBPJPY':'Pound / Yen',
+    'BTCUSD':'Bitcoin / USD','ETHUSD':'Ethereum / USD',
+    'XAUUSD':'Gold / USD','XAGUSD':'Silver / USD',
+  };
+  return forex[sym.toUpperCase()] || sym;
 }
 
 // ============================================================
