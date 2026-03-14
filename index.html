@@ -222,6 +222,20 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 .lightbox-nav.next{right:16px;}
 .lightbox-caption{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.6);font-size:11px;background:rgba(0,0,0,0.5);padding:4px 12px;border-radius:20px;white-space:nowrap;}
 .paste-hint{font-size:10px;color:var(--muted);margin-top:6px;text-align:center;}
+/* ACCOUNT SWITCHER */
+.acct-bar{display:flex;align-items:center;gap:6px;padding:8px 22px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;flex-wrap:nowrap;}
+.acct-btn{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:10px;letter-spacing:1px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .2s;white-space:nowrap;font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.acct-btn:hover{border-color:var(--muted);color:var(--text);}
+.acct-btn.active{color:#000;font-weight:700;}
+.acct-btn.all{border-color:rgba(232,234,240,0.3);}
+.acct-btn.all.active{background:var(--text);border-color:var(--text);color:#000;}
+.acct-btn.deriv.active{background:var(--green);border-color:var(--green);}
+.acct-btn.ftmo.active{background:var(--gold);border-color:var(--gold);}
+.acct-btn.five.active{background:var(--purple);border-color:var(--purple);}
+.acct-btn.mt5.active{background:var(--blue);border-color:var(--blue);}
+.acct-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.acct-pnl{font-size:9px;opacity:0.8;margin-left:3px;}
+.acct-divider{width:1px;height:16px;background:var(--border);flex-shrink:0;}
 /* LOGIN OPTION TABS */
 .login-opts{display:flex;gap:6px;margin-bottom:20px;}
 .login-opt{flex:1;padding:10px 6px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;text-align:center;font-family:'JetBrains Mono',monospace;}
@@ -344,6 +358,26 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 </div>
 <div class="conn-bar offline" id="connBar">● Disconnected</div>
 
+<!-- ACCOUNT SWITCHER BAR -->
+<div class="acct-bar" id="acctBar">
+  <span style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;">View:</span>
+  <button class="acct-btn all active" id="ab-all" onclick="switchAcct('all',this)">
+    <span class="acct-dot" style="background:var(--text)"></span>All Accounts
+    <span class="acct-pnl" id="ap-all"></span>
+  </button>
+  <div class="acct-divider"></div>
+  <button class="acct-btn deriv" id="ab-hist" onclick="switchAcct('hist',this)">
+    <span class="acct-dot" style="background:var(--green)"></span>Deriv (Historical)
+    <span class="acct-pnl" id="ap-hist"></span>
+  </button>
+  <button class="acct-btn deriv" id="ab-live" onclick="switchAcct('live',this)" style="display:none">
+    <span class="acct-dot" style="background:var(--green)"></span><span id="ab-live-label">Deriv Live</span>
+    <span class="acct-pnl" id="ap-live"></span>
+  </button>
+  <div class="acct-divider" id="imp-divider" style="display:none"></div>
+  <div id="importAcctBtns" style="display:flex;gap:6px;"></div>
+</div>
+
 <div class="tabs">
   <div class="tab active" onclick="switchTab('overview')">Overview</div>
   <div class="tab" onclick="switchTab('live')">Live</div>
@@ -404,7 +438,13 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
     <input type="text" class="sbox" id="searchBox" placeholder="Search..." oninput="renderTable()">
   </div>
   <div class="tbl-card">
-    <div class="tbl-hdr"><div class="tbl-ttl">All Closed Trades</div><div class="tcnt" id="tCnt"></div></div>
+    <div class="tbl-hdr">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="tbl-ttl">Closed Trades</div>
+        <div id="acctLabel" style="font-size:9px;padding:2px 8px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);"></div>
+      </div>
+      <div class="tcnt" id="tCnt"></div>
+    </div>
     <div class="tbl-wrap">
       <table>
         <thead><tr>
@@ -576,10 +616,11 @@ let journalEntries=JSON.parse(localStorage.getItem('journalEntries')||'[]');
 let importedTrades=JSON.parse(localStorage.getItem('importedTrades')||'[]');
 let importHistory=JSON.parse(localStorage.getItem('importHistory')||'[]');
 let selectedBroker='FTMO';
+let activeAcct='all'; // 'all' | 'hist' | 'live' | broker name e.g. 'FTMO' | 'The5ers'
 let editingJournalId=null,jFilter='all',selectedStars=0,selectedMoods=[],selectedImages=[];
 let lbImages=[],lbIndex=0;
 
-function all(){
+function allRaw(){
   const liveIds=new Set(liveTrades.map(t=>t.id));
   const impIds=new Set(importedTrades.map(t=>t.id));
   const allIds=new Set([...liveIds,...impIds]);
@@ -588,6 +629,17 @@ function all(){
     ...importedTrades.filter(t=>!liveIds.has(t.id)),
     ...seed.filter(t=>!allIds.has(t.id))
   ].sort((a,b)=>b.date.localeCompare(a.date));
+}
+
+function all(){
+  const raw = allRaw();
+  switch(activeAcct){
+    case 'all':  return raw;
+    case 'hist': return raw.filter(t=>t.src==='hist');
+    case 'live': return raw.filter(t=>t.src==='live');
+    default:     return raw.filter(t=>t.broker===activeAcct||
+                   (activeAcct==='Deriv'&&(t.src==='hist'||t.src==='live')));
+  }
 }
 function stats(d){
   const w=d.filter(t=>t.pnl>0),l=d.filter(t=>t.pnl<0);
@@ -644,6 +696,11 @@ function onAuth(a){
   send({portfolio:1});
   send({transaction:1,subscribe:1});
   ping=setInterval(()=>send({ping:1}),30000);
+  // Show live button in account bar
+  document.getElementById('ab-live').style.display='flex';
+  document.getElementById('ab-live-label').textContent=
+    (a.is_virtual?'Demo':'Real')+' ('+( a.login||a.account_id||'Deriv')+')';
+  renderAcctBar();
 }
 function onBal(b){document.getElementById('liveBal').textContent=`${acct.currency||'$'}${parseFloat(b.balance).toFixed(2)}`;}
 function fetchPT(off){send({profit_table:1,description:1,limit:100,offset:off,sort:'DESC'});}
@@ -714,7 +771,9 @@ function buildEq(){
   const s=[...all()].sort((a,b)=>a.date.localeCompare(b.date));
   let c=10000;const lb=['Start'],dt=[c];
   s.forEach(t=>{c+=t.pnl;lb.push(t.date.slice(5));dt.push(parseFloat(c.toFixed(2)));});
-  document.getElementById('eqLbl').textContent='$'+dt[dt.length-1].toLocaleString();
+  const acctLabels2={all:'All',hist:'Deriv Hist',live:'Deriv Live'};
+  const acctLbl=acctLabels2[activeAcct]||activeAcct;
+  document.getElementById('eqLbl').textContent=acctLbl+' · $'+dt[dt.length-1].toLocaleString();
   const ctx=document.getElementById('eqChart').getContext('2d');
   const g=ctx.createLinearGradient(0,0,0,230);g.addColorStop(0,'rgba(0,229,176,0.2)');g.addColorStop(1,'rgba(0,229,176,0)');
   ch['eq']=new Chart(ctx,{type:'line',data:{labels:lb,datasets:[{data:dt,borderColor:'#00e5b0',backgroundColor:g,borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,tension:0.3}]},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1117',borderColor:'#1c2032',borderWidth:1,callbacks:{label:c=>'Balance: $'+c.parsed.y.toLocaleString()}}},scales:{x:{ticks:{color:CD.c,font:{size:9},maxTicksLimit:8},grid:{color:CD.g}},y:{ticks:{color:CD.c,font:{size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:CD.g}}}}});
@@ -763,24 +822,58 @@ function buildChartsTab(){
 
 // KPIs
 function renderKPIs(){
-  const s=stats(all());
-  const jan=stats(all().filter(t=>t.date.startsWith('2026-01')));
-  const feb=stats(all().filter(t=>t.date.startsWith('2026-02')));
-  const mar=stats(all().filter(t=>t.date.startsWith('2026-03')));
-  document.getElementById('kpiGrid').innerHTML=[
-    {l:'Total Net P/L',v:fK(s.tot),c:s.tot>=0?'g':'r',sub:'Jan–Mar 2026'},
-    {l:'Total Trades',v:s.n,c:'b',sub:`${liveTrades.length} live · ${seed.length} hist`},
-    {l:'Win Rate',v:s.wr.toFixed(1)+'%',c:s.wr>=40?'g':'r',sub:`${s.w}W · ${s.l}L`},
-    {l:'Profit Factor',v:s.pf>=99?'∞':s.pf.toFixed(2),c:s.pf>=1.5?'g':'r',sub:'Target ≥ 1.5'},
-    {l:'Avg RRR',v:s.rrr.toFixed(2),c:'o',sub:'Risk:Reward ratio'},
-    {l:'Expectancy',v:f$(s.exp,0),c:s.exp>=0?'g':'r',sub:'Per trade'},
-    {l:'January',v:fK(jan.tot),c:jan.tot>=0?'g':'r',sub:`${jan.n} trades`},
-    {l:'February',v:fK(feb.tot),c:feb.tot>=0?'g':'r',sub:`${feb.n} trades`},
-    {l:'March',v:fK(mar.tot),c:mar.tot>=0?'g':'r',sub:`${mar.n} trades`},
-    {l:'Best Trade',v:'+$'+s.best.toFixed(0),c:'g',sub:'Biggest single win'},
-    {l:'Worst Trade',v:'-$'+Math.abs(s.worst).toFixed(0),c:'r',sub:'Biggest single loss'},
-    {l:'Journal Entries',v:journalEntries.length,c:'p',sub:'Logged reflections'},
-  ].map(k=>`<div class="kpi ${k.c}"><div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+  const data = all();
+  const s = stats(data);
+
+  // Monthly breakdown for current view
+  const months = {};
+  data.forEach(t=>{
+    const m = t.date.slice(0,7);
+    if(!months[m]) months[m]=[];
+    months[m].push(t);
+  });
+  const monthKeys = Object.keys(months).sort();
+
+  // Account label for subtitle
+  const acctSub = activeAcct==='all' ? 'All accounts' :
+    activeAcct==='hist' ? 'Deriv Historical' :
+    activeAcct==='live' ? 'Deriv Live' : activeAcct;
+
+  // Base KPIs
+  const kpis = [
+    {l:'Net P/L',      v:fK(s.tot),                    c:s.tot>=0?'g':'r', sub:acctSub},
+    {l:'Total Trades', v:s.n,                           c:'b',              sub:`${s.w}W · ${s.l}L`},
+    {l:'Win Rate',     v:s.wr.toFixed(1)+'%',           c:s.wr>=40?'g':'r', sub:`${s.w} wins of ${s.n}`},
+    {l:'Profit Factor',v:s.pf>=99?'∞':s.pf.toFixed(2), c:s.pf>=1.5?'g':'r',sub:'Target ≥ 1.5'},
+    {l:'Avg RRR',      v:s.rrr.toFixed(2),              c:'o',              sub:'Risk:Reward'},
+    {l:'Expectancy',   v:f$(s.exp,0),                   c:s.exp>=0?'g':'r', sub:'Per trade'},
+    {l:'Best Trade',   v:'+$'+s.best.toFixed(0),        c:'g',              sub:'Largest win'},
+    {l:'Worst Trade',  v:'-$'+Math.abs(s.worst).toFixed(0),c:'r',           sub:'Largest loss'},
+  ];
+
+  // Monthly KPIs — show last 6 months dynamically
+  monthKeys.slice(-6).forEach(m=>{
+    const ms = stats(months[m]);
+    const label = new Date(m+'-01').toLocaleString('default',{month:'short',year:'2-digit'});
+    kpis.push({l:label, v:fK(ms.tot), c:ms.tot>=0?'g':'r', sub:`${ms.n} trades`});
+  });
+
+  // If showing all accounts, add per-broker summary
+  if(activeAcct==='all' && importedTrades.length){
+    const brokers = [...new Set(importedTrades.map(t=>t.broker).filter(Boolean))];
+    brokers.forEach(b=>{
+      const bs = stats(importedTrades.filter(t=>t.broker===b));
+      kpis.push({l:b, v:fK(bs.tot), c:bs.tot>=0?'g':'r', sub:`${bs.n} trades imported`});
+    });
+    const ds = stats([...liveTrades,...seed]);
+    kpis.push({l:'Deriv', v:fK(ds.tot), c:ds.tot>=0?'g':'r', sub:`${ds.n} trades`});
+  }
+
+  kpis.push({l:'Journal',v:journalEntries.length,c:'p',sub:'Logged entries'});
+
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k=>
+    `<div class="kpi ${k.c}"><div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div><div class="kpi-sub">${k.sub}</div></div>`
+  ).join('');
 }
 function renderTodayKPIs(){
   const td=new Date().toISOString().slice(0,10);
@@ -793,9 +886,26 @@ function renderTodayKPIs(){
   ].map(k=>`<div class="kpi ${k.c}"><div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 }
 function updateInsight(){
-  const s=stats(all());
-  const jan=stats(all().filter(t=>t.date.startsWith('2026-01')));
-  document.getElementById('insightBox').innerHTML=`<strong>⚡ Full Picture (Jan–Mar 2026)</strong>Net P/L: <strong style="color:${s.tot>=0?'var(--green)':'var(--red)'}">${f$(s.tot,0)}</strong> · Profit Factor: <strong>${s.pf>=99?'∞':s.pf.toFixed(2)}</strong> · Win Rate: <strong>${s.wr.toFixed(1)}%</strong> · RRR: <strong>${s.rrr.toFixed(2)}</strong><br>January contribution: <strong style="color:${jan.tot>=0?'var(--green)':'var(--red)'}">${f$(jan.tot,0)}</strong> across ${jan.n} trades. February & March: <strong style="color:var(--green)">${f$(s.tot-jan.tot,0)}</strong>`;
+  const s = stats(all());
+  const acctLabels = {
+    all:'All Accounts Combined', hist:'Deriv Historical',
+    live:'Deriv Live', FTMO:'FTMO Account',
+    The5ers:"The5ers Account", MT5:'MT5 Import'
+  };
+  const label = acctLabels[activeAcct] || activeAcct;
+  const ok = s.pf >= 1.5;
+  const statusColor = ok ? 'var(--green)' : 'var(--red)';
+  const statusTxt   = ok ? '✅ PASSING' : '⚠️ BELOW TARGET';
+  document.getElementById('insightBox').innerHTML=`
+    <strong>⚡ ${label} — ${statusTxt}</strong>
+    Net P/L: <strong style="color:${s.tot>=0?'var(--green)':'var(--red)'}">${f$(s.tot,0)}</strong> ·
+    Profit Factor: <strong style="color:${statusColor}">${s.pf>=99?'∞':s.pf.toFixed(2)}</strong> ·
+    Win Rate: <strong>${s.wr.toFixed(1)}%</strong> ·
+    RRR: <strong>${s.rrr.toFixed(2)}</strong> ·
+    Trades: <strong>${s.n}</strong>
+    ${activeAcct==='all' && importedTrades.length ?
+      `<br><span style="color:var(--muted);font-size:10px;">Showing combined performance across all connected accounts</span>` : ''}
+  `;
 }
 
 // TABLE
@@ -821,6 +931,9 @@ function hasJournal(id){return journalEntries.some(j=>j.tradeId===id);}
 function renderTable(){
   const d=filt();
   document.getElementById('tCnt').textContent=d.length+' trades · P/L: '+fK(d.reduce((s,t)=>s+t.pnl,0));
+  const lbl=document.getElementById('acctLabel');
+  if(lbl){const labels={all:'All Accounts',hist:'Deriv Historical',live:'Deriv Live'};
+    lbl.textContent=labels[activeAcct]||activeAcct;}
   const tb=document.getElementById('tBody');
   if(!d.length){tb.innerHTML='<tr><td colspan="8"><div class="empty">No trades match</div></td></tr>';return;}
   tb.innerHTML=d.map(t=>`<tr class="${t.pnl>0?'wr':'lr'}" onclick="openTradeModal('${t.id}')"><td>${t.instrument}${t.src==='live'?'<span class="lbadge">LIVE</span>':''}${t.broker?`<span class="broker-tag ${t.broker==='FTMO'?'ftmo':t.broker==='The5ers'?'five':'mt5'}">${t.broker}</span>`:''}</td><td><span class="pill ${t.direction==='BUY'?'b':'s'}">${t.direction}</span></td><td>${t.lots}</td><td>${t.open?t.open.toLocaleString():'-'}</td><td>${t.close?t.close.toLocaleString():'-'}</td><td>${t.date.slice(5).replace('-','/')}</td><td class="${t.pnl>0?'pp':'pn'}">${t.pnl>0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</td><td><span class="jbadge" onclick="event.stopPropagation();openJournalForTrade('${t.id}')">${hasJournal(t.id)?'📖 View':'+ Log'}</span></td></tr>`).join('');
@@ -1229,7 +1342,7 @@ function switchTab(n){
   if(n==='journal')renderJournal();
 }
 
-function refreshAll(){renderKPIs();renderTable();renderTodayKPIs();updateInsight();buildEq();buildDay();buildIdx();buildMo();}
+function refreshAll(){renderAcctBar();renderKPIs();renderTable();renderTodayKPIs();updateInsight();buildEq();buildDay();buildIdx();buildMo();}
 
 // ============================================================
 // LOGIN OPTION SWITCHER
@@ -1869,6 +1982,86 @@ function deleteImport(histId){
   updateImportBadge();
   renderImportHistory();
   refreshAll();
+}
+
+// ============================================================
+// ============================================================
+// ACCOUNT SWITCHER
+// ============================================================
+function switchAcct(acct, btn){
+  activeAcct = acct;
+  // Update button styles
+  document.querySelectorAll('.acct-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  // Refresh all views
+  refreshAll();
+  renderJournal();
+  // Re-render charts tab if open
+  const chartsPanel = document.getElementById('panel-charts');
+  if(chartsPanel && chartsPanel.classList.contains('active')) buildChartsTab();
+  const calPanel = document.getElementById('panel-calendar');
+  if(calPanel && calPanel.classList.contains('active')) buildCal();
+}
+
+function renderAcctBar(){
+  const raw = allRaw();
+
+  // Helper: calc P&L for a set of trades
+  const pnl = trades => trades.reduce((s,t)=>s+t.pnl,0);
+  const fmt  = n => (n>=0?'+':'')+fK(n);
+
+  // Historical seed
+  const histTrades = raw.filter(t=>t.src==='hist');
+  const histPnl    = pnl(histTrades);
+  document.getElementById('ap-hist').textContent = histTrades.length ? fmt(histPnl) : '';
+
+  // Live Deriv
+  const liveTx = raw.filter(t=>t.src==='live');
+  const liveBtn = document.getElementById('ab-live');
+  if(liveTx.length > 0){
+    liveBtn.style.display = 'flex';
+    document.getElementById('ap-live').textContent = fmt(pnl(liveTx));
+    if(acct) document.getElementById('ab-live-label').textContent =
+      `${acct.email||'Deriv'} Live`;
+  } else {
+    liveBtn.style.display = 'none';
+  }
+
+  // Imported brokers — one button per unique broker
+  const brokers = [...new Set(importedTrades.map(t=>t.broker).filter(Boolean))];
+  const impDiv  = document.getElementById('importAcctBtns');
+  const impDivider = document.getElementById('imp-divider');
+
+  if(brokers.length > 0){
+    impDivider.style.display = 'block';
+    const colors = {FTMO:'var(--gold)', The5ers:'var(--purple)', MT5:'var(--blue)'};
+    impDiv.innerHTML = brokers.map(b=>{
+      const bTrades = importedTrades.filter(t=>t.broker===b);
+      const bPnl    = pnl(bTrades);
+      const col     = colors[b]||'var(--blue)';
+      const cls     = b==='FTMO'?'ftmo':b==='The5ers'?'five':'mt5';
+      return `<button class="acct-btn ${cls} ${activeAcct===b?'active':''}"
+        id="ab-${b.replace(/[^a-z0-9]/gi,'')}"
+        onclick="switchAcct('${b}',this)"
+        style="${activeAcct===b?'background:'+col+';border-color:'+col+';':''}">
+        <span class="acct-dot" style="background:${col}"></span>
+        ${b}
+        <span class="acct-pnl">${bTrades.length ? fmt(bPnl) : ''}</span>
+      </button>`;
+    }).join('');
+  } else {
+    impDivider.style.display = 'none';
+    impDiv.innerHTML = '';
+  }
+
+  // Update ALL button P&L
+  document.getElementById('ap-all').textContent = fmt(pnl(raw));
+
+  // Re-apply active state to all button
+  if(activeAcct==='all'){
+    const allBtn = document.getElementById('ab-all');
+    if(allBtn) allBtn.classList.add('active');
+  }
 }
 
 // ============================================================
