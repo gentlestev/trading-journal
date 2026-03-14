@@ -360,14 +360,14 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 
 <!-- ACCOUNT SWITCHER BAR -->
 <div class="acct-bar" id="acctBar">
-  <span style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;">View:</span>
+  <span style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;">Account:</span>
   <button class="acct-btn all active" id="ab-all" onclick="switchAcct('all',this)">
-    <span class="acct-dot" style="background:var(--text)"></span>All Accounts
+    <span class="acct-dot" style="background:var(--text)"></span>All
     <span class="acct-pnl" id="ap-all"></span>
   </button>
   <div class="acct-divider"></div>
   <button class="acct-btn deriv" id="ab-hist" onclick="switchAcct('hist',this)">
-    <span class="acct-dot" style="background:var(--green)"></span>Deriv (Historical)
+    <span class="acct-dot" style="background:var(--green)"></span>Deriv
     <span class="acct-pnl" id="ap-hist"></span>
   </button>
   <button class="acct-btn deriv" id="ab-live" onclick="switchAcct('live',this)" style="display:none">
@@ -375,7 +375,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
     <span class="acct-pnl" id="ap-live"></span>
   </button>
   <div class="acct-divider" id="imp-divider" style="display:none"></div>
-  <div id="importAcctBtns" style="display:flex;gap:6px;"></div>
+  <div id="importAcctBtns" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
 </div>
 
 <div class="tabs">
@@ -503,11 +503,16 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 
     <!-- Broker selector -->
     <div style="margin-bottom:14px;">
-      <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Select Broker / Account</div>
+      <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Who is this file from?</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="login-opt active" id="brokerFTMO" onclick="selectBroker('FTMO',this)" style="flex:none;padding:7px 14px;">🏆 FTMO</button>
         <button class="login-opt" id="brokerFIVE" onclick="selectBroker('The5ers',this)" style="flex:none;padding:7px 14px;">5️⃣ The5ers</button>
-        <button class="login-opt" id="brokerMT5" onclick="selectBroker('MT5',this)" style="flex:none;padding:7px 14px;">📈 Other MT5</button>
+        <button class="login-opt" id="brokerOTHER" onclick="selectBroker('Other',this)" style="flex:none;padding:7px 14px;">📈 Other Prop Firm</button>
+      </div>
+      <div id="otherBrokerWrap" style="display:none;margin-top:8px;">
+        <input type="text" id="otherBrokerName" class="token-input" style="margin-bottom:0;font-size:11px;"
+          placeholder="Enter firm name e.g. MyFundedFX, E8, Topstep..." 
+          oninput="selectedBroker=this.value.trim()||'Other'">
       </div>
     </div>
 
@@ -635,10 +640,10 @@ function all(){
   const raw = allRaw();
   switch(activeAcct){
     case 'all':  return raw;
-    case 'hist': return raw.filter(t=>t.src==='hist');
+    // 'hist' = Deriv tab = historical seed + any live trades combined
+    case 'hist': return raw.filter(t=>t.src==='hist'||t.src==='live');
     case 'live': return raw.filter(t=>t.src==='live');
-    default:     return raw.filter(t=>t.broker===activeAcct||
-                   (activeAcct==='Deriv'&&(t.src==='hist'||t.src==='live')));
+    default:     return raw.filter(t=>t.broker===activeAcct);
   }
 }
 function stats(d){
@@ -887,12 +892,9 @@ function renderTodayKPIs(){
 }
 function updateInsight(){
   const s = stats(all());
-  const acctLabels = {
-    all:'All Accounts Combined', hist:'Deriv Historical',
-    live:'Deriv Live', FTMO:'FTMO Account',
-    The5ers:"The5ers Account", MT5:'MT5 Import'
-  };
-  const label = acctLabels[activeAcct] || activeAcct;
+  // Dynamic label — handles any broker name
+  const builtIn = {all:'All Accounts Combined', hist:'Deriv', live:'Deriv Live'};
+  const label   = builtIn[activeAcct] || activeAcct + ' Account';
   const ok = s.pf >= 1.5;
   const statusColor = ok ? 'var(--green)' : 'var(--red)';
   const statusTxt   = ok ? '✅ PASSING' : '⚠️ BELOW TARGET';
@@ -1593,114 +1595,132 @@ function parseMT5CSV(text, broker){
 function parseMT5HTM(text, broker){
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'text/html');
+
+  // Auto-detect broker from file content if not specified or 'Other'
+  const bodyText = doc.body ? doc.body.textContent : '';
+  if(broker === 'FTMO' && (bodyText.includes('Five Percent') || bodyText.includes('FivePercent'))){
+    broker = 'The5ers';
+  }
+  if(broker === 'Other' || broker === 'MT5'){
+    // Try to detect from company name in file
+    if(bodyText.includes('FTMO')) broker = 'FTMO';
+    else if(bodyText.includes('Five Percent') || bodyText.includes('FivePercent')) broker = 'The5ers';
+    else if(bodyText.includes('MyFundedFX')) broker = 'MyFundedFX';
+    else if(bodyText.includes('E8 Funding')) broker = 'E8';
+    else if(bodyText.includes('Topstep')) broker = 'Topstep';
+    // otherwise keep as 'Other' or custom name
+  }
+
+  // Extract account metadata from header rows
+  let accountBalance = 0;
+  let startingBalance = 0;
   const tables = doc.querySelectorAll('table');
+  let allRows = [];
+  tables.forEach(t => allRows.push(...t.querySelectorAll('tr')));
+
+  allRows.forEach(row => {
+    const cells = [...row.querySelectorAll('th,td')].map(c=>c.textContent.trim());
+    // Equity row: ['Equity:', '5 133.48']
+    if(cells[0]==='Equity:' && cells[1]){
+      accountBalance = parseFloat(cells[1].replace(/\s/g,'').replace(/,/g,'')) || 0;
+    }
+    // Balance row: ['Balance:', '5 133.48']
+    if(cells[0]==='Balance:' && cells[1]){
+      startingBalance = parseFloat(cells[1].replace(/\s/g,'').replace(/,/g,'')) || 0;
+    }
+    // Total Net Profit row: ['Total Net Profit:', '133.48', ...]
+    if(cells[0]==='Total Net Profit:' && cells[1]){
+      // We'll use this to validate
+    }
+  });
+
   const trades = [];
+  const cleanNum = s => parseFloat((s||'').replace(/\s/g,'').replace(/,/g,'')) || 0;
 
   tables.forEach(table=>{
     const rows = [...table.querySelectorAll('tr')];
     let headerIdx = -1;
-    let colMap = null;
+    let isPositionsSection = false;
 
-    // Find the header row
-    rows.forEach((row, ri)=>{
-      const cells = [...row.querySelectorAll('th,td')].map(c=>c.textContent.trim().toLowerCase());
-      if(cells.includes('symbol') && cells.includes('type') && cells.includes('profit')){
-        headerIdx = ri;
+    rows.forEach((row, ri) => {
+      const cells = [...row.querySelectorAll('th,td')].map(c=>c.textContent.trim());
 
-        // Build exact column map based on actual header positions
-        // MT5 History Report exact format:
-        // Time | Position/Ticket | Symbol | Type | (blank) | Volume | S/L | T/P | OpenPrice | CloseTime | ClosePrice | Commission | Swap | Profit
-        // OR some variants — detect dynamically
-        const timeIdxs    = cells.reduce((a,c,i)=>c==='time'?[...a,i]:a, []);
-        const priceIdxs   = cells.reduce((a,c,i)=>c==='price'?[...a,i]:a, []);
-        const volumeIdx   = cells.findIndex(c=>c==='volume'||c==='vol');
-
-        colMap = {
-          openTime:   timeIdxs[0] ?? 0,
-          ticket:     cells.findIndex(c=>c==='position'||c==='ticket'||c==='order'||c==='#'),
-          symbol:     cells.findIndex(c=>c==='symbol'),
-          type:       cells.findIndex(c=>c==='type'),
-          volume:     volumeIdx,
-          openPrice:  priceIdxs[0] ?? 5,
-          closeTime:  timeIdxs[1] ?? 9,
-          closePrice: priceIdxs[1] ?? 10,
-          commission: cells.findIndex(c=>c==='commission'),
-          swap:       cells.findIndex(c=>c==='swap'),
-          profit:     cells.findLastIndex(c=>c==='profit'),
-          numCols:    cells.length,
-        };
-
-        // Special case: The5ers / MT5 14-col format
-        // col[0]=openTime, col[1]=ticket, col[2]=symbol, col[3]=type
-        // col[4]=blank, col[5]=volume, col[6]=SL, col[7]=TP
-        // col[8]=openPrice, col[9]=closeTime, col[10]=closePrice
-        // col[11]=commission, col[12]=swap, col[13]=profit
-        if(cells.length >= 13 && cells[4]==='' || cells[4]==='volume'){
-          colMap.volume     = 5;
-          colMap.openPrice  = 8;
-          colMap.closeTime  = 9;
-          colMap.closePrice = 10;
-          colMap.commission = 11;
-          colMap.swap       = 12;
-          colMap.profit     = 13;
+      // Detect section markers
+      if(cells.length===1){
+        if(cells[0]==='Positions') { isPositionsSection=true; return; }
+        if(cells[0]==='Orders' || cells[0]==='Deals' || cells[0]==='Results' ||
+           cells[0]==='Summary' || cells[0]==='Balance Drawdown:') {
+          isPositionsSection=false; return;
         }
       }
-    });
 
-    if(headerIdx < 0 || !colMap) return;
-
-    let stopParsing = false;
-    rows.slice(headerIdx+1).forEach((row, ri)=>{
-      if(stopParsing) return;
-      const cells = [...row.querySelectorAll('th,td')].map(c=>c.textContent.trim());
-      if(cells.length < 2) return;
-
-      // Stop at section markers (Orders, Deals sections contain balance rows)
-      const firstCell = cells[0].trim();
-      if(firstCell==='Orders'||firstCell==='Deals'||firstCell==='Summary'){
-        stopParsing = true; return;
-      }
-      // Also stop if we hit the summary statistics rows
-      if(firstCell.includes('Drawdown')||firstCell.includes('Total Trades')) {
-        stopParsing = true; return;
+      // Detect header row inside Positions section
+      if(isPositionsSection && headerIdx<0){
+        const lower = cells.map(c=>c.toLowerCase());
+        if(lower.includes('symbol') && lower.includes('type') && lower.includes('profit')){
+          headerIdx = ri;
+          return;
+        }
       }
 
-      if(cells.length < 8) return;
+      if(!isPositionsSection || headerIdx<0) return;
+      if(ri <= headerIdx) return;
 
-      const sym  = cells[colMap.symbol] || '';
-      const type = (cells[colMap.type] || '').toLowerCase();
+      // Stop if we hit another section
+      if(cells.length===1 && ['Orders','Deals','Results','Summary'].includes(cells[0])){
+        isPositionsSection=false; return;
+      }
 
-      // Skip non-trade rows
-      if(!sym || sym==='' || sym.toLowerCase()==='symbol') return;
-      const lsym = sym.toLowerCase();
-      if(lsym==='balance'||lsym==='deposit'||lsym==='withdrawal'||
-         lsym==='orders'||lsym==='positions'||lsym==='credit'||
-         lsym.includes('drawdown')||lsym.includes('total')) return;
+      // Must have enough columns for a trade row
+      if(cells.length < 12) return;
+
+      const sym  = cells[2] || '';
+      const type = (cells[3] || '').toLowerCase();
+
+      if(!sym || !type) return;
       if(!type.includes('buy') && !type.includes('sell')) return;
 
-      // Volume: try mapped col first, then scan nearby cols
-      let lots = parseFloat(cells[colMap.volume]) || 0;
-      if(!lots || isNaN(lots)){
-        for(let c=colMap.type+1; c<Math.min(colMap.type+5, cells.length); c++){
-          const v = parseFloat(cells[c]);
-          if(!isNaN(v) && v>0 && v<100000 && cells[c]!=='') { lots=v; break; }
-        }
-      }
-      if(!lots) lots = 1;
+      // Skip non-instrument rows
+      const lsym = sym.toLowerCase();
+      if(lsym==='balance'||lsym==='deposit'||lsym==='withdrawal'||lsym==='credit') return;
 
-      const cleanNum = s => parseFloat((s||'').replace(/\s/g,'').replace(/,(?=\d{3})/g,'')) || 0;
-      const openPrice  = cleanNum(cells[colMap.openPrice]);
-      const closePrice = cleanNum(cells[colMap.closePrice]);
-      const pnl        = cleanNum(cells[colMap.profit]);
-      const openTime   = cells[colMap.openTime] || '';
-      const ticket     = cells[colMap.ticket]   || String(ri);
-      const dateStr    = parseDate(openTime);
-      const dir        = type.includes('buy') ? 'BUY' : 'SELL';
-      const idx2       = symToIdx(sym);
+      // EXACT COLUMN MAPPING for 14-col MT5 Positions format:
+      // col[0]=openTime  col[1]=ticket   col[2]=symbol   col[3]=type
+      // col[4]=blank     col[5]=volume   col[6]=SL       col[7]=TP
+      // col[8]=openPrice col[9]=closeTime col[10]=closePrice
+      // col[11]=commission col[12]=swap  col[13]=profit
+      let lots        = cleanNum(cells[5]);
+      let openPrice   = cleanNum(cells[8]);
+      let closePrice  = cleanNum(cells[10]);
+      let commission  = cleanNum(cells[11]);
+      let swap        = cleanNum(cells[12]);
+      let profitRaw   = cleanNum(cells[13]);
+      // Net P/L = profit + commission + swap (commission & swap are already negative)
+      let pnl         = parseFloat((profitRaw + commission + swap).toFixed(2));
+      let openTime    = cells[0] || '';
+      let ticket      = cells[1] || String(ri);
+
+      // Fallback for 13-col format (no blank col)
+      if(cells.length === 13){
+        lots       = cleanNum(cells[4]);
+        openPrice  = cleanNum(cells[7]);
+        closePrice = cleanNum(cells[9]);
+        commission = cleanNum(cells[10]);
+        swap       = cleanNum(cells[11]);
+        profitRaw  = cleanNum(cells[12]);
+        pnl        = parseFloat((profitRaw + commission + swap).toFixed(2));
+      }
+
+      // Validate — lots and open price must be positive numbers
+      if(!lots || lots <= 0) return;
+
+      const dateStr = parseDate(openTime);
+      const dir     = type.includes('buy') ? 'BUY' : 'SELL';
+      const idx2    = symToIdx(sym);
 
       trades.push({
         id:         'imp_' + ticket + '_' + broker,
-        instrument: symToName(sym),
+        instrument: sym,
         idx:        idx2,
         symbol:     sym,
         direction:  dir,
@@ -1711,6 +1731,7 @@ function parseMT5HTM(text, broker){
         pnl,
         src:        'import',
         broker,
+        accountBalance,
       });
     });
   });
@@ -1839,8 +1860,10 @@ function processImport(text, broker, statusId, fromLogin){
     importHistory.unshift(histEntry);
     localStorage.setItem('importHistory', JSON.stringify(importHistory));
 
+    const acctBal = parsed.find(t=>t.accountBalance)?.accountBalance;
+    const balStr  = acctBal ? ` · Balance: $${acctBal.toLocaleString()}` : '';
     statusEl.className='import-status ok';
-    statusEl.textContent=`✅ Imported ${newTrades.length} trades from ${broker}${dupes?' ('+dupes+' duplicates skipped)':''}`;
+    statusEl.textContent=`✅ ${broker}: ${newTrades.length} trades imported${balStr}${dupes?' · '+dupes+' skipped':''}`;
 
     // Update badge
     updateImportBadge();
@@ -1939,6 +1962,12 @@ function selectBroker(b, btn){
   selectedBroker = b;
   document.querySelectorAll('#importPanel .login-opt').forEach(x=>x.classList.remove('active'));
   btn.classList.add('active');
+  const wrap = document.getElementById('otherBrokerWrap');
+  if(wrap) wrap.style.display = (b==='Other') ? 'block' : 'none';
+  if(b!=='Other'){
+    const inp = document.getElementById('otherBrokerName');
+    if(inp) inp.value = '';
+  }
 }
 
 function showImportPanel(){
@@ -2005,63 +2034,85 @@ function switchAcct(acct, btn){
 
 function renderAcctBar(){
   const raw = allRaw();
+  const pnlSum = trades => trades.reduce((s,t)=>s+t.pnl,0);
+  const fmt    = n => (n>=0?'+':'')+fK(n);
 
-  // Helper: calc P&L for a set of trades
-  const pnl = trades => trades.reduce((s,t)=>s+t.pnl,0);
-  const fmt  = n => (n>=0?'+':'')+fK(n);
+  // --- Deriv (seed + live) ---
+  const derivTrades = raw.filter(t=>t.src==='hist'||t.src==='live');
+  document.getElementById('ap-hist').textContent = derivTrades.length ? fmt(pnlSum(derivTrades)) : '';
 
-  // Historical seed
-  const histTrades = raw.filter(t=>t.src==='hist');
-  const histPnl    = pnl(histTrades);
-  document.getElementById('ap-hist').textContent = histTrades.length ? fmt(histPnl) : '';
-
-  // Live Deriv
-  const liveTx = raw.filter(t=>t.src==='live');
+  // --- Live Deriv ---
+  const liveTx  = raw.filter(t=>t.src==='live');
   const liveBtn = document.getElementById('ab-live');
   if(liveTx.length > 0){
-    liveBtn.style.display = 'flex';
-    document.getElementById('ap-live').textContent = fmt(pnl(liveTx));
-    if(acct) document.getElementById('ab-live-label').textContent =
-      `${acct.email||'Deriv'} Live`;
+    liveBtn.style.display='flex';
+    document.getElementById('ap-live').textContent = fmt(pnlSum(liveTx));
   } else {
-    liveBtn.style.display = 'none';
+    liveBtn.style.display='none';
   }
 
-  // Imported brokers — one button per unique broker
+  // --- Imported brokers — one button per unique broker ---
   const brokers = [...new Set(importedTrades.map(t=>t.broker).filter(Boolean))];
-  const impDiv  = document.getElementById('importAcctBtns');
+  const impDiv     = document.getElementById('importAcctBtns');
   const impDivider = document.getElementById('imp-divider');
 
   if(brokers.length > 0){
-    impDivider.style.display = 'block';
-    const colors = {FTMO:'var(--gold)', The5ers:'var(--purple)', MT5:'var(--blue)'};
+    impDivider.style.display='block';
+    // Color map — easily extendable
+    const brokerColors = {
+      FTMO:      'var(--gold)',
+      The5ers:   'var(--purple)',
+      MyFundedFX:'var(--blue)',
+      E8:        '#f97316',
+      Topstep:   '#06b6d4',
+    };
+    const defaultColor = 'var(--blue)';
+
     impDiv.innerHTML = brokers.map(b=>{
       const bTrades = importedTrades.filter(t=>t.broker===b);
-      const bPnl    = pnl(bTrades);
-      const col     = colors[b]||'var(--blue)';
-      const cls     = b==='FTMO'?'ftmo':b==='The5ers'?'five':'mt5';
-      return `<button class="acct-btn ${cls} ${activeAcct===b?'active':''}"
-        id="ab-${b.replace(/[^a-z0-9]/gi,'')}"
+      const bPnl    = pnlSum(bTrades);
+      const col     = brokerColors[b] || defaultColor;
+      const isActive = activeAcct===b;
+      // Get account balance from first trade that has it
+      const acctBal = bTrades.find(t=>t.accountBalance)?.accountBalance;
+      const balStr  = acctBal ? ` · $${acctBal.toLocaleString()}` : '';
+      return `<button class="acct-btn ${isActive?'active':''}"
+        data-broker="${b}"
         onclick="switchAcct('${b}',this)"
-        style="${activeAcct===b?'background:'+col+';border-color:'+col+';':''}">
+        style="--kc:${col};${isActive?'background:'+col+';border-color:'+col+';color:#000;':'border-color:'+col+'40;color:'+col+';'}">
         <span class="acct-dot" style="background:${col}"></span>
         ${b}
         <span class="acct-pnl">${bTrades.length ? fmt(bPnl) : ''}</span>
       </button>`;
     }).join('');
   } else {
-    impDivider.style.display = 'none';
-    impDiv.innerHTML = '';
+    impDivider.style.display='none';
+    impDiv.innerHTML='';
   }
 
-  // Update ALL button P&L
-  document.getElementById('ap-all').textContent = fmt(pnl(raw));
+  // --- All button P&L ---
+  document.getElementById('ap-all').textContent = raw.length ? fmt(pnlSum(raw)) : '';
 
-  // Re-apply active state to all button
-  if(activeAcct==='all'){
-    const allBtn = document.getElementById('ab-all');
-    if(allBtn) allBtn.classList.add('active');
-  }
+  // Re-apply active states correctly
+  document.querySelectorAll('.acct-btn').forEach(btn=>{
+    btn.classList.remove('active');
+    // reset inline styles for imported btns
+    if(btn.dataset.broker){
+      const b   = btn.dataset.broker;
+      const brokerColors = {FTMO:'var(--gold)',The5ers:'var(--purple)'};
+      const col = brokerColors[b]||'var(--blue)';
+      if(activeAcct===b){
+        btn.style.background=col; btn.style.borderColor=col; btn.style.color='#000';
+        btn.classList.add('active');
+      } else {
+        btn.style.background=''; btn.style.borderColor=col+'40'; btn.style.color=col;
+      }
+    }
+  });
+  const activeBtn = activeAcct==='all'  ? document.getElementById('ab-all')  :
+                    activeAcct==='hist' ? document.getElementById('ab-hist') :
+                    activeAcct==='live' ? document.getElementById('ab-live') : null;
+  if(activeBtn) activeBtn.classList.add('active');
 }
 
 // ============================================================
