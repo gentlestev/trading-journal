@@ -946,7 +946,7 @@ function renderImgPreviews(){
   el.innerHTML=selectedImages.map((img,i)=>`
     <div class="img-preview-wrap">
       <img src="${img.data}" alt="${img.name}" onclick="openLightboxFromPreviews(${i})">
-      <button class="img-del" onclick="removeImg(${i})">✕</button>
+      <button class="img-del" data-action="removeimg" data-id="${i}">✕</button>
       <div class="img-label">Chart ${i+1}</div>
     </div>`).join('');
 }
@@ -1112,21 +1112,22 @@ function switchTab(n){
 
 function refreshAll(){renderKPIs();renderTable();renderTodayKPIs();updateInsight();buildEq();buildDay();buildIdx();buildMo();}
 
+// PERMANENT EVENT DELEGATION on document — never removed, survives all DOM re-renders
+document.addEventListener('click', function(e){
+  const btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+  if(action === 'edit'){ e.stopPropagation(); showJournalForm(null, id); }
+  if(action === 'delete'){ e.stopPropagation(); deleteJournalEntry(id); }
+  if(action === 'removeimg'){ e.stopPropagation(); removeImg(parseInt(id)); }
+});
+
 window.addEventListener('load',()=>{
   refreshAll();
   renderJournal();
   const saved=localStorage.getItem('dtok');
   if(saved){document.getElementById('tokenInput').value=saved;connectDeriv();}
-
-  // Persistent event delegation for journal edit/delete buttons
-  document.getElementById('jEntries').addEventListener('click', function(e){
-    const btn = e.target.closest('[data-action]');
-    if(!btn) return;
-    const id = btn.dataset.id;
-    const action = btn.dataset.action;
-    if(action === 'edit') showJournalForm(null, id);
-    if(action === 'delete') deleteJournalEntry(id);
-  });
 });
 </script>
 </body>
