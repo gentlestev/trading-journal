@@ -1073,8 +1073,8 @@ function renderJournal(){
           </div>
         </div>`:''}
       <div class="j-actions">
-        <button class="j-edit-btn" onclick="showJournalForm(null,'${j.id}')">✏️ Edit</button>
-        <button class="j-del-btn" onclick="deleteJournalEntry('${j.id}')">Delete</button>
+        <button class="j-edit-btn" data-action="edit" data-id="${j.id}">✏️ Edit</button>
+        <button class="j-del-btn" data-action="delete" data-id="${j.id}">🗑 Delete</button>
       </div>
     </div>`).join('');
 }
@@ -1117,6 +1117,16 @@ window.addEventListener('load',()=>{
   renderJournal();
   const saved=localStorage.getItem('dtok');
   if(saved){document.getElementById('tokenInput').value=saved;connectDeriv();}
+
+  // Persistent event delegation for journal edit/delete buttons
+  document.getElementById('jEntries').addEventListener('click', function(e){
+    const btn = e.target.closest('[data-action]');
+    if(!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    if(action === 'edit') showJournalForm(null, id);
+    if(action === 'delete') deleteJournalEntry(id);
+  });
 });
 </script>
 </body>
