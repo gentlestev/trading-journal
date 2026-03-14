@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trading Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#07090d;--surface:#0f1117;--surface2:#161922;--border:#1c2032;--green:#00e5b0;--red:#ff4d6a;--blue:#3d9bff;--gold:#f0b429;--purple:#a78bfa;--text:#e8eaf0;--muted:#5a6278;}
@@ -285,11 +286,11 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
         ondragover="event.preventDefault();this.classList.add('dragover')"
         ondragleave="this.classList.remove('dragover')"
         ondrop="handleLoginCsvDrop(event)">
-        <input type="file" id="loginCsvFile" accept=".csv,.htm,.html" onchange="handleLoginCsvFile(this.files[0])">
+        <input type="file" id="loginCsvFile" accept=".csv,.htm,.html,.pdf" onchange="handleLoginCsvFile(this.files[0])">
         <div class="csv-icon">📊</div>
         <div class="csv-drop-text">
           <strong>Click to select</strong> or drag &amp; drop your MT5 export<br>
-          Supports <strong>.CSV</strong> and <strong>.HTM report</strong> files
+          Supports <strong>.CSV</strong>, <strong>.HTM</strong> and <strong>.PDF</strong> files
         </div>
       </div>
       <div class="login-note" style="margin-top:8px;">
@@ -476,9 +477,9 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       ondragover="event.preventDefault();this.classList.add('dragover')"
       ondragleave="this.classList.remove('dragover')"
       ondrop="handlePanelCsvDrop(event)">
-      <input type="file" id="panelCsvFile" accept=".csv,.htm,.html" onchange="handlePanelCsvFile(this.files[0])">
+      <input type="file" id="panelCsvFile" accept=".csv,.htm,.html,.pdf" onchange="handlePanelCsvFile(this.files[0])">
       <div class="csv-icon">📊</div>
-      <div class="csv-drop-text"><strong>Click to select</strong> or drag &amp; drop<br>Supports <strong>.CSV</strong> and <strong>.HTM</strong> MT5 exports</div>
+      <div class="csv-drop-text"><strong>Click to select</strong> or drag &amp; drop<br>Supports <strong>.CSV</strong>, <strong>.HTM</strong> and <strong>.PDF</strong> MT5 exports</div>
     </div>
 
     <!-- Import history -->
@@ -1244,12 +1245,170 @@ function switchLoginOpt(opt, btn){
 // MT5 CSV / HTM PARSER
 // ============================================================
 function parseMT5File(text, broker){
-  // Detect format: HTM report or CSV
+  // Detect format: HTM report or CSV (PDF is handled separately via parsePDF)
   if(text.trim().startsWith('<') || text.includes('<html') || text.includes('<table')){
     return parseMT5HTM(text, broker);
   } else {
     return parseMT5CSV(text, broker);
   }
+}
+
+// ============================================================
+// PDF PARSER — reads MT5 account statement PDFs
+// Handles both trade-history PDFs and summary-only PDFs
+// ============================================================
+async function parsePDF(file, broker){
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+  const numPages = pdf.numPages;
+
+  let allLines = [];
+
+  for(let p = 1; p <= numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+
+    // Group items by Y position (same line = within 3px of each other)
+    const byY = {};
+    content.items.forEach(item => {
+      const y = Math.round(item.transform[5]);
+      if(!byY[y]) byY[y] = [];
+      byY[y].push({x: item.transform[4], text: item.str.trim()});
+    });
+
+    // Sort each line by X position and join
+    const sortedYs = Object.keys(byY).map(Number).sort((a,b) => b-a); // top to bottom
+    sortedYs.forEach(y => {
+      const lineItems = byY[y].sort((a,b) => a.x - b.x);
+      const lineText = lineItems.map(i=>i.text).filter(t=>t).join(' ');
+      if(lineText.trim()) allLines.push(lineText.trim());
+    });
+  }
+
+  // Try to parse trades from extracted lines
+  const trades = parsePDFLines(allLines, broker);
+  return { trades, lines: allLines, pageCount: numPages };
+}
+
+function parsePDFLines(lines, broker){
+  const trades = [];
+
+  // Pattern 1: Full MT5 Statement with trade rows
+  // Format: ticket | open_time | type | lots | symbol | open_price | sl | tp | close_time | close_price | commission | swap | profit
+  // Example: "12345678 2026.01.15 14:23 buy 1.50 Volatility 75 Index 34529.81 0.00 0.00 2026.01.15 16:45 36071.62 0.00 0.00 2312.72"
+
+  const dateRe = /\d{4}\.\d{2}\.\d{2}/;
+  const numRe = /^-?[\d\s]+\.\d{2}$/;
+
+  // Look for lines with trade data patterns
+  // MT5 uses a specific column order — detect it by finding lines with:
+  // a ticket number + date + buy/sell + lots + symbol + prices + profit
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+
+    // Skip header/summary lines
+    if(!line || line.length < 20) continue;
+    if(line.toLowerCase().includes('balance') && !line.match(/\d{4}\.\d{2}/)) continue;
+    if(line.toLowerCase().includes('deposit')) continue;
+
+    // Try to match a trade row
+    // Pattern: [ticket] [date] [time] [type] [volume] [symbol] [open] ... [close] [profit]
+    const tradeMatch = tryParseTradeLine(line, lines, i, broker);
+    if(tradeMatch){
+      // Avoid duplicate tickets
+      if(!trades.find(t => t.id === tradeMatch.id)){
+        trades.push(tradeMatch);
+      }
+    }
+  }
+
+  // If no trades found by line-by-line, try multi-line grouping
+  if(!trades.length){
+    return parsePDFGrouped(lines, broker);
+  }
+
+  return trades;
+}
+
+function tryParseTradeLine(line, lines, idx, broker){
+  // MT5 full statement trade line patterns
+  // Single line: ticket date time type lots symbol openPrice ... closePrice profit
+  const patterns = [
+    // Pattern: number date buy/sell number symbol number ... number (profit at end)
+    /^(\d{6,12})\s+(\d{4}\.\d{2}\.\d{2})\s+[\d:]+\s+(buy|sell)\s+([\d.]+)\s+(.+?)\s+([\d.]+)\s+[\d.]+\s+[\d.]+\s+\d{4}\.\d{2}\.\d{2}\s+[\d:]+\s+([\d.]+)\s+[\d.-]+\s+[\d.-]+\s+(-?[\d.\s]+)$/i,
+    // Shorter pattern without SL/TP
+    /^(\d{6,12})\s+(\d{4}\.\d{2}\.\d{2})\s+[\d:]+\s+(buy|sell)\s+([\d.]+)\s+(.+?)\s+([\d.]+)\s+\d{4}\.\d{2}\.\d{2}\s+[\d:]+\s+([\d.]+)\s+(-?[\d.\s]+)$/i,
+  ];
+
+  for(const pat of patterns){
+    const m = line.match(pat);
+    if(m){
+      const sym = m[5].trim();
+      const pnl = parseFloat(m[8].replace(/\s/g,'')) || 0;
+      const idx2 = symToIdx(sym);
+      return {
+        id: 'pdf_' + m[1] + '_' + broker,
+        instrument: symToName(sym),
+        idx: idx2,
+        direction: m[3].toUpperCase(),
+        lots: parseFloat(m[4]),
+        open: parseFloat(m[6]),
+        close: parseFloat(m[7]),
+        date: m[2].replace(/\./g, '-').slice(0,10),
+        pnl,
+        src: 'import',
+        broker,
+        ticket: m[1],
+      };
+    }
+  }
+  return null;
+}
+
+function parsePDFGrouped(lines, broker){
+  // Fallback: try to find trade sections by looking for buy/sell keywords
+  // near dates and numbers — useful for summary-style PDFs
+  const trades = [];
+  const typeWords = ['buy','sell','buy limit','sell limit','buy stop','sell stop'];
+
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i].toLowerCase();
+    const hasType = typeWords.some(t => line.includes(t));
+    const hasDate = /\d{4}\.\d{2}\.\d{2}/.test(lines[i]);
+    const hasNumber = /\d{5,}/.test(lines[i]);
+
+    if(hasType && (hasDate || hasNumber)){
+      // Try to extract what we can from surrounding lines
+      const context = lines.slice(Math.max(0,i-1), i+4).join(' ');
+      const dateM = context.match(/(\d{4})\.(\d{2})\.(\d{2})/);
+      const typeM = context.match(/\b(buy|sell)\b/i);
+      const lotsM = context.match(/\b([0-9]+\.?[0-9]*)\s*(lots?)?\b/i);
+      const profitM = context.match(/(-?[0-9]+\.[0-9]{2})(?:\s|$)/g);
+      const symM = context.match(/volatility\s+\d+\s+index/i) ||
+                   context.match(/[RV](?:_)?(?:10|25|50|75|100)/i);
+
+      if(dateM && typeM){
+        const date = `${dateM[1]}-${dateM[2]}-${dateM[3]}`;
+        const sym = symM ? symM[0] : 'Unknown';
+        const profits = profitM ? profitM.map(p => parseFloat(p)) : [0];
+        const pnl = profits[profits.length-1] || 0;
+        const lots = lotsM ? parseFloat(lotsM[1]) : 1;
+        const idx2 = symToIdx(sym);
+        const id = 'pdf_g_' + i + '_' + date + '_' + broker;
+        if(!trades.find(t=>t.id===id)){
+          trades.push({
+            id, instrument: symToName(sym), idx: idx2,
+            direction: typeM[1].toUpperCase(), lots, open: 0, close: 0,
+            date, pnl, src: 'import', broker,
+          });
+        }
+      }
+    }
+  }
+  return trades;
 }
 
 function parseMT5CSV(text, broker){
@@ -1404,9 +1563,13 @@ function handleLoginCsvDrop(e){
 }
 function handleLoginCsvFile(file){
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => processImport(ev.target.result, selectedBroker, 'loginImportStatus', true);
-  reader.readAsText(file);
+  if(file.name.toLowerCase().endsWith('.pdf')){
+    processPDFImport(file, selectedBroker, 'loginImportStatus', true);
+  } else {
+    const reader = new FileReader();
+    reader.onload = ev => processImport(ev.target.result, selectedBroker, 'loginImportStatus', true);
+    reader.readAsText(file);
+  }
 }
 
 function handlePanelCsvDrop(e){
@@ -1416,9 +1579,13 @@ function handlePanelCsvDrop(e){
 }
 function handlePanelCsvFile(file){
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => processImport(ev.target.result, selectedBroker, 'panelImportStatus', false);
-  reader.readAsText(file);
+  if(file.name.toLowerCase().endsWith('.pdf')){
+    processPDFImport(file, selectedBroker, 'panelImportStatus', false);
+  } else {
+    const reader = new FileReader();
+    reader.onload = ev => processImport(ev.target.result, selectedBroker, 'panelImportStatus', false);
+    reader.readAsText(file);
+  }
 }
 
 function processImport(text, broker, statusId, fromLogin){
@@ -1469,6 +1636,73 @@ function processImport(text, broker, statusId, fromLogin){
   } catch(err) {
     statusEl.className='import-status err';
     statusEl.textContent='❌ Parse error: '+err.message;
+  }
+}
+
+async function processPDFImport(file, broker, statusId, fromLogin){
+  const statusEl = document.getElementById(statusId);
+  statusEl.style.display = 'block';
+  statusEl.className = 'import-status';
+  statusEl.textContent = '⏳ Reading PDF... (this may take a moment)';
+
+  try {
+    const result = await parsePDF(file, broker);
+    const { trades: parsed, lines, pageCount } = result;
+
+    if(!parsed.length){
+      // Summary-only PDF detected — show helpful message
+      const hasSummaryData = lines.some(l =>
+        l.includes('Gross Profit') || l.includes('Balance') || l.includes('Growth')
+      );
+      if(hasSummaryData){
+        statusEl.className = 'import-status err';
+        statusEl.innerHTML = `
+          <strong>📊 Summary Report Detected</strong><br>
+          This PDF (${pageCount} page${pageCount>1?'s':''}) contains account statistics only — no individual trade rows were found.<br><br>
+          <strong>To get your trade history:</strong><br>
+          In MT5 → History tab → Right-click → <strong>Save as Report</strong> (choose "Detailed" if available)<br>
+          Or Right-click → <strong>Export to Spreadsheet</strong> for a CSV file with all trades.
+        `;
+      } else {
+        statusEl.className = 'import-status err';
+        statusEl.textContent = '❌ No trades found in this PDF. Try exporting as CSV or HTM from MT5 History tab.';
+      }
+      return;
+    }
+
+    // Deduplicate and save
+    const existingIds = new Set(importedTrades.map(t => t.id));
+    const newTrades = parsed.filter(t => !existingIds.has(t.id));
+    const dupes = parsed.length - newTrades.length;
+
+    importedTrades = [...importedTrades, ...newTrades];
+    localStorage.setItem('importedTrades', JSON.stringify(importedTrades));
+
+    const histEntry = {
+      id: 'ih_' + Date.now(),
+      broker,
+      date: new Date().toLocaleDateString(),
+      total: parsed.length,
+      added: newTrades.length,
+      dupes,
+      source: 'PDF',
+    };
+    importHistory.unshift(histEntry);
+    localStorage.setItem('importHistory', JSON.stringify(importHistory));
+
+    statusEl.className = 'import-status ok';
+    statusEl.textContent = `✅ Imported ${newTrades.length} trades from PDF (${broker})${dupes ? ' · ' + dupes + ' duplicates skipped' : ''}`;
+
+    updateImportBadge();
+    renderImportHistory();
+    refreshAll();
+
+    if(fromLogin) setTimeout(() => skipLogin(), 1200);
+
+  } catch(err) {
+    statusEl.className = 'import-status err';
+    statusEl.textContent = '❌ PDF error: ' + err.message + '. Try CSV or HTM export instead.';
+    console.error('PDF parse error:', err);
   }
 }
 
