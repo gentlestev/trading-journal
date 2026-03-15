@@ -848,24 +848,22 @@ function onAuth(a){
   send({portfolio:1});
   send({transaction:1,subscribe:1});
   ping=setInterval(()=>send({ping:1}),30000);
-  try{
-    const lb=document.getElementById('ab-live');
-    if(lb){lb.style.display='flex';const ll=document.getElementById('ab-live-label');if(ll)ll.textContent=(a.is_virtual?'Demo':'Real')+' ('+(a.login||a.account_id||'Deriv')+')';}
-    renderAcctBar();
-    refreshAll();
-  }catch(e){}
+  const lb=document.getElementById('ab-live');
+  if(lb){
+    lb.style.display='flex';
+    const ll=document.getElementById('ab-live-label');
+    if(ll)ll.textContent=(a.is_virtual?'Demo':'Real')+' ('+(a.login||a.account_id||'Deriv')+')';
+  }
+  refreshAll();
 }
 function onBal(b){document.getElementById('liveBal').textContent=`${acct.currency||'$'}${parseFloat(b.balance).toFixed(2)}`;}
 function fetchPT(off){send({profit_table:1,description:1,limit:100,offset:off,sort:'DESC'});}
 function onPT(pt){
   const tx=pt.transactions||[];
   tx.forEach(t=>{const tr=txToTrade(t);if(tr&&!liveTrades.find(x=>x.id===tr.id))liveTrades.push(tr);});
-  if(tx.length===100){
-    fetchPT(liveTrades.length); // fetch next page
-  } else {
-    console.log('Deriv: loaded',liveTrades.length,'trades');
-    refreshAll(); // done — render
-  }
+  if(tx.length===100)fetchPT(liveTrades.length);
+  else refreshAll();
+  if(tx.length<100)refreshAll();
 }
 function txToTrade(tx){
   if(!tx||!tx.transaction_id)return null;
