@@ -460,6 +460,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
     <span class="acct-dot" style="background:var(--green)"></span>Deriv
     <span class="acct-pnl" id="ap-hist"></span>
   </button>
+  <!-- Deriv Live button — hidden for MT5-only users, shown if Options trades detected -->
   <button class="acct-btn deriv" id="ab-live" onclick="switchAcct('live',this)" style="display:none">
     <span class="acct-dot" style="background:var(--green)"></span><span id="ab-live-label">Deriv Live</span>
     <span class="acct-pnl" id="ap-live"></span>
@@ -784,6 +785,7 @@ function connectDeriv(){
   document.getElementById('spinWrap').style.display = 'block';
   document.getElementById('loginErr').style.display = 'none';
   localStorage.setItem('dtok', t);
+  localStorage.setItem('useDerivAPI', 'true');
   console.log('Connecting with token length:', t.length);
   openWS(t);
 }
@@ -928,18 +930,13 @@ function onAuth(a){
 
 function onBal(b){document.getElementById('liveBal').textContent=`${acct.currency||'$'}${parseFloat(b.balance).toFixed(2)}`;}
 function fetchPT(off){
-  const req={
-    profit_table:1,
-    description:1,
-    limit:100,
-    offset:off,
-    sort:'DESC',
-  };
-  send(req);
-  // Also request statement for comprehensive trade data
-  if(off===0){
-    send({statement:1,description:1,limit:100,offset:0,sort:'DESC'});
-  }
+  send({
+    profit_table: 1,
+    description:  1,
+    limit:        100,
+    offset:       off,
+    sort:         'DESC',
+  });
 }
 function onPT(pt){
   const tx=pt.transactions||[];
@@ -989,37 +986,47 @@ function onStatement(st){
 
 function txToTrade(tx){
   if(!tx) return null;
-  // profit_table uses transaction_id; transaction stream uses transaction_id too
   const tid = tx.transaction_id || tx.contract_id || tx.id;
   if(!tid) return null;
-  const sm={'R_10':'V10','R_25':'V25','R_50':'V50','R_75':'V75','R_100':'V100',
-            '1HZ10V':'V10','1HZ25V':'V25','1HZ50V':'V50','1HZ75V':'V75','1HZ100V':'V100'};
-  const raw = tx.underlying_symbol || tx.symbol || '';
-  const idx = sm[raw]||(raw.startsWith('R_')?'V'+raw.slice(2):raw.slice(0,6))||'OTHER';
-  const names = {'V10':'Volatility 10','V25':'Volatility 25','V50':'Volatility 50',
-                 'V75':'Volatility 75','V100':'Volatility 100'};
-  const nm  = names[idx] || raw || idx;
-  const ct  = (tx.contract_type||tx.transaction_type||'').toUpperCase();
-  const dir = ct.includes('CALL')||ct.includes('RISE')||ct.includes('HIGHER')||ct.includes('TOUCH')
+
+  // Map Deriv symbol codes to index names
+  const sm = {
+    'R_10':'V10','R_25':'V25','R_50':'V50','R_75':'V75','R_100':'V100',
+    '1HZ10V':'V10','1HZ25V':'V25','1HZ50V':'V50','1HZ75V':'V75','1HZ100V':'V100',
+    'RDBULL':'Bull Market','RDBEAR':'Bear Market',
+  };
+  const raw = tx.underlying_symbol || tx.display_name || tx.symbol || '';
+  const idx = sm[raw] || (raw.startsWith('R_') ? 'V'+raw.slice(2) : raw.slice(0,6)) || 'OTHER';
+  const names = {
+    'V10':'Volatility 10 Index','V25':'Volatility 25 Index',
+    'V50':'Volatility 50 Index','V75':'Volatility 75 Index','V100':'Volatility 100 Index',
+  };
+  const nm = names[idx] || tx.display_name || raw || idx;
+
+  // Direction from contract type
+  const ct  = (tx.contract_type || '').toUpperCase();
+  const dir = (ct.includes('CALL') || ct.includes('RISE') || ct.includes('HIGHER') || ct.includes('TOUCH'))
               ? 'BUY' : 'SELL';
-  // Date from purchase_time or sell_time
-  const ts  = tx.purchase_time || tx.sell_time || tx.transaction_time || null;
-  const d   = ts ? new Date(ts*1000).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
-  // P&L: profit_loss field or calculate from sell_price - buy_price
-  const pnl = parseFloat(tx.profit_loss ?? tx.sell_price ?? 0) - (tx.profit_loss===undefined ? parseFloat(tx.buy_price||0) : 0);
+
+  // Date
+  const ts = tx.purchase_time || tx.sell_time || tx.transaction_time || null;
+  const d  = ts ? new Date(ts * 1000).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+
+  // P&L — profit_loss is already the net result in profit_table
+  const pnl = parseFloat(tx.profit_loss || 0);
+
   return {
     id:         'lv_' + tid,
     instrument: nm,
     idx,
     direction:  dir,
-    lots:       parseFloat(tx.buy_price||1),
-    open:       parseFloat(tx.entry_spot||tx.purchase_price||0),
-    close:      parseFloat(tx.exit_spot||tx.sell_price||0),
+    lots:       parseFloat(tx.buy_price || 1),
+    open:       parseFloat(tx.entry_spot || 0),
+    close:      parseFloat(tx.exit_spot || 0),
     date:       d,
-    pnl:        parseFloat(tx.profit_loss||pnl||0),
+    pnl:        pnl,
     src:        'live',
     broker:     'Deriv',
-    raw:        tx
   };
 }
 function onPort(p){
@@ -2472,7 +2479,7 @@ function renderAcctBar(){
   const pnlSum = trades => trades.reduce((s,t)=>s+t.pnl,0);
   const fmt    = n => (n>=0?'+':'')+fK(n);
 
-  // --- Deriv (seed historical + live API trades) ---
+  // --- Deriv (live API trades) ---
   const derivTrades = raw.filter(t=>t.src==='hist'||t.src==='live');
   const derivPnl    = pnlSum(derivTrades);
   document.getElementById('ap-hist').textContent = derivTrades.length ? fmt(derivPnl) : '';
@@ -3079,7 +3086,7 @@ window.addEventListener('load',()=>{
   refreshAll();
   renderJournal();
 
-  // Restore Deriv connection — delay slightly to let DOM fully render
+  // Restore Deriv connection
   const saved = localStorage.getItem('dtok');
   if(saved){
     document.getElementById('tokenInput').value = saved;
