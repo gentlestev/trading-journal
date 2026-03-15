@@ -2750,8 +2750,13 @@ function mfxRenderAccounts(){
     // Find known broker name
     const known  = MFX_KNOWN.find(k=>k.id===String(acc.id));
     const broker = known ? known.broker : (acc.broker || 'MT5');
-    const bColors= {FTMO:'var(--gold)',The5ers:'var(--purple)'};
-    const col    = bColors[broker] || 'var(--blue)';
+    const bColors= {
+      'FTMO':       'var(--gold)',
+      'The5ers':    'var(--purple)',
+      'Deriv Real': 'var(--green)',
+      'Deriv Demo': '#22d3ee',
+    };
+    const col = bColors[broker] || 'var(--blue)';
     const gain   = parseFloat(acc.gain||0);
     const profit = parseFloat(acc.profit||0);
     const bal    = parseFloat(acc.balance||0);
@@ -2796,18 +2801,26 @@ async function mfxSyncHistory(){
     for(const acc of mfxAccounts){
       const known  = MFX_KNOWN.find(k=>k.id===String(acc.id));
       const broker = known ? known.broker : (acc.broker || 'MT5');
-      console.log(`Syncing ${broker} (ID: ${acc.id})...`);
+      const accId  = String(acc.id);
+      console.log(`Syncing ${broker} (ID: ${accId})...`);
 
-      // Fetch closed trade history — pass cookies for session validation
+      // Fetch closed trade history
       try {
-        let hist;
-        try {
-          hist = await mfxNetlifyCall('history', {session: mfxSession, id: acc.id, cookies: mfxCookies});
-        } catch(e1) {
-          await new Promise(r=>setTimeout(r,1500));
-          hist = await mfxNetlifyCall('history', {session: mfxSession, id: acc.id, cookies: mfxCookies});
-        }
+        const hist = await mfxNetlifyCall('history', {
+          session: mfxSession,
+          id:      accId,
+          cookies: mfxCookies
+        });
         const trades = hist.history || [];
+        console.log(`${broker}: ${trades.length} trades in history`);
+
+        // Update account balance from history data if available
+        if(hist.balance !== undefined){
+          acc.balance = hist.balance;
+        }
+        if(hist.profit !== undefined){
+          acc.profit = hist.profit;
+        }
 
         trades.forEach(t => {
           const trade = mfxTradeToLocal(t, broker, acc);
@@ -2816,15 +2829,36 @@ async function mfxSyncHistory(){
             totalNew++;
           }
         });
-      } catch(e){ console.warn('History fetch failed for', acc.id, e); }
+
+        // If account had no balance, calculate from trades
+        if(!parseFloat(acc.balance||0) && importedTrades.filter(x=>x.broker===broker).length){
+          const brokerTrades = importedTrades.filter(x=>x.broker===broker);
+          const totalPnl = brokerTrades.reduce((s,t)=>s+t.pnl, 0);
+          // Try to get balance from any trade that has accountBalance
+          const withBal = brokerTrades.find(t=>t.accountBalance>0);
+          if(withBal) acc.balance = withBal.accountBalance;
+          acc.profit = parseFloat(totalPnl.toFixed(2));
+        }
+      } catch(e){
+        console.warn('History fetch failed for', accId, ':', e.message);
+      }
 
       // Fetch open trades
       try {
-        const open = await mfxCall('/get-open-trades', {id: acc.id});
-        // Open trades go to openPositions display
+        const open = await mfxNetlifyCall('open', {
+          session: mfxSession,
+          id:      accId,
+          cookies: mfxCookies
+        });
         mfxUpdateOpenTrades(open.openTrades || [], broker);
-      } catch(e){ /* open trades may not be available */ }
+      } catch(e){ /* open trades optional */ }
+
+      // Small delay between accounts to avoid rate limiting
+      await new Promise(r=>setTimeout(r, 500));
     }
+
+    // Re-render account cards with updated balances
+    mfxRenderAccounts();
 
     if(totalNew > 0){
       localStorage.setItem('importedTrades', JSON.stringify(importedTrades));
@@ -2866,20 +2900,38 @@ async function mfxSyncHistory(){
 
 // Convert Myfxbook trade to dashboard format
 function mfxTradeToLocal(t, broker, acc){
-  if(!t || !t.openTime) return null;
-  const sym    = (t.symbol||'').toUpperCase();
-  const type   = (t.action||t.type||'').toLowerCase();
-  const pnl    = parseFloat(t.profit||0);
-  const lots   = parseFloat(t.sizing?.value || t.lots || 1);
-  const openP  = parseFloat(t.openPrice||0);
-  const closeP = parseFloat(t.closePrice||0);
-  const date   = parseDate(t.closeTime || t.openTime);
+  if(!t) return null;
+  // Myfxbook history fields: openTime, closeTime, symbol, action,
+  // sizing{type,value}, openPrice, closePrice, profit, commission, swap, openOrderId
+  const openTime = t.openTime || t.open_time || '';
+  const closeTime = t.closeTime || t.close_time || openTime;
+  if(!openTime) return null;
+
+  const sym    = (t.symbol || '').toUpperCase();
+  const type   = (t.action || t.type || '').toLowerCase();
+  const pnl    = parseFloat(t.profit || 0);
+  const comm   = parseFloat(t.commission || 0);
+  const swap   = parseFloat(t.swap || 0);
+  const netPnl = parseFloat((pnl + comm + swap).toFixed(2));
+
+  // sizing can be object {type, value} or just a number
+  let lots = 1;
+  if(t.sizing && t.sizing.value) lots = parseFloat(t.sizing.value);
+  else if(t.lots) lots = parseFloat(t.lots);
+  else if(t.volume) lots = parseFloat(t.volume);
+
+  const openP  = parseFloat(t.openPrice  || t.open_price  || 0);
+  const closeP = parseFloat(t.closePrice || t.close_price || 0);
+  const date   = parseDate(closeTime) || parseDate(openTime);
   const dir    = type.includes('buy') ? 'BUY' : 'SELL';
   const idx    = symToIdx(sym);
-  const bal    = parseFloat(acc.balance||0);
+  const bal    = parseFloat(acc.balance || 0);
+
+  // Generate stable unique ID
+  const uid = t.openOrderId || t.open_order_id || t.id || (sym + openTime);
 
   return {
-    id:             'mfx_' + (t.openOrderId||t.id||Math.random()) + '_' + broker,
+    id:             'mfx_' + uid + '_' + broker,
     instrument:     symToName(sym),
     idx,
     symbol:         sym,
@@ -2888,7 +2940,7 @@ function mfxTradeToLocal(t, broker, acc){
     open:           openP,
     close:          closeP,
     date,
-    pnl,
+    pnl:            netPnl,
     src:            'import',
     broker,
     accountBalance: bal,
