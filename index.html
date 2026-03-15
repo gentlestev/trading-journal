@@ -178,7 +178,7 @@ table{width:100%;border-collapse:collapse;font-size:11px;}
 thead{position:sticky;top:0;z-index:10;}
 thead th{text-align:left;padding:8px 11px;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;}
 thead th:hover{color:var(--text);}
-thead th.sa::after{content:' â–²';}thead th.sd::after{content:' â–¼';}
+thead th.sa::after{content:' ▲';}thead th.sd::after{content:' ▼';}
 tbody tr{border-bottom:1px solid rgba(28,32,50,0.6);transition:background .15s;cursor:pointer;}
 tbody tr:hover{background:rgba(255,255,255,0.025);}
 tbody td{padding:8px 11px;white-space:nowrap;}
@@ -349,17 +349,17 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 
     <!-- Option tabs -->
     <div class="login-opts">
-      <div class="login-opt active" onclick="switchLoginOpt('api',this)">ðŸ”— Deriv API</div>
-      <div class="login-opt" onclick="switchLoginOpt('csv',this)">ðŸ“‚ MT5 Import</div>
-      <div class="login-opt" onclick="skipLogin()">ðŸ‘ View Only</div>
+      <div class="login-opt active" onclick="switchLoginOpt('api',this)">Deriv API</div>
+      <div class="login-opt" onclick="switchLoginOpt('csv',this)">MT5 Import</div>
+      <div class="login-opt" onclick="skipLogin()">View Only</div>
     </div>
 
     <!-- PANE A: Deriv API -->
     <div class="login-pane active" id="pane-api">
-      <p style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.7;">Live connection Â· Auto-syncs all trades in real time Â· Works with Deriv demo &amp; real accounts</p>
+      <p style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.7;">Live connection · Auto-syncs all trades in real time · Works with Deriv demo &amp; real accounts</p>
       <input type="password" class="token-input" id="tokenInput" placeholder="Paste your Deriv API token here...">
       <button class="connect-btn" id="connectBtn" onclick="connectDeriv()">Connect to Deriv</button>
-      <div class="spin-wrap" id="spinWrap"><span class="sdot">â—</span>&nbsp; Connecting to Deriv API...</div>
+      <div class="spin-wrap" id="spinWrap"><span class="sdot">●</span>&nbsp; Connecting to Deriv API...</div>
       <div class="login-error" id="loginErr"></div>
       <div id="wsStatus" style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px;display:none;"></div>
       <div class="login-note">
@@ -374,9 +374,9 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       <div style="margin-bottom:12px;">
         <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Who is this file from?</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="login-opt active" id="loginBrokerFTMO" onclick="setLoginBroker('FTMO',this)">ðŸ† FTMO</button>
-          <button class="login-opt" id="loginBrokerFIVE" onclick="setLoginBroker('The5ers',this)">5ï¸âƒ£ The5ers</button>
-          <button class="login-opt" id="loginBrokerOTHER" onclick="setLoginBroker('Other',this)">ðŸ“ˆ Other</button>
+          <button class="login-opt active" id="loginBrokerFTMO" onclick="setLoginBroker('FTMO',this)">FTMO</button>
+          <button class="login-opt" id="loginBrokerFIVE" onclick="setLoginBroker('The5ers',this)">The5ers</button>
+          <button class="login-opt" id="loginBrokerOTHER" onclick="setLoginBroker('Other',this)">Other</button>
         </div>
         <div id="loginOtherWrap" style="display:none;margin-top:8px;">
           <input type="text" class="token-input" id="loginOtherName" style="margin-bottom:0;font-size:11px;"
@@ -390,7 +390,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
         ondragleave="this.classList.remove('dragover')"
         ondrop="handleLoginCsvDrop(event)">
         <input type="file" id="loginCsvFile" accept=".csv,.htm,.html,.pdf" onchange="handleLoginCsvFile(this.files[0])">
-        <div class="csv-icon">ðŸ“Š</div>
+        <div class="csv-icon"></div>
         <div class="csv-drop-text">
           <strong>Click to select</strong> or drag &amp; drop your MT5 export<br>
           Supports <strong>.CSV</strong>, <strong>.HTM</strong> and <strong>.PDF</strong> files
@@ -398,25 +398,25 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       </div>
       <div class="login-note" style="margin-top:8px;">
         <strong style="color:var(--text);">How to export from MT5:</strong><br>
-        History tab â†’ Right-click â†’ <strong>Save as Report</strong> (.htm/.html)
+        History tab > Right-click > <strong>Save as Report</strong> (.htm/.html)
       </div>
-      <button class="connect-btn" style="margin-top:12px;background:var(--blue);color:#fff;" onclick="skipLogin()">Continue to Dashboard â†’</button>
+      <button class="connect-btn" style="margin-top:12px;background:var(--blue);color:#fff;" onclick="skipLogin()">Continue to Dashboard →</button>
     </div>
   </div>
 </div>
 
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <button class="lightbox-close" onclick="closeLightbox()">âœ•</button>
-  <button class="lightbox-nav prev" onclick="event.stopPropagation();lbNav(-1)">â€¹</button>
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button class="lightbox-nav prev" onclick="event.stopPropagation();lbNav(-1)">‹</button>
   <img id="lbImg" src="" alt="Chart">
-  <button class="lightbox-nav next" onclick="event.stopPropagation();lbNav(1)">â€º</button>
+  <button class="lightbox-nav next" onclick="event.stopPropagation();lbNav(1)">›</button>
   <div class="lightbox-caption" id="lbCaption"></div>
 </div>
 
 <div class="modal-overlay" id="tradeModal">
   <div class="modal">
-    <button class="mcls" onclick="closeModal('tradeModal')">âœ•</button>
+    <button class="mcls" onclick="closeModal('tradeModal')">✕</button>
     <h2 id="modalTitle"></h2>
     <div id="modalBody"></div>
   </div>
@@ -424,7 +424,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 
 <div class="modal-overlay" id="journalModal">
   <div class="modal" style="max-width:560px;">
-    <button class="mcls" onclick="closeModal('journalModal')">âœ•</button>
+    <button class="mcls" onclick="closeModal('journalModal')">✕</button>
     <h2 id="jModalTitle">Journal Entry</h2>
     <div id="jModalBody"></div>
   </div>
@@ -438,15 +438,15 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       <div class="header-sub" id="hSub"><span class="ldot"></span>Loading...</div>
     </div>
     <div class="hright">
-      <div class="bal-chip"><div class="bal-l">BALANCE</div><div class="bal-v" id="liveBal">â€”</div></div>
-      <span class="import-badge" id="importBadge" style="display:none" onclick="showImportPanel()">ðŸ“‚ <span id="importBadgeText">MT5 Import</span></span>
-      <button class="sync-btn" id="mfxSyncBtn" onclick="mfxSyncNow()" style="display:none">âŸ³ Sync</button>
+      <div class="bal-chip"><div class="bal-l">BALANCE</div><div class="bal-v" id="liveBal">—</div></div>
+      <span class="import-badge" id="importBadge" style="display:none" onclick="showImportPanel()"><span id="importBadgeText">MT5 Import</span></span>
+      <button class="sync-btn" id="mfxSyncBtn" onclick="mfxSyncNow()" style="display:none">Sync</button>
       <button class="help-btn" onclick="openHelp()">? Help</button>
       <button class="disc-btn" onclick="disconnect()">Disconnect</button>
     </div>
   </div>
 </div>
-<div class="conn-bar offline" id="connBar">â— Disconnected</div>
+<div class="conn-bar offline" id="connBar">● Disconnected</div>
 
 <!-- ACCOUNT SWITCHER BAR -->
 <div class="acct-bar" id="acctBar">
@@ -497,19 +497,19 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
   <!-- MYFXBOOK SYNC PANEL -->
   <div class="mfx-panel" id="mfxPanel">
     <div class="mfx-title">
-      <span>ðŸ”„ Myfxbook Live Sync</span>
+      <span>Myfxbook Live Sync</span>
       <div class="mfx-status">
         <div class="mfx-dot" id="mfxDot"></div>
         <span id="mfxStatusText" style="color:var(--muted);">Not connected</span>
       </div>
     </div>
 
-    <!-- Login form â€” shown when not connected -->
+    <!-- Login form — shown when not connected -->
     <div id="mfxLoginForm">
 
       <!-- Step 1: Proxy URL (required) -->
       <div style="background:rgba(240,180,41,0.06);border:1px solid rgba(240,180,41,0.2);border-radius:8px;padding:12px;margin-bottom:12px;">
-        <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:6px;">âš¡ Step 1 â€” Enter your Proxy URL</div>
+        <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:6px;">Step 1 — Enter your Proxy URL</div>
         <div style="font-size:9px;color:var(--muted);margin-bottom:8px;line-height:1.7;">
           Deploy the free proxy (see instructions below), then paste the URL here.<br>
           Format: <span style="color:var(--text);">https://YOUR-SITE.netlify.app/.netlify/functions/mfxapi</span>
@@ -520,7 +520,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       </div>
 
       <!-- Step 2: Credentials -->
-      <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:8px;">âš¡ Step 2 â€” Enter Myfxbook credentials</div>
+      <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:8px;">Step 2 — Enter Myfxbook credentials</div>
       <div class="mfx-input-row">
         <div>
           <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Myfxbook Email</div>
@@ -528,7 +528,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
         </div>
         <div>
           <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Myfxbook Password</div>
-          <input type="password" class="mfx-input" id="mfxPassword" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+          <input type="password" class="mfx-input" id="mfxPassword" placeholder="••••••••">
         </div>
       </div>
       <div style="font-size:9px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
@@ -539,13 +539,13 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 
     <div class="mfx-status-bar" id="mfxStatusBar"></div>
 
-    <!-- Connected accounts â€” shown after login -->
+    <!-- Connected accounts — shown after login -->
     <div id="mfxAccountsWrap" style="display:none;">
       <div id="mfxAccountsList"></div>
       <div class="mfx-sync-info">
         <span id="mfxLastSync" style="color:var(--muted);">Never synced</span>
         <div style="display:flex;gap:8px;">
-          <button onclick="mfxSyncNow()" style="padding:4px 12px;background:rgba(240,180,41,0.1);border:1px solid rgba(240,180,41,0.25);border-radius:5px;color:var(--gold);font-size:10px;cursor:pointer;">âŸ³ Sync Now</button>
+          <button onclick="mfxSyncNow()" style="padding:4px 12px;background:rgba(240,180,41,0.1);border:1px solid rgba(240,180,41,0.25);border-radius:5px;color:var(--gold);font-size:10px;cursor:pointer;">Sync Now</button>
           <button onclick="mfxDisconnect()" style="padding:4px 12px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);border-radius:5px;color:var(--red);font-size:10px;cursor:pointer;">Disconnect</button>
         </div>
       </div>
@@ -635,7 +635,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
     <div class="chart-card"><div class="chart-title">WIN/LOSS COUNT</div><canvas id="wlChart"></canvas></div>
     <div class="chart-card"><div class="chart-title">P/L BY INSTRUMENT</div><canvas id="ipChart"></canvas></div>
   </div>
-  <div class="chart-card"><div class="chart-title">FULL EQUITY CURVE â€” ALL TIME</div><canvas id="feChart"></canvas></div>
+  <div class="chart-card"><div class="chart-title">FULL EQUITY CURVE — ALL TIME</div><canvas id="feChart"></canvas></div>
   <div class="chart-card"><div class="chart-title">TRADE DISTRIBUTION BY DAY</div><canvas id="dowChart"></canvas></div>
 </div>
 
@@ -647,17 +647,17 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 <!-- IMPORT PANEL -->
 <div id="importPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:150;align-items:center;justify-content:center;padding:16px;">
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;position:relative;">
-    <button onclick="hideImportPanel()" style="position:absolute;top:12px;right:12px;background:var(--surface2);border:none;color:var(--muted);cursor:pointer;border-radius:6px;padding:3px 9px;font-size:17px;">âœ•</button>
-    <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;">ðŸ“‚ MT5 Trade Import</div>
-    <p style="font-size:10px;color:var(--muted);margin-bottom:16px;line-height:1.7;">Import trades from <strong style="color:var(--gold);">FTMO</strong>, <strong style="color:var(--purple);">The5ers</strong>, or any MT5 broker. Imported trades merge with existing data â€” duplicates are skipped automatically.</p>
+    <button onclick="hideImportPanel()" style="position:absolute;top:12px;right:12px;background:var(--surface2);border:none;color:var(--muted);cursor:pointer;border-radius:6px;padding:3px 9px;font-size:17px;">✕</button>
+    <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;">MT5 Trade Import</div>
+    <p style="font-size:10px;color:var(--muted);margin-bottom:16px;line-height:1.7;">Import trades from <strong style="color:var(--gold);">FTMO</strong>, <strong style="color:var(--purple);">The5ers</strong>, or any MT5 broker. Imported trades merge with existing data — duplicates are skipped automatically.</p>
 
     <!-- Broker selector -->
     <div style="margin-bottom:14px;">
       <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Who is this file from?</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="login-opt active" id="brokerFTMO" onclick="selectBroker('FTMO',this)" style="flex:none;padding:7px 14px;">ðŸ† FTMO</button>
-        <button class="login-opt" id="brokerFIVE" onclick="selectBroker('The5ers',this)" style="flex:none;padding:7px 14px;">5ï¸âƒ£ The5ers</button>
-        <button class="login-opt" id="brokerOTHER" onclick="selectBroker('Other',this)" style="flex:none;padding:7px 14px;">ðŸ“ˆ Other Prop Firm</button>
+        <button class="login-opt active" id="brokerFTMO" onclick="selectBroker('FTMO',this)" style="flex:none;padding:7px 14px;">FTMO</button>
+        <button class="login-opt" id="brokerFIVE" onclick="selectBroker('The5ers',this)" style="flex:none;padding:7px 14px;">The5ers</button>
+        <button class="login-opt" id="brokerOTHER" onclick="selectBroker('Other',this)" style="flex:none;padding:7px 14px;">Other Prop Firm</button>
       </div>
       <div id="otherBrokerWrap" style="display:none;margin-top:8px;">
         <input type="text" id="otherBrokerName" class="token-input" style="margin-bottom:0;font-size:11px;"
@@ -673,7 +673,7 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       ondragleave="this.classList.remove('dragover')"
       ondrop="handlePanelCsvDrop(event)">
       <input type="file" id="panelCsvFile" accept=".csv,.htm,.html,.pdf" onchange="handlePanelCsvFile(this.files[0])">
-      <div class="csv-icon">ðŸ“Š</div>
+      <div class="csv-icon"></div>
       <div class="csv-drop-text"><strong>Click to select</strong> or drag &amp; drop<br>Supports <strong>.CSV</strong>, <strong>.HTM</strong> and <strong>.PDF</strong> MT5 exports</div>
     </div>
 
@@ -685,19 +685,19 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 
     <!-- How to export instructions -->
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:14px;font-size:10px;line-height:1.9;color:var(--muted);">
-      <div style="color:var(--text);font-weight:600;margin-bottom:6px;">ðŸ“‹ How to export from MT5</div>
-      <div><strong style="color:var(--text);">CSV:</strong> History tab â†’ Right-click any trade â†’ Export to Spreadsheet</div>
-      <div><strong style="color:var(--text);">HTM:</strong> History tab â†’ Right-click any trade â†’ Save as Report</div>
-      <div style="margin-top:6px;color:var(--gold);">âš¡ Tip: Set date range to "All History" before exporting to get all trades</div>
+      <div style="color:var(--text);font-weight:600;margin-bottom:6px;">How to export from MT5</div>
+      <div><strong style="color:var(--text);">CSV:</strong> History tab → Right-click any trade → Export to Spreadsheet</div>
+      <div><strong style="color:var(--text);">HTM:</strong> History tab → Right-click any trade → Save as Report</div>
+      <div style="margin-top:6px;color:var(--gold);">Tip: Set date range to "All History" before exporting to get all trades</div>
     </div>
   </div>
 </div>
 
 <script>
 // ============================================================
-// DATA â€” ALL TRADES (Jan + Feb + Mar)
+// DATA — ALL TRADES (Jan + Feb + Mar)
 // ============================================================
-const seed = []; // No built-in seed data â€” each user imports their own trades
+const seed = []; // No built-in seed data — each user imports their own trades
 
 // ============================================================
 // STATE
@@ -711,7 +711,7 @@ let importHistory=JSON.parse(localStorage.getItem('importHistory')||'[]');
 let selectedBroker='FTMO';
 let activeAcct='all'; // 'all' | 'hist' | 'live' | broker name e.g. 'FTMO' | 'The5ers'
 
-// â”€â”€ Myfxbook state â”€â”€
+// -- Myfxbook state ──
 let mfxSession   = localStorage.getItem('mfxSession') || null;
 let mfxEmail     = localStorage.getItem('mfxEmail')   || '';
 let mfxCookies   = localStorage.getItem('mfxCookies') || '';
@@ -719,9 +719,9 @@ let mfxAccounts  = JSON.parse(localStorage.getItem('mfxAccounts') || '[]');
 let mfxSyncTimer = null;
 let mfxSyncing   = false;
 const MFX_BASE   = 'https://www.myfxbook.com/api';
-// Netlify serverless proxy URL â€” update this after deploying your proxy
+// Netlify serverless proxy URL — update this after deploying your proxy
 // Deploy instructions: see the mfx-proxy.zip file
-// Pre-configured Netlify proxy â€” already deployed at this URL
+// Pre-configured Netlify proxy — already deployed at this URL
 const MFX_DEFAULT_PROXY = 'https://scintillating-zuccutto-9bf82f.netlify.app/.netlify/functions/mfxapi';
 let MFX_NETLIFY_PROXY = localStorage.getItem('mfxProxyUrl') || MFX_DEFAULT_PROXY;
 // Fallback CORS proxies (less reliable but work sometimes)
@@ -774,7 +774,7 @@ const fK=(n)=>(n>=0?'+$':'-$')+(Math.abs(n)>=1000?(Math.abs(n)/1000).toFixed(1)+
 function connectDeriv(){
   const t = document.getElementById('tokenInput').value.trim();
   if(!t){ showErr('Please enter your API token.'); return; }
-  // Basic token format check â€” Deriv tokens are ~15 chars alphanumeric
+  // Basic token format check — Deriv tokens are ~15 chars alphanumeric
   if(t.length < 10){
     showErr('Token looks too short. Copy the full token from Deriv.');
     return;
@@ -787,7 +787,7 @@ function connectDeriv(){
   console.log('Connecting with token length:', t.length);
   openWS(t);
 }
-function skipLogin(){document.getElementById('loginOverlay').style.display='none';document.getElementById('acctBadge').textContent='Historical Mode';document.getElementById('hSub').innerHTML='<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-right:5px;"></span>Historical data only';document.getElementById('liveBal').textContent='N/A';setConn(false,'Historical mode â€” no live connection');refreshAll();}
+function skipLogin(){document.getElementById('loginOverlay').style.display='none';document.getElementById('acctBadge').textContent='Historical Mode';document.getElementById('hSub').innerHTML='<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-right:5px;"></span>Historical data only';document.getElementById('liveBal').textContent='N/A';setConn(false,'Historical mode — no live connection');refreshAll();}
 function openWS(t){
   if(ws){try{ws.close();}catch(e){}}
   console.log('Opening WebSocket...');
@@ -798,9 +798,9 @@ function openWS(t){
     return;
   }
   ws.onopen = () => {
-    console.log('WS connected â€” authorizing...');
+    console.log('WS connected — authorizing...');
     const st = document.getElementById('wsStatus');
-    if(st){ st.style.display='block'; st.textContent='âœ“ Connected â€” verifying token...'; }
+    if(st){ st.style.display='block'; st.textContent='Connected — verifying token...'; }
     send({authorize: t});
   };
   ws.onmessage = e => {
@@ -814,7 +814,7 @@ function openWS(t){
     document.getElementById('spinWrap').style.display='none';
   };
   ws.onclose = (e) => {
-    console.log('WS closed â€” code:', e.code, 'reason:', e.reason);
+    console.log('WS closed — code:', e.code, 'reason:', e.reason);
     if(isConn){
       setConn(false);
       setTimeout(()=>{ if(tok) openWS(tok); }, 5000);
@@ -828,12 +828,12 @@ function handle(m){
     const msg  = m.error.message||'Unknown error';
     console.warn('Deriv WS error:', code, msg);
     if(code==='InvalidToken'||code==='AuthorizationRequired'){
-      showErr('Invalid token â€” please check and try again.');
+      showErr('Invalid token — please check and try again.');
       document.getElementById('connectBtn').disabled=false;
       document.getElementById('spinWrap').style.display='none';
       localStorage.removeItem('dtok');
     } else if(code==='RateLimit'){
-      console.warn('Rate limited â€” retrying in 3s');
+      console.warn('Rate limited — retrying in 3s');
       setTimeout(()=>{ if(tok) openWS(tok); }, 3000);
     } else {
       // Log other errors but don't break the connection
@@ -859,7 +859,7 @@ function onAuth(a){
   if(st) st.style.display='none';
   setConn(true);
   document.getElementById('acctBadge').textContent=a.is_virtual?'Demo Account':'Live Account';
-  document.getElementById('hSub').innerHTML=`<span class="ldot"></span>${a.email||'Connected'} Â· ${a.currency||'USD'}`;
+  document.getElementById('hSub').innerHTML=`<span class="ldot"></span>${a.email||'Connected'} · ${a.currency||'USD'}`;
   document.getElementById('liveBal').textContent=`${a.currency||'$'}${parseFloat(a.balance||0).toFixed(2)}`;
   send({balance:1,subscribe:1});
   fetchPT(0);
@@ -875,7 +875,7 @@ function onAuth(a){
   switchAcct('hist', document.getElementById('ab-hist'));
   // Show loading indicator
   const insightEl=document.getElementById('insightBox');
-  if(insightEl) insightEl.innerHTML='<span style="color:var(--gold)">âŸ³ Loading your Deriv trade history...</span>';
+  if(insightEl) insightEl.innerHTML='<span style="color:var(--gold)">Loading your Deriv trade history...</span>';
 }
 function onBal(b){document.getElementById('liveBal').textContent=`${acct.currency||'$'}${parseFloat(b.balance).toFixed(2)}`;}
 function fetchPT(off){
@@ -1003,12 +1003,12 @@ function renderOpenPos(){
   const el=document.getElementById('openPos');
   document.getElementById('opCnt').textContent=openPos.length?`(${openPos.length})`:'';
   if(!openPos.length){el.innerHTML='<div class="empty">No open positions</div>';return;}
-  el.innerHTML=openPos.map(p=>`<div class="op-item"><div><div style="font-weight:600">${p.name}</div><div style="font-size:10px;color:var(--muted)">${p.type} Â· ${p.dt}</div></div><div><div class="${p.pnl>=0?'pp':'pn'}" style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">${p.pnl>=0?'+':''}$${Math.abs(p.pnl).toFixed(2)}</div><div style="font-size:10px;color:var(--muted)">Cost: $${p.bp.toFixed(2)}</div></div></div>`).join('');
+  el.innerHTML=openPos.map(p=>`<div class="op-item"><div><div style="font-weight:600">${p.name}</div><div style="font-size:10px;color:var(--muted)">${p.type} · ${p.dt}</div></div><div><div class="${p.pnl>=0?'pp':'pn'}" style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">${p.pnl>=0?'+':''}$${Math.abs(p.pnl).toFixed(2)}</div><div style="font-size:10px;color:var(--muted)">Cost: $${p.bp.toFixed(2)}</div></div></div>`).join('');
 }
 function setConn(live,msg){
   const b=document.getElementById('connBar');
   b.className='conn-bar '+(live?'live':'offline');
-  b.textContent=msg||(live?'â— Live â€” Connected to Deriv API':'â— Disconnected â€” Reconnecting...');
+  b.textContent=msg||(live?'● Live — Connected to Deriv API':'● Disconnected — Reconnecting...');
 }
 function showErr(m){const e=document.getElementById('loginErr');e.textContent=m;e.style.display='block';document.getElementById('connectBtn').disabled=false;document.getElementById('spinWrap').style.display='none';}
 function disconnect(){isConn=false;if(ws)ws.close();if(ping)clearInterval(ping);liveTrades=[];openPos=[];localStorage.removeItem('dtok');tok=null;document.getElementById('loginOverlay').style.display='flex';document.getElementById('tokenInput').value='';document.getElementById('connectBtn').disabled=false;setConn(false);refreshAll();}
@@ -1033,7 +1033,7 @@ function getStartingBalance(){
     const bal = parseFloat(document.getElementById('liveBal')?.textContent?.replace(/[^0-9.]/g,'')||'0');
     return bal > 0 ? parseFloat((bal - totalPnl).toFixed(2)) : 10000;
   }
-  // For 'all' or 'hist' â€” use Deriv live trades or default
+  // For 'all' or 'hist' — use Deriv live trades or default
   if(liveTrades.length){
     const totalPnl = liveTrades.reduce((s,t)=>s+t.pnl,0);
     const bal = parseFloat(document.getElementById('liveBal')?.textContent?.replace(/[^0-9.]/g,'')||'0');
@@ -1050,7 +1050,7 @@ function buildEq(){
   s.forEach(t=>{c+=t.pnl;lb.push(t.date.slice(5));dt.push(parseFloat(c.toFixed(2)));});
   const acctLabels2={all:'All',hist:'Deriv',live:'Deriv Live'};
   const acctLbl=acctLabels2[activeAcct]||activeAcct;
-  document.getElementById('eqLbl').textContent=acctLbl+' Â· $'+dt[dt.length-1].toLocaleString();
+  document.getElementById('eqLbl').textContent=acctLbl+' · $'+dt[dt.length-1].toLocaleString();
   const ctx=document.getElementById('eqChart').getContext('2d');
   const g=ctx.createLinearGradient(0,0,0,230);g.addColorStop(0,'rgba(0,229,176,0.2)');g.addColorStop(1,'rgba(0,229,176,0)');
   ch['eq']=new Chart(ctx,{type:'line',data:{labels:lb,datasets:[{data:dt,borderColor:'#00e5b0',backgroundColor:g,borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,tension:0.3}]},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1117',borderColor:'#1c2032',borderWidth:1,callbacks:{label:c=>'Balance: $'+c.parsed.y.toLocaleString()}}},scales:{x:{ticks:{color:CD.c,font:{size:9},maxTicksLimit:8},grid:{color:CD.g}},y:{ticks:{color:CD.c,font:{size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:CD.g}}}}});
@@ -1116,7 +1116,7 @@ function renderKPIs(){
                   activeAcct==='hist' ? 'Deriv (Historical)' :
                   activeAcct==='live' ? 'Deriv Live' : activeAcct+' Account';
 
-  // For prop firm accounts â€” show balance info
+  // For prop firm accounts — show balance info
   let balanceKpi = null;
   if(activeAcct !== 'all' && activeAcct !== 'hist' && activeAcct !== 'live'){
     const impTrades = importedTrades.filter(t=>t.broker===activeAcct);
@@ -1131,16 +1131,16 @@ function renderKPIs(){
   // Base KPIs
   const kpis = [
     {l:'Net P/L',      v:fK(s.tot),                    c:s.tot>=0?'g':'r', sub:acctSub},
-    {l:'Total Trades', v:s.n,                           c:'b',              sub:`${s.w}W Â· ${s.l}L`},
+    {l:'Total Trades', v:s.n,                           c:'b',              sub:`${s.w}W · ${s.l}L`},
     {l:'Win Rate',     v:s.wr.toFixed(1)+'%',           c:s.wr>=40?'g':'r', sub:`${s.w} wins of ${s.n}`},
-    {l:'Profit Factor',v:s.pf>=99?'âˆž':s.pf.toFixed(2), c:s.pf>=1.5?'g':'r',sub:'Target â‰¥ 1.5'},
+    {l:'Profit Factor',v:s.pf>=99?'∞':s.pf.toFixed(2), c:s.pf>=1.5?'g':'r',sub:'Target ≥ 1.5'},
     {l:'Avg RRR',      v:s.rrr.toFixed(2),              c:'o',              sub:'Risk:Reward'},
     {l:'Expectancy',   v:f$(s.exp,0),                   c:s.exp>=0?'g':'r', sub:'Per trade'},
     {l:'Best Trade',   v:'+$'+s.best.toFixed(0),        c:'g',              sub:'Largest win'},
     {l:'Worst Trade',  v:'-$'+Math.abs(s.worst).toFixed(0),c:'r',           sub:'Largest loss'},
   ];
 
-  // Monthly KPIs â€” show last 6 months dynamically
+  // Monthly KPIs — show last 6 months dynamically
   monthKeys.slice(-6).forEach(m=>{
     const ms = stats(months[m]);
     const label = new Date(m+'-01').toLocaleString('default',{month:'short',year:'2-digit'});
@@ -1171,22 +1171,22 @@ function renderTodayKPIs(){
   const s=stats(all().filter(t=>t.date===td));
   document.getElementById('todayKpis').innerHTML=[
     {l:"Today's P/L",v:fK(s.tot),c:s.tot>=0?'g':'r',sub:td},
-    {l:"Today's Trades",v:s.n,c:'b',sub:s.w+'W Â· '+s.l+'L'},
+    {l:"Today's Trades",v:s.n,c:'b',sub:s.w+'W · '+s.l+'L'},
     {l:"Today's Win%",v:s.wr.toFixed(0)+'%',c:s.wr>=40?'g':'r',sub:'Today only'},
     {l:"Best Today",v:'+$'+s.best.toFixed(0),c:'g',sub:'Biggest win today'},
   ].map(k=>`<div class="kpi ${k.c}"><div class="kpi-lbl">${k.l}</div><div class="kpi-val ${k.c}">${k.v}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
 }
 function updateInsight(){
   const s = stats(all());
-  // Dynamic label â€” handles any broker name
+  // Dynamic label — handles any broker name
   const builtIn = {all:'All Accounts Combined', hist:'Deriv', live:'Deriv Live'};
   const label   = builtIn[activeAcct] || activeAcct + ' Account';
   const ok = s.pf >= 1.5;
   const statusColor = ok ? 'var(--green)' : 'var(--red)';
-  const statusTxt   = ok ? 'âœ… PASSING' : 'âš ï¸ BELOW TARGET';
+  const statusTxt   = ok ? 'PASSING' : 'Warning: BELOW TARGET';
   if(!s.n){
     document.getElementById('insightBox').innerHTML=`
-      <strong>ðŸ‘‹ Welcome to your Trading Dashboard!</strong>
+      <strong>Welcome to your Trading Dashboard!</strong>
       No trades loaded yet. Connect your <strong style="color:var(--green);">Deriv API</strong> for live trades,
       or import an <strong style="color:var(--gold);">MT5 report file</strong> from FTMO, The5ers, or any prop firm.
       Click <strong>? Help</strong> in the top right for a full guide.
@@ -1194,11 +1194,11 @@ function updateInsight(){
     return;
   }
   document.getElementById('insightBox').innerHTML=`
-    <strong>âš¡ ${label} â€” ${statusTxt}</strong>
-    Net P/L: <strong style="color:${s.tot>=0?'var(--green)':'var(--red)'}">${f$(s.tot,0)}</strong> Â·
-    Profit Factor: <strong style="color:${statusColor}">${s.pf>=99?'âˆž':s.pf.toFixed(2)}</strong> Â·
-    Win Rate: <strong>${s.wr.toFixed(1)}%</strong> Â·
-    RRR: <strong>${s.rrr.toFixed(2)}</strong> Â·
+    <strong>${label} — ${statusTxt}</strong>
+    Net P/L: <strong style="color:${s.tot>=0?'var(--green)':'var(--red)'}">${f$(s.tot,0)}</strong> ·
+    Profit Factor: <strong style="color:${statusColor}">${s.pf>=99?'∞':s.pf.toFixed(2)}</strong> ·
+    Win Rate: <strong>${s.wr.toFixed(1)}%</strong> ·
+    RRR: <strong>${s.rrr.toFixed(2)}</strong> ·
     Trades: <strong>${s.n}</strong>
     ${activeAcct==='all' && importedTrades.length ?
       `<br><span style="color:var(--muted);font-size:10px;">Showing combined performance across all connected accounts</span>` : ''}
@@ -1235,7 +1235,7 @@ function hasJournal(id){
 }
 function renderTable(){
   const d=filt();
-  document.getElementById('tCnt').textContent=d.length+' trades Â· P/L: '+fK(d.reduce((s,t)=>s+t.pnl,0));
+  document.getElementById('tCnt').textContent=d.length+' trades · P/L: '+fK(d.reduce((s,t)=>s+t.pnl,0));
   const lbl=document.getElementById('acctLabel');
   if(lbl){const labels={all:'All Accounts',hist:'Deriv Historical',live:'Deriv Live'};
     lbl.textContent=labels[activeAcct]||activeAcct;}
@@ -1243,12 +1243,12 @@ function renderTable(){
   if(!d.length){
     const noImports = !importedTrades.length && !liveTrades.length;
     const msg = noImports
-      ? 'ðŸ“‚ No trades yet â€” connect your Deriv API or import an MT5 file to get started'
+      ? '📂 No trades yet — connect your Deriv API or import an MT5 file to get started'
       : 'No trades match the current filter';
     tb.innerHTML=`<tr><td colspan="8"><div class="empty">${msg}</div></td></tr>`;
     return;
   }
-  tb.innerHTML=d.map(t=>`<tr class="${t.pnl>0?'wr':'lr'}" onclick="openTradeModal('${t.id}')"><td>${t.instrument}${t.src==='live'?'<span class="lbadge">LIVE</span>':''}${t.broker?`<span class="broker-tag ${t.broker==='FTMO'?'ftmo':t.broker==='The5ers'?'five':'mt5'}">${t.broker}</span>`:''}</td><td><span class="pill ${t.direction==='BUY'?'b':'s'}">${t.direction}</span></td><td>${t.lots}</td><td>${t.open?t.open.toLocaleString():'-'}</td><td>${t.close?t.close.toLocaleString():'-'}</td><td>${t.date.slice(5).replace('-','/')}</td><td class="${t.pnl>0?'pp':'pn'}">${t.pnl>0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</td><td><span class="jbadge" onclick="event.stopPropagation();openJournalForTrade('${t.id}')">${hasJournal(t.id)?'ðŸ“– View':'+ Log'}</span></td></tr>`).join('');
+  tb.innerHTML=d.map(t=>`<tr class="${t.pnl>0?'wr':'lr'}" onclick="openTradeModal('${t.id}')"><td>${t.instrument}${t.src==='live'?'<span class="lbadge">LIVE</span>':''}${t.broker?`<span class="broker-tag ${t.broker==='FTMO'?'ftmo':t.broker==='The5ers'?'five':'mt5'}">${t.broker}</span>`:''}</td><td><span class="pill ${t.direction==='BUY'?'b':'s'}">${t.direction}</span></td><td>${t.lots}</td><td>${t.open?t.open.toLocaleString():'-'}</td><td>${t.close?t.close.toLocaleString():'-'}</td><td>${t.date.slice(5).replace('-','/')}</td><td class="${t.pnl>0?'pp':'pn'}">${t.pnl>0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</td><td><span class="jbadge" onclick="event.stopPropagation();openJournalForTrade('${t.id}')">${hasJournal(t.id)?' View':'+ Log'}</span></td></tr>`).join('');
 }
 function setFilter(f,b){cFilter=f;document.querySelectorAll('.fbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderTable();}
 function setRange(r,b){cRange=r;document.querySelectorAll('.rbtn').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderTable();}
@@ -1258,7 +1258,7 @@ function srt(c){if(sCol===c)sDir=sDir==='asc'?'desc':'asc';else{sCol=c;sDir='des
 function openTradeModal(id){
   const t=all().find(x=>x.id==id);if(!t)return;
   const j=journalEntries.find(x=>x.tradeId===id);
-  document.getElementById('modalTitle').textContent=t.instrument+' Â· '+t.direction;
+  document.getElementById('modalTitle').textContent=t.instrument+' · '+t.direction;
   document.getElementById('modalBody').innerHTML=`
     <div class="mrow"><span class="mlbl">Date</span><span class="mval">${t.date}</span></div>
     <div class="mrow"><span class="mlbl">Direction</span><span class="mval" style="color:${t.direction==='BUY'?'var(--blue)':'var(--red)'}">${t.direction}</span></div>
@@ -1266,9 +1266,9 @@ function openTradeModal(id){
     <div class="mrow"><span class="mlbl">Open</span><span class="mval">${t.open?t.open.toLocaleString():'-'}</span></div>
     <div class="mrow"><span class="mlbl">Close</span><span class="mval">${t.close?t.close.toLocaleString():'-'}</span></div>
     <div class="mrow"><span class="mlbl">P/L</span><span class="mval" style="color:${t.pnl>0?'var(--green)':'var(--red)'}">${t.pnl>0?'+':''}$${Math.abs(t.pnl).toFixed(2)}</span></div>
-    <div class="mrow"><span class="mlbl">Result</span><span class="mval" style="color:${t.pnl>0?'var(--green)':'var(--red)'}">${t.pnl>0?'âœ… WIN':'âŒ LOSS'}</span></div>
+    <div class="mrow"><span class="mlbl">Result</span><span class="mval" style="color:${t.pnl>0?'var(--green)':'var(--red)'}">${t.pnl>0?'WIN':'Error: LOSS'}</span></div>
     ${j?`<div style="margin-top:12px;padding:10px;background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.15);border-radius:8px;font-size:11px;">
-      <div style="color:var(--purple);font-weight:600;margin-bottom:6px;">ðŸ“– Journal Note</div>
+      <div style="color:var(--purple);font-weight:600;margin-bottom:6px;"> Journal Note</div>
       <div style="color:var(--muted);margin-bottom:${j.images&&j.images.length?'8':'0'}px;">${j.reflection||j.setup||'(entry saved)'}</div>
       ${j.images&&j.images.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;">${j.images.map((img,i)=>`<img src="${img.data}" onclick="openLightbox(${JSON.stringify(j.images.map((x,k)=>({src:x.data,caption:'Chart '+(k+1)}))).replace(/"/g,"'")},${i})" style="width:80px;height:50px;object-fit:cover;border-radius:5px;border:1px solid var(--border);cursor:pointer;">`).join('')}</div>`:''}</div>`:''}
     <div style="margin-top:12px;"><button onclick="closeModal('tradeModal');openJournalForTrade('${t.id}')" style="padding:8px 16px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);border-radius:6px;color:var(--purple);font-size:11px;cursor:pointer;">${j?'Edit Journal Entry':'+ Add Journal Entry'}</button></div>
@@ -1308,7 +1308,7 @@ function showJournalForm(tradeId=null,existingId=null){
         <div>
           <div class="jf-label">Instrument</div>
           <select class="jf-select" id="jInstrument">
-            <option value="">â€” General â€”</option>
+            <option value="">— General —</option>
             ${['Volatility 10 Index','Volatility 25 Index','Volatility 50 Index','Volatility 75 Index','Volatility 100 Index'].map(i=>`<option value="${i}" ${(existing?.instrument===i||trade?.instrument===i)?'selected':''}>${i}</option>`).join('')}
           </select>
         </div>
@@ -1317,7 +1317,7 @@ function showJournalForm(tradeId=null,existingId=null){
         <div>
           <div class="jf-label">Direction</div>
           <select class="jf-select" id="jDirection">
-            <option value="">â€” Any â€”</option>
+            <option value="">— Any —</option>
             <option value="BUY" ${existing?.direction==='BUY'||trade?.direction==='BUY'?'selected':''}>BUY (Long)</option>
             <option value="SELL" ${existing?.direction==='SELL'||trade?.direction==='SELL'?'selected':''}>SELL (Short)</option>
           </select>
@@ -1325,9 +1325,9 @@ function showJournalForm(tradeId=null,existingId=null){
         <div>
           <div class="jf-label">Outcome</div>
           <select class="jf-select" id="jOutcome">
-            <option value="win" ${(existing?.outcome==='win')||(trade&&trade.pnl>0)?'selected':''}>âœ… Win</option>
-            <option value="loss" ${(existing?.outcome==='loss')||(trade&&trade.pnl<0)?'selected':''}>âŒ Loss</option>
-            <option value="breakeven" ${existing?.outcome==='breakeven'?'selected':''}>âž– Break Even</option>
+            <option value="win" ${(existing?.outcome==='win')||(trade&&trade.pnl>0)?'selected':''}>Win</option>
+            <option value="loss" ${(existing?.outcome==='loss')||(trade&&trade.pnl<0)?'selected':''}>Error: Loss</option>
+            <option value="breakeven" ${existing?.outcome==='breakeven'?'selected':''}>Break Even</option>
           </select>
         </div>
       </div>
@@ -1339,7 +1339,7 @@ function showJournalForm(tradeId=null,existingId=null){
         <div>
           <div class="jf-label">Session Quality</div>
           <div class="jf-stars" id="starRow">
-            ${[1,2,3,4,5].map(i=>`<span class="star ${selectedStars>=i?'active':''}" onclick="setStar(${i})">â˜…</span>`).join('')}
+            ${[1,2,3,4,5].map(i=>`<span class="star ${selectedStars>=i?'active':''}" onclick="setStar(${i})">★</span>`).join('')}
           </div>
         </div>
       </div>
@@ -1362,23 +1362,23 @@ function showJournalForm(tradeId=null,existingId=null){
       <div class="jf-full">
         <div class="jf-label">Emotional State</div>
         <div class="mood-selector" id="moodSelector">
-          ${['ðŸ˜¤ Frustrated','ðŸ˜° Anxious','ðŸ˜Ž Confident','ðŸ§Š Calm','ðŸŽ¯ Focused','ðŸ˜´ Tired','ðŸ¤‘ Greedy','ðŸ˜± FOMO','ðŸ’ª Disciplined'].map(m=>`<button class="mood-btn ${selectedMoods.includes(m)?'active':''}" onclick="toggleMood('${m}',this)">${m}</button>`).join('')}
+          ${['Frustrated','Anxious','Confident','Calm','Focused','Tired','Greedy','FOMO','Disciplined'].map(m=>`<button class="mood-btn ${selectedMoods.includes(m)?'active':''}" onclick="toggleMood('${m}',this)">${m}</button>`).join('')}
         </div>
       </div>
       <div class="jf-full">
-        <div class="jf-label">ðŸ“¸ Chart Screenshots</div>
+        <div class="jf-label">Chart Screenshots</div>
         <div class="img-upload-zone" id="imgDropZone"
           ondragover="event.preventDefault();this.classList.add('dragover')"
           ondragleave="this.classList.remove('dragover')"
           ondrop="handleImgDrop(event)">
           <input type="file" id="imgFileInput" accept="image/*" multiple onchange="handleImgFiles(this.files)">
-          <div class="img-upload-icon">ðŸ“Š</div>
+          <div class="img-upload-icon"></div>
           <div class="img-upload-text">
             <strong>Click to upload</strong> or drag & drop your chart screenshots<br>
-            PNG, JPG, WebP supported Â· Multiple images allowed
+            PNG, JPG, WebP supported · Multiple images allowed
           </div>
         </div>
-        <div class="paste-hint">ðŸ’¡ Tip: You can also <strong>paste</strong> a screenshot directly (Ctrl+V / Cmd+V)</div>
+        <div class="paste-hint">Tip: You can also <strong>paste</strong> a screenshot directly (Ctrl+V / Cmd+V)</div>
         <div class="img-previews" id="imgPreviews"></div>
       </div>
       <div>
@@ -1423,7 +1423,7 @@ function saveJournalEntry(){
     moods: [...selectedMoods],
     images: [...selectedImages],
     savedAt: new Date().toISOString(),
-    // Tag with current active account â€” journal is account-specific
+    // Tag with current active account — journal is account-specific
     account: activeAcct,
   };
   if(editingJournalId){const i=journalEntries.findIndex(j=>j.id===editingJournalId);if(i>=0)journalEntries[i]=entry;}
@@ -1496,7 +1496,7 @@ function renderImgPreviews(){
   el.innerHTML=selectedImages.map((img,i)=>`
     <div class="img-preview-wrap">
       <img src="${img.data}" alt="${img.name}" onclick="openLightboxFromPreviews(${i})">
-      <button class="img-del" data-action="removeimg" data-id="${i}">âœ•</button>
+      <button class="img-del" data-action="removeimg" data-id="${i}">✕</button>
       <div class="img-label">Chart ${i+1}</div>
     </div>`).join('');
 }
@@ -1519,7 +1519,7 @@ function openLightbox(images,idx){
 function showLightbox(){
   if(!lbImages.length)return;
   document.getElementById('lbImg').src=lbImages[lbIndex].src;
-  document.getElementById('lbCaption').textContent=`${lbIndex+1} / ${lbImages.length}${lbImages[lbIndex].caption?' Â· '+lbImages[lbIndex].caption:''}`;
+  document.getElementById('lbCaption').textContent=`${lbIndex+1} / ${lbImages.length}${lbImages[lbIndex].caption?' · '+lbImages[lbIndex].caption:''}`;
   document.getElementById('lightbox').classList.add('open');
   // Show/hide nav
   document.querySelector('.lightbox-nav.prev').style.display=lbImages.length>1?'block':'none';
@@ -1565,7 +1565,7 @@ function showAutoJournalPrompt(tx){
   const toast=document.createElement('div');
   toast.style.cssText='position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid rgba(167,139,250,0.3);border-radius:10px;padding:12px 16px;z-index:300;font-size:11px;max-width:280px;box-shadow:0 4px 20px rgba(0,0,0,0.4);';
   const pnl=parseFloat(tx.amount||0);
-  toast.innerHTML=`<div style="color:var(--purple);font-weight:700;margin-bottom:6px;">ðŸ“– Log this trade?</div><div style="color:var(--muted);margin-bottom:10px;">${tx.display_name||'Trade'} Â· <span style="color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}$${Math.abs(pnl).toFixed(2)}</span></div><button onclick="quickJournal('${tx.transaction_id}');this.parentElement.remove();" style="padding:5px 12px;background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.3);border-radius:5px;color:var(--purple);font-size:10px;cursor:pointer;margin-right:6px;">Add Note</button><button onclick="this.parentElement.remove()" style="padding:5px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:10px;cursor:pointer;">Skip</button>`;
+  toast.innerHTML=`<div style="color:var(--purple);font-weight:700;margin-bottom:6px;"> Log this trade?</div><div style="color:var(--muted);margin-bottom:10px;">${tx.display_name||'Trade'} · <span style="color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}$${Math.abs(pnl).toFixed(2)}</span></div><button onclick="quickJournal('${tx.transaction_id}');this.parentElement.remove();" style="padding:5px 12px;background:rgba(167,139,250,0.15);border:1px solid rgba(167,139,250,0.3);border-radius:5px;color:var(--purple);font-size:10px;cursor:pointer;margin-right:6px;">Add Note</button><button onclick="this.parentElement.remove()" style="padding:5px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:10px;cursor:pointer;">Skip</button>`;
   document.body.appendChild(toast);
   setTimeout(()=>{if(toast.parentElement)toast.remove();},8000);
 }
@@ -1603,7 +1603,7 @@ function renderJournalStats(){
   el.innerHTML=[
     {v:aj.length,     l:acctLbl+' Entries'},
     {v:wins.length,   l:'Winning Entries'},
-    {v:'â˜…'.repeat(Math.round(avgRating))+'â˜†'.repeat(5-Math.round(avgRating)),l:'Avg Quality'},
+    {v:'★'.repeat(Math.round(avgRating))+'☆'.repeat(5-Math.round(avgRating)),l:'Avg Quality'},
     {v:hasMistake,    l:'Mistakes Logged'},
   ].map(s=>`<div class="j-stat"><div class="j-stat-v">${s.v}</div><div class="j-stat-l">${s.l}</div></div>`).join('');
 }
@@ -1644,29 +1644,29 @@ function renderJournal(){
     <div class="j-entry">
       <div class="j-entry-header">
         <div>
-          <div class="j-entry-title">${j.instrument||'General Entry'} ${j.direction?'Â· '+j.direction:''}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:3px;">${j.date} ${j.rating?'<span class="j-stars-display">'+'â˜…'.repeat(j.rating)+'â˜†'.repeat(5-j.rating)+'</span>':''}</div>
+          <div class="j-entry-title">${j.instrument||'General Entry'} ${j.direction?'· '+j.direction:''}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;">${j.date} ${j.rating?'<span class="j-stars-display">'+'★'.repeat(j.rating)+'☆'.repeat(5-j.rating)+'</span>':''}</div>
         </div>
         <div class="j-entry-meta">
-          ${j.outcome?`<span class="j-tag ${j.outcome}">${j.outcome==='win'?'âœ… WIN':j.outcome==='loss'?'âŒ LOSS':'âž– BE'}</span>`:''}
+          ${j.outcome?`<span class="j-tag ${j.outcome}">${j.outcome==='win'?'WIN':j.outcome==='loss'?'Error: LOSS':'BE'}</span>`:''}
           ${j.pnl?`<span class="j-pnl ${j.pnl>0?'pp':'pn'}">${j.pnl>0?'+':''}$${Math.abs(j.pnl).toFixed(2)}</span>`:''}
         </div>
       </div>
       ${j.setup?`<div class="j-section"><div class="j-section-title">Setup</div><div class="j-section-body">${j.setup}</div></div>`:''}
       ${j.reflection?`<div class="j-section"><div class="j-section-title">Reflection</div><div class="j-section-body">${j.reflection}</div></div>`:''}
-      ${j.mistake?`<div class="j-section"><div class="j-section-title" style="color:var(--red);">âš ï¸ Mistake</div><div class="j-section-body" style="color:rgba(255,77,106,0.8);">${j.mistake}</div></div>`:''}
-      ${j.lesson?`<div class="j-section"><div class="j-section-title" style="color:var(--gold);">ðŸ’¡ Lesson</div><div class="j-section-body" style="color:rgba(240,180,41,0.9);">${j.lesson}</div></div>`:''}
+      ${j.mistake?`<div class="j-section"><div class="j-section-title" style="color:var(--red);">Warning: Mistake</div><div class="j-section-body" style="color:rgba(255,77,106,0.8);">${j.mistake}</div></div>`:''}
+      ${j.lesson?`<div class="j-section"><div class="j-section-title" style="color:var(--gold);">Lesson</div><div class="j-section-body" style="color:rgba(240,180,41,0.9);">${j.lesson}</div></div>`:''}
       ${j.moods&&j.moods.length?`<div class="j-emotions">${j.moods.map(m=>`<span class="j-emotion">${m}</span>`).join('')}</div>`:''}
       ${j.images&&j.images.length?`
         <div class="j-section">
-          <div class="j-section-title">ðŸ“¸ Chart Screenshots (${j.images.length})</div>
+          <div class="j-section-title">Chart Screenshots (${j.images.length})</div>
           <div class="j-charts-grid">
-            ${j.images.map((img,i)=>`<img class="j-chart-img" src="${img.data}" alt="Chart ${i+1}" onclick="openLightbox(${JSON.stringify(j.images.map((x,k)=>({src:x.data,caption:'Chart '+(k+1)+' Â· '+j.instrument}))).replace(/"/g,'&quot;')},${i})">`).join('')}
+            ${j.images.map((img,i)=>`<img class="j-chart-img" src="${img.data}" alt="Chart ${i+1}" onclick="openLightbox(${JSON.stringify(j.images.map((x,k)=>({src:x.data,caption:'Chart '+(k+1)+' · '+j.instrument}))).replace(/"/g,'&quot;')},${i})">`).join('')}
           </div>
         </div>`:''}
       <div class="j-actions">
-        <button class="j-edit-btn" data-action="edit" data-id="${j.id}">âœï¸ Edit</button>
-        <button class="j-del-btn" data-action="delete" data-id="${j.id}">ðŸ—‘ Delete</button>
+        <button class="j-edit-btn" data-action="edit" data-id="${j.id}">Edit</button>
+        <button class="j-del-btn" data-action="delete" data-id="${j.id}">Delete</button>
       </div>
     </div>`).join('');
 }
@@ -1685,7 +1685,7 @@ function buildCal(){
     days.forEach(d=>{html+=`<div class="cl">${d}</div>`;});
     const first=new Date(y,mo-1,1).getDay(),total=new Date(y,mo,0).getDate();
     for(let i=0;i<first;i++)html+=`<div class="cd empty-d"></div>`;
-    for(let d=1;d<=total;d++){const ds=`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const pnl=m[ds];const jd=activeJournals().find(j=>j.date===ds);const cl=pnl===undefined?'':(pnl>0?'profit':'loss');html+=`<div class="cd ${cl}" title="${ds}${pnl!==undefined?' Â· '+(pnl>0?'+':'')+'$'+Math.abs(pnl).toFixed(0):''}"><div class="cdn">${d}${jd?'ðŸ“–':''}</div>${pnl!==undefined?`<div class="cdp" style="color:${pnl>0?'var(--green)':'var(--red)'}">${pnl>0?'+':''}$${Math.abs(pnl).toFixed(0)}</div>`:''}</div>`;}
+    for(let d=1;d<=total;d++){const ds=`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const pnl=m[ds];const jd=activeJournals().find(j=>j.date===ds);const cl=pnl===undefined?'':(pnl>0?'profit':'loss');html+=`<div class="cd ${cl}" title="${ds}${pnl!==undefined?' · '+(pnl>0?'+':'')+'$'+Math.abs(pnl).toFixed(0):''}"><div class="cdn">${d}${jd?'':''}</div>${pnl!==undefined?`<div class="cdp" style="color:${pnl>0?'var(--green)':'var(--red)'}">${pnl>0?'+':''}$${Math.abs(pnl).toFixed(0)}</div>`:''}</div>`;}
     html+=`</div></div>`;
   });
   document.getElementById('calWrap').innerHTML=html;
@@ -1736,7 +1736,7 @@ function parseMT5File(text, broker){
 }
 
 // ============================================================
-// PDF PARSER â€” reads MT5 account statement PDFs
+// PDF PARSER — reads MT5 account statement PDFs
 // Handles both trade-history PDFs and summary-only PDFs
 // ============================================================
 async function parsePDF(file, broker){
@@ -1786,7 +1786,7 @@ function parsePDFLines(lines, broker){
   const numRe = /^-?[\d\s]+\.\d{2}$/;
 
   // Look for lines with trade data patterns
-  // MT5 uses a specific column order â€” detect it by finding lines with:
+  // MT5 uses a specific column order — detect it by finding lines with:
   // a ticket number + date + buy/sell + lots + symbol + prices + profit
   for(let i = 0; i < lines.length; i++){
     const line = lines[i];
@@ -1852,7 +1852,7 @@ function tryParseTradeLine(line, lines, idx, broker){
 
 function parsePDFGrouped(lines, broker){
   // Fallback: try to find trade sections by looking for buy/sell keywords
-  // near dates and numbers â€” useful for summary-style PDFs
+  // near dates and numbers — useful for summary-style PDFs
   const trades = [];
   const typeWords = ['buy','sell','buy limit','sell limit','buy stop','sell stop'];
 
@@ -1954,7 +1954,7 @@ function parseMT5HTM(text, broker){
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'text/html');
 
-  // ALWAYS auto-detect broker from file content â€” file never lies
+  // ALWAYS auto-detect broker from file content — file never lies
   const bodyText = doc.body ? doc.body.textContent : '';
   // Detect in order of specificity
   if(bodyText.includes('Five Percent') || bodyText.includes('FivePercent') ||
@@ -2074,7 +2074,7 @@ function parseMT5HTM(text, broker){
         pnl        = parseFloat((profitRaw + commission + swap).toFixed(2));
       }
 
-      // Validate â€” lots and open price must be positive numbers
+      // Validate — lots and open price must be positive numbers
       if(!lots || lots <= 0) return;
 
       const dateStr = parseDate(openTime);
@@ -2125,7 +2125,7 @@ function symToIdx(sym){
   if(s.includes('R_50')||s.includes('1HZ50')||s.includes('VOL50')||s==='V50') return 'V50';
   if(s.includes('R_75')||s.includes('1HZ75')||s.includes('VOL75')||s==='V75') return 'V75';
   if(s.includes('R_100')||s.includes('1HZ100')||s.includes('VOL100')||s==='V100') return 'V100';
-  // Forex & crypto â€” return symbol itself as category
+  // Forex & crypto — return symbol itself as category
   if(s.length===6 && /^[A-Z]+$/.test(s)) return s; // EURUSD, USDJPY etc.
   if(s.includes('BTC')||s.includes('ETH')||s.includes('XAU')||s.includes('XAG')) return s.slice(0,6);
   return s.slice(0,6)||'OTHER';
@@ -2199,7 +2199,7 @@ function processImport(text, broker, statusId, fromLogin){
     const parsed = parseMT5File(text, broker);
     if(!parsed.length){
       statusEl.className='import-status err';
-      statusEl.textContent='âŒ No trades found. Make sure you exported from History tab in MT5.';
+      statusEl.textContent='Error: No trades found. Make sure you exported from History tab in MT5.';
       return;
     }
 
@@ -2231,10 +2231,10 @@ function processImport(text, broker, statusId, fromLogin){
       return parseFloat((acctBal-totalP).toFixed(2));
     })() : null;
     const balStr = acctBal
-      ? ` Â· Start: $${startBal?.toLocaleString()} â†’ Balance: $${acctBal.toLocaleString()}`
+      ? ` · Start: $${startBal?.toLocaleString()} → Balance: $${acctBal.toLocaleString()}`
       : '';
     statusEl.className='import-status ok';
-    statusEl.innerHTML=`âœ… <strong>${detectedBroker}</strong> detected Â· ${newTrades.length} trades imported${balStr}${dupes?' Â· '+dupes+' skipped':''}`;
+    statusEl.innerHTML=`<strong>${detectedBroker}</strong> detected · ${newTrades.length} trades imported${balStr}${dupes?' · '+dupes+' skipped':''}`;
 
     // Update badge
     updateImportBadge();
@@ -2246,7 +2246,7 @@ function processImport(text, broker, statusId, fromLogin){
     }
   } catch(err) {
     statusEl.className='import-status err';
-    statusEl.textContent='âŒ Parse error: '+err.message;
+    statusEl.textContent='Error: Parse error: '+err.message;
   }
 }
 
@@ -2254,29 +2254,29 @@ async function processPDFImport(file, broker, statusId, fromLogin){
   const statusEl = document.getElementById(statusId);
   statusEl.style.display = 'block';
   statusEl.className = 'import-status';
-  statusEl.textContent = 'â³ Reading PDF... (this may take a moment)';
+  statusEl.textContent = 'Reading PDF... (this may take a moment)';
 
   try {
     const result = await parsePDF(file, broker);
     const { trades: parsed, lines, pageCount } = result;
 
     if(!parsed.length){
-      // Summary-only PDF detected â€” show helpful message
+      // Summary-only PDF detected — show helpful message
       const hasSummaryData = lines.some(l =>
         l.includes('Gross Profit') || l.includes('Balance') || l.includes('Growth')
       );
       if(hasSummaryData){
         statusEl.className = 'import-status err';
         statusEl.innerHTML = `
-          <strong>ðŸ“Š Summary Report Detected</strong><br>
-          This PDF (${pageCount} page${pageCount>1?'s':''}) contains account statistics only â€” no individual trade rows were found.<br><br>
+          <strong> Summary Report Detected</strong><br>
+          This PDF (${pageCount} page${pageCount>1?'s':''}) contains account statistics only — no individual trade rows were found.<br><br>
           <strong>To get your trade history:</strong><br>
-          In MT5 â†’ History tab â†’ Right-click â†’ <strong>Save as Report</strong> (choose "Detailed" if available)<br>
-          Or Right-click â†’ <strong>Export to Spreadsheet</strong> for a CSV file with all trades.
+          In MT5 → History tab > Right-click > <strong>Save as Report</strong> (choose "Detailed" if available)<br>
+          Or Right-click → <strong>Export to Spreadsheet</strong> for a CSV file with all trades.
         `;
       } else {
         statusEl.className = 'import-status err';
-        statusEl.textContent = 'âŒ No trades found in this PDF. Try exporting as CSV or HTM from MT5 History tab.';
+        statusEl.textContent = 'Error: No trades found in this PDF. Try exporting as CSV or HTM from MT5 History tab.';
       }
       return;
     }
@@ -2302,7 +2302,7 @@ async function processPDFImport(file, broker, statusId, fromLogin){
     localStorage.setItem('importHistory', JSON.stringify(importHistory));
 
     statusEl.className = 'import-status ok';
-    statusEl.textContent = `âœ… Imported ${newTrades.length} trades from PDF (${broker})${dupes ? ' Â· ' + dupes + ' duplicates skipped' : ''}`;
+    statusEl.textContent = `Imported ${newTrades.length} trades from PDF (${broker})${dupes ? ' · ' + dupes + ' duplicates skipped' : ''}`;
 
     updateImportBadge();
     renderImportHistory();
@@ -2312,7 +2312,7 @@ async function processPDFImport(file, broker, statusId, fromLogin){
 
   } catch(err) {
     statusEl.className = 'import-status err';
-    statusEl.textContent = 'âŒ PDF error: ' + err.message + '. Try CSV or HTM export instead.';
+    statusEl.textContent = 'Error: PDF error: ' + err.message + '. Try CSV or HTM export instead.';
     console.error('PDF parse error:', err);
   }
 }
@@ -2323,7 +2323,7 @@ function updateImportBadge(){
   if(importedTrades.length > 0){
     badge.style.display='inline-flex';
     const brokers = [...new Set(importedTrades.map(t=>t.broker).filter(Boolean))];
-    txt.textContent = brokers.join(' + ') + ' Â· ' + importedTrades.length + ' trades';
+    txt.textContent = brokers.join(' + ') + ' · ' + importedTrades.length + ' trades';
   } else {
     badge.style.display='none';
   }
@@ -2378,7 +2378,7 @@ function renderImportHistory(){
         <span style="margin-left:6px;color:var(--text);">${h.added} trades added</span>
         <span style="color:var(--muted);margin-left:6px;">${h.date}</span>
       </div>
-      <button class="import-item-del" data-action="delimport" data-id="${h.id}">âœ•</button>
+      <button class="import-item-del" data-action="delimport" data-id="${h.id}">✕</button>
     </div>`).join('');
 }
 
@@ -2438,14 +2438,14 @@ function renderAcctBar(){
     liveBtn.style.display='none';
   }
 
-  // --- Imported brokers â€” one button per unique broker ---
+  // --- Imported brokers — one button per unique broker ---
   const brokers = [...new Set(importedTrades.map(t=>t.broker).filter(Boolean))];
   const impDiv     = document.getElementById('importAcctBtns');
   const impDivider = document.getElementById('imp-divider');
 
   if(brokers.length > 0){
     impDivider.style.display='block';
-    // Color map â€” easily extendable
+    // Color map — easily extendable
     const brokerColors = {
       FTMO:      'var(--gold)',
       The5ers:   'var(--purple)',
@@ -2462,7 +2462,7 @@ function renderAcctBar(){
       const isActive = activeAcct===b;
       // Get account balance from first trade that has it
       const acctBal = bTrades.find(t=>t.accountBalance)?.accountBalance;
-      const balStr  = acctBal ? ` Â· $${acctBal.toLocaleString()}` : '';
+      const balStr  = acctBal ? ` · $${acctBal.toLocaleString()}` : '';
       return `<button class="acct-btn ${isActive?'active':''}"
         data-broker="${b}"
         onclick="switchAcct('${b}',this)"
@@ -2507,7 +2507,7 @@ function renderAcctBar(){
 // MYFXBOOK SYNC SYSTEM
 // ============================================================
 
-// â”€â”€ Netlify proxy call (most reliable â€” same IP for all calls) â”€â”€
+// -- Netlify proxy call (most reliable — same IP for all calls) ──
 async function mfxNetlifyCall(action, params={}){
   const proxyUrl = MFX_NETLIFY_PROXY;
   if(!proxyUrl) throw new Error('No proxy configured');
@@ -2524,7 +2524,7 @@ async function mfxNetlifyCall(action, params={}){
   return data;
 }
 
-// â”€â”€ Direct CORS proxy call (fallback) â”€â”€
+// -- Direct CORS proxy call (fallback) ──
 async function mfxProxyCall(targetUrl){
   const proxies = [
     u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
@@ -2546,10 +2546,10 @@ async function mfxProxyCall(targetUrl){
       return parsed;
     } catch(e){ lastErr=e; }
   }
-  throw new Error('All proxies failed â€” ' + (lastErr?.message||'network error'));
+  throw new Error('All proxies failed — ' + (lastErr?.message||'network error'));
 }
 
-// â”€â”€ Main API call â€” uses Netlify proxy if configured, falls back to CORS proxies â”€â”€
+// -- Main API call — uses Netlify proxy if configured, falls back to CORS proxies ──
 async function mfxCall(endpoint, params={}){
   const action = endpoint.replace('/','').replace('.json','').replace('get-','');
 
@@ -2588,15 +2588,15 @@ async function mfxConnect(){
   const btn = document.getElementById('mfxConnectBtn');
   btn.disabled = true;
   btn.textContent = 'Connecting...';
-  mfxShowStatus('<span class="spin">âŸ³</span> Connecting to Myfxbook...','info');
+  mfxShowStatus('Connecting to Myfxbook...','info');
 
   try {
-    // Use combined loginandaccounts action â€” login + get accounts in ONE server call
+    // Use combined loginandaccounts action — login + get accounts in ONE server call
     // This avoids the session IP mismatch issue entirely
     const data = await mfxNetlifyCall('loginandaccounts', {email, password: pass});
 
     if(!data.session){
-      throw new Error(data.message || 'Login failed â€” check your email and password');
+      throw new Error(data.message || 'Login failed — check your email and password');
     }
 
     mfxSession = data.session;
@@ -2611,7 +2611,7 @@ async function mfxConnect(){
 
     // If empty, fall back to known pre-configured accounts
     if(!mfxAccounts.length){
-      console.log('No accounts from API â€” using pre-configured known accounts');
+      console.log('No accounts from API — using pre-configured known accounts');
       mfxAccounts = MFX_KNOWN.map(k => ({
         id: k.id,
         name: k.name,
@@ -2631,7 +2631,7 @@ async function mfxConnect(){
 
     mfxSetDot('connected');
     mfxRenderAccounts();
-    mfxShowStatus('âœ… Connected! Syncing trade history...','ok');
+    mfxShowStatus('Connected! Syncing trade history...','ok');
     await mfxSyncHistory();
     // Start auto-sync every 10 minutes
     if(mfxSyncTimer) clearInterval(mfxSyncTimer);
@@ -2645,11 +2645,11 @@ async function mfxConnect(){
         1. Check you are online<br>
         2. Disable any VPN or ad blocker<br>
         3. Try on a different browser (Chrome works best)<br>
-        4. Try again â€” proxies sometimes have brief outages`;
+        4. Try again — proxies sometimes have brief outages`;
     } else if(msg.includes('password') || msg.includes('credentials') || msg.includes('Invalid') || msg.includes('Wrong')){
       helpText = '<br><br>Wrong email or password. Make sure you can log in at <a href="https://www.myfxbook.com" target="_blank" style="color:var(--gold)">myfxbook.com</a> first.';
     }
-    mfxShowStatus('âŒ ' + msg + helpText, 'err');
+    mfxShowStatus('Error: ' + msg + helpText, 'err');
     btn.disabled = false;
     btn.textContent = 'Connect to Myfxbook';
   }
@@ -2668,7 +2668,7 @@ async function mfxLoadAccounts(){
 
     mfxSetDot('connected');
     mfxRenderAccounts();
-    mfxShowStatus('âœ… Accounts loaded! Syncing trade history...', 'ok');
+    mfxShowStatus('Accounts loaded! Syncing trade history...', 'ok');
     await new Promise(r => setTimeout(r, 600));
     await mfxSyncHistory();
 
@@ -2677,7 +2677,7 @@ async function mfxLoadAccounts(){
     mfxSyncTimer = setInterval(mfxSyncHistory, 10 * 60 * 1000);
 
   } catch(err){
-    mfxShowStatus('âŒ Failed to load accounts: ' + err.message,'err');
+    mfxShowStatus('Error: Failed to load accounts: ' + err.message,'err');
   }
 }
 
@@ -2700,7 +2700,7 @@ function mfxRenderAccounts(){
       <div class="mfx-account-header">
         <div>
           <div class="mfx-account-name">${acc.name||broker}</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:2px;">${acc.server||''} Â· ID: ${acc.id}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;">${acc.server||''} · ID: ${acc.id}</div>
         </div>
         <span style="padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;background:${col}20;color:${col};">${broker}</span>
       </div>
@@ -2728,7 +2728,7 @@ async function mfxSyncHistory(){
   mfxSyncing = true;
   mfxSetDot('syncing');
   const syncBtn = document.getElementById('mfxSyncBtn');
-  if(syncBtn){ syncBtn.classList.add('syncing'); syncBtn.textContent = 'âŸ³ Syncing...'; }
+  if(syncBtn){ syncBtn.classList.add('syncing'); syncBtn.textContent = 'Syncing...'; }
 
   let totalNew = 0;
 
@@ -2738,7 +2738,7 @@ async function mfxSyncHistory(){
       const broker = known ? known.broker : (acc.broker || 'MT5');
       console.log(`Syncing ${broker} (ID: ${acc.id})...`);
 
-      // Fetch closed trade history â€” pass cookies for session validation
+      // Fetch closed trade history — pass cookies for session validation
       try {
         let hist;
         try {
@@ -2773,8 +2773,8 @@ async function mfxSyncHistory(){
     }
 
     const now = new Date().toLocaleTimeString();
-    document.getElementById('mfxLastSync').textContent = `Last synced: ${now} Â· ${totalNew} new trades`;
-    mfxShowStatus(`âœ… Synced at ${now}${totalNew?' Â· '+totalNew+' new trades':'  Â· Up to date'}`, 'ok');
+    document.getElementById('mfxLastSync').textContent = `Last synced: ${now} · ${totalNew} new trades`;
+    mfxShowStatus(`Synced at ${now}${totalNew?' · '+totalNew+' new trades':'  · Up to date'}`, 'ok');
     mfxSetDot('connected');
 
     // Add import history entry if new trades found
@@ -2791,9 +2791,9 @@ async function mfxSyncHistory(){
     }
 
   } catch(err){
-    mfxShowStatus('âš ï¸ Sync error: ' + err.message,'err');
+    mfxShowStatus('Warning: Sync error: ' + err.message,'err');
     mfxSetDot('error');
-    // Session may have expired â€” try to re-login
+    // Session may have expired — try to re-login
     if(err.message.includes('session') || err.message.includes('Session')){
       mfxSession = null;
       localStorage.removeItem('mfxSession');
@@ -2801,7 +2801,7 @@ async function mfxSyncHistory(){
   }
 
   mfxSyncing = false;
-  if(syncBtn){ syncBtn.classList.remove('syncing'); syncBtn.textContent = 'âŸ³ Sync'; }
+  if(syncBtn){ syncBtn.classList.remove('syncing'); syncBtn.textContent = 'Sync'; }
 }
 
 // Convert Myfxbook trade to dashboard format
@@ -2894,7 +2894,7 @@ function mfxSetDot(state){
   const txt  = document.getElementById('mfxStatusText');
   if(!dot) return;
   dot.className = 'mfx-dot' + (state?' '+state:'');
-  const labels = {connected:'Connected Â· Auto-sync on', syncing:'Syncing...', error:'Sync error'};
+  const labels = {connected:'Connected · Auto-sync on', syncing:'Syncing...', error:'Sync error'};
   if(txt && labels[state]) txt.textContent = labels[state];
 }
 
@@ -2912,7 +2912,7 @@ async function mfxAutoRestore(){
   const emailEl = document.getElementById('mfxEmail');
   if(emailEl) emailEl.value = mfxEmail;
 
-  mfxShowStatus('<span class="spin">âŸ³</span> Restoring Myfxbook session...','info');
+  mfxShowStatus('Restoring Myfxbook session...','info');
   try {
     // Re-sync with saved session
     mfxAccounts = JSON.parse(localStorage.getItem('mfxAccounts')||'[]');
@@ -2925,7 +2925,7 @@ async function mfxAutoRestore(){
     document.getElementById('mfxSyncBtn').style.display      = 'flex';
     mfxSetDot('connected');
     mfxRenderAccounts();
-    mfxShowStatus('âœ… Session restored. Syncing...','ok');
+    mfxShowStatus('Session restored. Syncing...','ok');
     await mfxSyncHistory();
     // Start auto-sync timer
     if(mfxSyncTimer) clearInterval(mfxSyncTimer);
@@ -2934,7 +2934,7 @@ async function mfxAutoRestore(){
     console.warn('MFX restore error:', e.message);
     mfxSession = null;
     localStorage.removeItem('mfxSession');
-    mfxShowStatus('Session expired â€” please reconnect.','err');
+    mfxShowStatus('Session expired — please reconnect.','err');
     document.getElementById('mfxLoginForm').style.display='block';
     document.getElementById('mfxAccountsWrap').style.display='none';
   }
@@ -3010,7 +3010,7 @@ document.addEventListener('keydown', e=>{
 });
 
 // ============================================================
-// PERMANENT EVENT DELEGATION on document â€” never removed, survives all DOM re-renders
+// PERMANENT EVENT DELEGATION on document — never removed, survives all DOM re-renders
 document.addEventListener('click', function(e){
   const btn = e.target.closest('[data-action]');
   if(!btn) return;
@@ -3030,7 +3030,7 @@ window.addEventListener('load',()=>{
   refreshAll();
   renderJournal();
 
-  // Restore Deriv connection â€” delay slightly to let DOM fully render
+  // Restore Deriv connection — delay slightly to let DOM fully render
   const saved = localStorage.getItem('dtok');
   if(saved){
     document.getElementById('tokenInput').value = saved;
@@ -3049,8 +3049,8 @@ window.addEventListener('load',()=>{
 <div class="help-overlay" id="helpOverlay" onclick="closeHelp(event)">
   <div class="help-drawer" id="helpDrawer">
     <div class="help-header">
-      <div class="help-title">ðŸ“– Dashboard <span>Help Guide</span></div>
-      <button class="help-close" onclick="closeHelp()">âœ•</button>
+      <div class="help-title"> Dashboard <span>Help Guide</span></div>
+      <button class="help-close" onclick="closeHelp()">✕</button>
     </div>
     <div class="help-body">
 
@@ -3070,33 +3070,33 @@ window.addEventListener('load',()=>{
 
       <!-- GETTING STARTED -->
       <div class="help-section" data-cat="start">
-        <div class="help-section-title">ðŸš€ Getting Started</div>
+        <div class="help-section-title">Getting Started</div>
 
         <div class="help-item green" data-keywords="connect deriv api token login start">
-          <div class="help-item-title">ðŸ”— Connecting your Deriv account</div>
+          <div class="help-item-title">Connecting your Deriv account</div>
           <div class="help-item-body">
             <div class="help-step"><div class="help-step-num">1</div><div class="help-step-txt">Go to <strong>app.deriv.com/account/api-token</strong></div></div>
             <div class="help-step"><div class="help-step-num">2</div><div class="help-step-txt">Create a token with <strong>Read</strong> + <strong>Trading information</strong> scopes</div></div>
             <div class="help-step"><div class="help-step-num">3</div><div class="help-step-txt">On the login screen, select <strong>Deriv API</strong> tab and paste your token</div></div>
             <div class="help-step"><div class="help-step-num">4</div><div class="help-step-txt">Your trades and balance sync automatically in real time</div></div>
-            <div class="help-tip"><strong>ðŸ’¡ Tip:</strong> Your token is saved in your browser â€” you won't need to paste it again next visit.</div>
+            <div class="help-tip"><strong>💡 Tip:</strong> Your token is saved in your browser — you won't need to paste it again next visit.</div>
           </div>
         </div>
 
         <div class="help-item blue" data-keywords="view only skip historical no login">
-          <div class="help-item-title">ðŸ‘ View historical data without connecting</div>
+          <div class="help-item-title">View historical data without connecting</div>
           <div class="help-item-body">
-            Click <strong>View Only</strong> on the login screen to load the dashboard with pre-loaded historical Deriv trade data (Janâ€“Mar 2026) without connecting any account.
+            Click <strong>View Only</strong> on the login screen to load the dashboard with pre-loaded historical Deriv trade data (Jan–Mar 2026) without connecting any account.
           </div>
         </div>
 
         <div class="help-item blue" data-keywords="account switcher tabs deriv ftmo 5ers all">
-          <div class="help-item-title">ðŸ”„ Switching between accounts</div>
+          <div class="help-item-title">Switching between accounts</div>
           <div class="help-item-body">
             Use the <strong>Account bar</strong> just below the connection status bar to switch between:<br><br>
-            â€¢ <strong>All</strong> â€” combined view of every account<br>
-            â€¢ <strong>Deriv</strong> â€” your Deriv historical + live trades<br>
-            â€¢ <strong>FTMO / The5ers</strong> â€” appear after importing files<br><br>
+            • <strong>All</strong> — combined view of every account<br>
+            • <strong>Deriv</strong> — your Deriv historical + live trades<br>
+            • <strong>FTMO / The5ers</strong> — appear after importing files<br><br>
             Every tab shows its own independent stats, charts, and journal.
           </div>
         </div>
@@ -3104,95 +3104,95 @@ window.addEventListener('load',()=>{
 
       <!-- IMPORTING -->
       <div class="help-section" data-cat="import">
-        <div class="help-section-title">ðŸ“‚ Importing MT5 Trades</div>
+        <div class="help-section-title">Importing MT5 Trades</div>
 
         <div class="help-item gold" data-keywords="import export mt5 html htm csv file ftmo 5ers prop firm">
-          <div class="help-item-title">ðŸ“¤ How to export from MT5</div>
+          <div class="help-item-title">How to export from MT5</div>
           <div class="help-item-body">
             <div class="help-step"><div class="help-step-num">1</div><div class="help-step-txt">Open MT5 and press <span class="help-kbd">Ctrl+T</span> to open the Terminal</div></div>
             <div class="help-step"><div class="help-step-num">2</div><div class="help-step-txt">Click the <strong>History</strong> tab at the bottom</div></div>
-            <div class="help-step"><div class="help-step-num">3</div><div class="help-step-txt">Right-click anywhere in the list â†’ click <strong>All History</strong></div></div>
-            <div class="help-step"><div class="help-step-num">4</div><div class="help-step-txt">Right-click again â†’ click <strong>Report</strong> â†’ Save as <strong>HTML</strong></div></div>
+            <div class="help-step"><div class="help-step-num">3</div><div class="help-step-txt">Right-click anywhere in the list → click <strong>All History</strong></div></div>
+            <div class="help-step"><div class="help-step-num">4</div><div class="help-step-txt">Right-click again → click <strong>Report</strong> → Save as <strong>HTML</strong></div></div>
             <div class="help-step"><div class="help-step-num">5</div><div class="help-step-txt">Import the saved file into the dashboard</div></div>
           </div>
         </div>
 
         <div class="help-item gold" data-keywords="import file dashboard how upload">
-          <div class="help-item-title">â¬†ï¸ How to import into the dashboard</div>
+          <div class="help-item-title">How to import into the dashboard</div>
           <div class="help-item-body">
-            <strong>Option A â€” On login screen:</strong> Select MT5 Import tab, choose your broker (FTMO / The5ers / Other), then drop or click to select your file.<br><br>
-            <strong>Option B â€” Already inside:</strong> Click the <strong>ðŸ“‚ badge</strong> in the top header, select your broker, then drop your file.<br><br>
-            The dashboard auto-detects the broker from the file content â€” so even if you select the wrong one, it will correct itself.
+            <strong>Option A — On login screen:</strong> Select MT5 Import tab, choose your broker (FTMO / The5ers / Other), then drop or click to select your file.<br><br>
+            <strong>Option B — Already inside:</strong> Click the <strong>📂 badge</strong> in the top header, select your broker, then drop your file.<br><br>
+            The dashboard auto-detects the broker from the file content — so even if you select the wrong one, it will correct itself.
           </div>
         </div>
 
         <div class="help-item gold" data-keywords="supported file formats csv htm html pdf">
-          <div class="help-item-title">ðŸ“„ Supported file formats</div>
+          <div class="help-item-title">Supported file formats</div>
           <div class="help-item-body">
-            â€¢ <strong>.HTML / .HTM</strong> â€” MT5 Report (recommended, most accurate)<br>
-            â€¢ <strong>.CSV</strong> â€” MT5 Export to Spreadsheet<br>
-            â€¢ <strong>.PDF</strong> â€” MT5 PDF report (trade rows must be present, not summary-only)<br><br>
-            <div class="help-tip"><strong>âš ï¸ Note:</strong> PDF summary reports (showing only charts and stats) cannot be parsed. Use HTML or CSV for best results.</div>
+            • <strong>.HTML / .HTM</strong> — MT5 Report (recommended, most accurate)<br>
+            • <strong>.CSV</strong> — MT5 Export to Spreadsheet<br>
+            • <strong>.PDF</strong> — MT5 PDF report (trade rows must be present, not summary-only)<br><br>
+            <div class="help-tip"><strong>Warning: Note:</strong> PDF summary reports (showing only charts and stats) cannot be parsed. Use HTML or CSV for best results.</div>
           </div>
         </div>
 
         <div class="help-item gold" data-keywords="broker supported ftmo 5ers myfundedfx e8 topstep">
-          <div class="help-item-title">ðŸ¦ Supported prop firms / brokers</div>
+          <div class="help-item-title">Supported prop firms / brokers</div>
           <div class="help-item-body">
             Automatically detected from file content:<br><br>
-            â€¢ ðŸ† <strong>FTMO</strong><br>
-            â€¢ 5ï¸âƒ£ <strong>The5ers</strong> (Five Percent Online)<br>
-            â€¢ <strong>MyFundedFX, E8 Funding, Topstep, FundedNext</strong><br>
-            â€¢ Any other MT5 broker â€” select <strong>Other</strong> and type the name
+            • <strong>FTMO</strong><br>
+            • <strong>The5ers</strong> (Five Percent Online)<br>
+            • <strong>MyFundedFX, E8 Funding, Topstep, FundedNext</strong><br>
+            • Any other MT5 broker — select <strong>Other</strong> and type the name
           </div>
         </div>
 
         <div class="help-item red" data-keywords="delete remove import clear trades">
-          <div class="help-item-title">ðŸ—‘ Removing an import</div>
+          <div class="help-item-title">Removing an import</div>
           <div class="help-item-body">
-            Click the <strong>ðŸ“‚ badge</strong> in the header â†’ scroll to <strong>Import History</strong> â†’ click <strong>âœ•</strong> next to the import you want to remove. This deletes all trades from that broker.
+            Click the <strong>📂 badge</strong> in the header → scroll to <strong>Import History</strong> → click <strong>✕</strong> next to the import you want to remove. This deletes all trades from that broker.
           </div>
         </div>
       </div>
 
       <!-- OVERVIEW & STATS -->
       <div class="help-section" data-cat="stats">
-        <div class="help-section-title">ðŸ“Š Understanding Your Stats</div>
+        <div class="help-section-title"> Understanding Your Stats</div>
 
         <div class="help-item green" data-keywords="profit factor what is meaning target">
-          <div class="help-item-title">ðŸ“ˆ Profit Factor</div>
+          <div class="help-item-title">Profit Factor</div>
           <div class="help-item-body">
-            Gross Profit Ã· Gross Loss. A reading of <strong>1.0</strong> means breakeven.<br>
-            â€¢ <strong>Below 1.0</strong> â€” losing money overall<br>
-            â€¢ <strong>1.0 â€“ 1.5</strong> â€” marginal, needs improvement<br>
-            â€¢ <strong>1.5+</strong> âœ… â€” passing FTMO / prop firm target<br>
-            â€¢ <strong>2.0+</strong> ðŸ† â€” excellent performance
+            Gross Profit ÷ Gross Loss. A reading of <strong>1.0</strong> means breakeven.<br>
+            • <strong>Below 1.0</strong> — losing money overall<br>
+            • <strong>1.0 – 1.5</strong> — marginal, needs improvement<br>
+            • <strong>1.5+</strong> — passing FTMO / prop firm target<br>
+            • <strong>2.0+</strong> — excellent performance
           </div>
         </div>
 
         <div class="help-item green" data-keywords="win rate percentage wins losses">
-          <div class="help-item-title">ðŸŽ¯ Win Rate</div>
+          <div class="help-item-title">Win Rate</div>
           <div class="help-item-body">
             Percentage of trades that closed in profit. A low win rate is fine if your <strong>RRR is high</strong>. For example: 35% win rate with a 2.5 RRR is still profitable. You only need ~29% win rate to break even with a 2.5 RRR.
           </div>
         </div>
 
         <div class="help-item green" data-keywords="rrr risk reward ratio average">
-          <div class="help-item-title">âš–ï¸ Average RRR (Risk:Reward Ratio)</div>
+          <div class="help-item-title">Average RRR (Risk:Reward Ratio)</div>
           <div class="help-item-body">
-            Average win size Ã· average loss size. An RRR of <strong>2.0</strong> means your average win is twice your average loss. Higher is better â€” it means fewer wins are needed to be profitable.
+            Average win size ÷ average loss size. An RRR of <strong>2.0</strong> means your average win is twice your average loss. Higher is better — it means fewer wins are needed to be profitable.
           </div>
         </div>
 
         <div class="help-item green" data-keywords="expectancy per trade expected value">
-          <div class="help-item-title">ðŸ’° Expectancy</div>
+          <div class="help-item-title">Expectancy</div>
           <div class="help-item-body">
-            The average amount you expect to make per trade. A <strong>positive expectancy</strong> means the strategy is profitable long-term. Calculated as: (Win Rate Ã— Avg Win) âˆ’ (Loss Rate Ã— Avg Loss).
+            The average amount you expect to make per trade. A <strong>positive expectancy</strong> means the strategy is profitable long-term. Calculated as: (Win Rate × Avg Win) − (Loss Rate × Avg Loss).
           </div>
         </div>
 
         <div class="help-item blue" data-keywords="equity curve chart balance history">
-          <div class="help-item-title">ðŸ“‰ Equity Curve</div>
+          <div class="help-item-title">Equity Curve</div>
           <div class="help-item-body">
             Shows your running account balance over time. A smooth upward curve indicates consistent performance. Large dips indicate drawdown periods. The curve resets to the correct starting balance for each account (e.g. $5,000 for The5ers, $10,000 for Deriv).
           </div>
@@ -3201,95 +3201,95 @@ window.addEventListener('load',()=>{
 
       <!-- JOURNAL -->
       <div class="help-section" data-cat="journal">
-        <div class="help-section-title">ðŸ“– Trading Journal</div>
+        <div class="help-section-title"> Trading Journal</div>
 
         <div class="help-item purple" data-keywords="journal new entry create log trade">
-          <div class="help-item-title">âœï¸ Creating a journal entry</div>
+          <div class="help-item-title">Creating a journal entry</div>
           <div class="help-item-body">
-            <strong>Method 1:</strong> Click <strong>Journal tab</strong> â†’ click <strong>"+ New Journal Entry"</strong><br><br>
-            <strong>Method 2:</strong> Go to <strong>History tab</strong> â†’ click <strong>"+ Log"</strong> next to any trade row<br><br>
-            <strong>Method 3:</strong> When a live trade closes, a popup appears asking if you want to log it â€” click <strong>Add Note</strong>
+            <strong>Method 1:</strong> Click <strong>Journal tab</strong> → click <strong>"+ New Journal Entry"</strong><br><br>
+            <strong>Method 2:</strong> Go to <strong>History tab</strong> → click <strong>"+ Log"</strong> next to any trade row<br><br>
+            <strong>Method 3:</strong> When a live trade closes, a popup appears asking if you want to log it — click <strong>Add Note</strong>
           </div>
         </div>
 
         <div class="help-item purple" data-keywords="journal account specific ftmo deriv 5ers separate">
-          <div class="help-item-title">ðŸ”€ Account-specific journals</div>
+          <div class="help-item-title">Account-specific journals</div>
           <div class="help-item-body">
             Each account has its own journal. When you're on the <strong>FTMO tab</strong>, only FTMO journal entries are shown and new entries are tagged as FTMO. Switch to <strong>The5ers</strong> and you see only The5ers journals. Select <strong>All</strong> to see every journal entry across all accounts.
           </div>
         </div>
 
         <div class="help-item purple" data-keywords="chart screenshot image upload paste journal">
-          <div class="help-item-title">ðŸ“¸ Attaching chart screenshots</div>
+          <div class="help-item-title">Attaching chart screenshots</div>
           <div class="help-item-body">
             In the journal form, scroll to <strong>Chart Screenshots</strong> section. You can:<br><br>
-            â€¢ <strong>Click</strong> the upload zone to select images<br>
-            â€¢ <strong>Drag & drop</strong> images onto the zone<br>
-            â€¢ <strong>Paste</strong> directly with <span class="help-kbd">Ctrl+V</span> / <span class="help-kbd">Cmd+V</span><br><br>
+            • <strong>Click</strong> the upload zone to select images<br>
+            • <strong>Drag & drop</strong> images onto the zone<br>
+            • <strong>Paste</strong> directly with <span class="help-kbd">Ctrl+V</span> / <span class="help-kbd">Cmd+V</span><br><br>
             Click any saved chart image to open it in the fullscreen lightbox viewer. Use arrow keys to navigate multiple images.
           </div>
         </div>
 
         <div class="help-item purple" data-keywords="journal saved storage browser local data">
-          <div class="help-item-title">ðŸ’¾ Where is journal data stored?</div>
+          <div class="help-item-title">Where is journal data stored?</div>
           <div class="help-item-body">
             All journal entries (including images) are saved in your <strong>browser's local storage</strong>. They persist across visits as long as you use the same browser. They are private to your device and never sent anywhere. <strong>Do not clear browser data</strong> or you will lose your entries.
           </div>
         </div>
 
         <div class="help-item purple" data-keywords="mood emotion star rating quality session">
-          <div class="help-item-title">â­ Session rating & emotions</div>
+          <div class="help-item-title">Session rating & emotions</div>
           <div class="help-item-body">
-            Rate your session quality with 1â€“5 stars. Tag your emotional state (Confident, Anxious, FOMO, Disciplined, etc.). Over time this helps identify which emotional states correlate with winning or losing trades.
+            Rate your session quality with 1–5 stars. Tag your emotional state (Confident, Anxious, FOMO, Disciplined, etc.). Over time this helps identify which emotional states correlate with winning or losing trades.
           </div>
         </div>
       </div>
 
       <!-- TIPS -->
       <div class="help-section" data-cat="start">
-        <div class="help-section-title">ðŸ’¡ Pro Tips</div>
+        <div class="help-section-title">Pro Tips</div>
 
         <div class="help-item blue" data-keywords="tip keyboard shortcut lightbox navigation">
-          <div class="help-item-title">âŒ¨ï¸ Keyboard shortcuts</div>
+          <div class="help-item-title">Keyboard shortcuts</div>
           <div class="help-item-body">
-            <span class="help-kbd">Esc</span> â€” Close any modal or lightbox<br>
-            <span class="help-kbd">â† â†’</span> â€” Navigate between chart images in lightbox<br>
-            <span class="help-kbd">Ctrl+V</span> â€” Paste screenshot into journal form
+            <span class="help-kbd">Esc</span> — Close any modal or lightbox<br>
+            <span class="help-kbd">← →</span> — Navigate between chart images in lightbox<br>
+            <span class="help-kbd">Ctrl+V</span> — Paste screenshot into journal form
           </div>
         </div>
 
         <div class="help-item blue" data-keywords="re-import update new trades add more">
-          <div class="help-item-title">ðŸ”„ Updating your imported trades</div>
+          <div class="help-item-title">Updating your imported trades</div>
           <div class="help-item-body">
             You can re-import a newer export file at any time. The dashboard automatically skips duplicates and only adds new trades. Your existing journal entries are never affected by re-importing.
           </div>
         </div>
 
         <div class="help-item blue" data-keywords="mobile phone access anywhere url link">
-          <div class="help-item-title">ðŸ“± Accessing from your phone</div>
+          <div class="help-item-title">Accessing from your phone</div>
           <div class="help-item-body">
-            Bookmark this dashboard URL on any device for quick access. It works on mobile browsers. Note: journal entries and imports saved on your phone are stored separately from your computer â€” they won't sync between devices (each browser has its own local storage).
+            Bookmark this dashboard URL on any device for quick access. It works on mobile browsers. Note: journal entries and imports saved on your phone are stored separately from your computer — they won't sync between devices (each browser has its own local storage).
           </div>
         </div>
 
         <div class="help-item gold" data-keywords="myfxbook sync live auto ftmo 5ers prop">
-          <div class="help-item-title">ðŸ”„ Myfxbook Live Sync</div>
+          <div class="help-item-title">Myfxbook Live Sync</div>
           <div class="help-item-body">
             Connect your Myfxbook account for automatic trade sync from FTMO, The5ers and any MT5 prop firm.<br><br>
             <strong>Setup:</strong><br>
             1. Create a free account at <strong>myfxbook.com</strong><br>
-            2. Add your MT5 accounts (Auto Update option â€” free)<br>
+            2. Add your MT5 accounts (Auto Update option — free)<br>
             3. Go to <strong>Live tab</strong> in this dashboard<br>
             4. Enter your Myfxbook email + password<br>
             5. Trades sync automatically every <strong>10 minutes</strong><br><br>
-            <div class="help-tip"><strong>âš¡ Note:</strong> MT5 must be open on your computer for Myfxbook to receive new trades.</div>
+            <div class="help-tip"><strong>⚡ Note:</strong> MT5 must be open on your computer for Myfxbook to receive new trades.</div>
           </div>
         </div>
 
         <div class="help-item green" data-keywords="created by contact osita email">
-          <div class="help-item-title">ðŸ‘¤ About this dashboard</div>
+          <div class="help-item-title">About this dashboard</div>
           <div class="help-item-body">
-            Built by <strong style="color:var(--green);">Osita Onyeje</strong> Â· Â© 2026<br>
+            Built by <strong style="color:var(--green);">Osita Onyeje</strong> · © 2026<br>
             Contact: <a href="mailto:stevenonyeje@gmail.com" style="color:var(--green);">stevenonyeje@gmail.com</a>
           </div>
         </div>
@@ -3305,12 +3305,12 @@ window.addEventListener('load',()=>{
     Created by <span style="color:var(--green);">Osita Onyeje</span>
   </div>
   <div style="font-size:10px;color:var(--muted);margin-bottom:6px;">
-    Â© 2026 Â· All rights reserved
+    © 2026 · All rights reserved
   </div>
   <a href="mailto:stevenonyeje@gmail.com"
      style="font-size:10px;color:var(--green);text-decoration:none;letter-spacing:0.5px;opacity:0.8;transition:opacity .2s;"
      onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8">
-    âœ‰ stevenonyeje@gmail.com
+    stevenonyeje@gmail.com
   </a>
 </div>
 </body>
