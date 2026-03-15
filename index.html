@@ -802,10 +802,25 @@ function openWS(t){
     const st = document.getElementById('wsStatus');
     if(st){ st.style.display='block'; st.textContent='Connected — verifying token...'; }
     send({authorize: t});
+    // Timeout: if no authorize response in 12s, show error
+    const authTimeout = setTimeout(()=>{
+      if(!isConn){
+        showErr('Connection timed out. Your token may be invalid or expired. Please get a new token from app.deriv.com/account/api-token');
+        document.getElementById('connectBtn').disabled = false;
+        document.getElementById('spinWrap').style.display = 'none';
+        if(st) st.style.display = 'none';
+      }
+    }, 12000);
+    // Store timeout so onAuth can clear it
+    ws._authTimeout = authTimeout;
   };
   ws.onmessage = e => {
-    try { handle(JSON.parse(e.data)); }
-    catch(err){ console.error('WS message parse error:', err); }
+    try {
+      const msg = JSON.parse(e.data);
+      handle(msg);
+    } catch(err){
+      console.error('WS message error:', err.message);
+    }
   };
   ws.onerror = (e) => {
     console.error('WS error:', e);
@@ -852,31 +867,65 @@ function handle(m){
   else if(t==='ping')send({pong:1});
 }
 function onAuth(a){
-  isConn=true;acct=a;
-  document.getElementById('loginOverlay').style.display='none';
-  document.getElementById('spinWrap').style.display='none';
-  const st=document.getElementById('wsStatus');
-  if(st) st.style.display='none';
-  setConn(true);
-  document.getElementById('acctBadge').textContent=a.is_virtual?'Demo Account':'Live Account';
-  document.getElementById('hSub').innerHTML=`<span class="ldot"></span>${a.email||'Connected'} · ${a.currency||'USD'}`;
-  document.getElementById('liveBal').textContent=`${a.currency||'$'}${parseFloat(a.balance||0).toFixed(2)}`;
-  send({balance:1,subscribe:1});
-  fetchPT(0);
-  send({portfolio:1});
-  send({transaction:1,subscribe:1});
-  ping=setInterval(()=>send({ping:1}),30000);
-  // Show live button in account bar
-  document.getElementById('ab-live').style.display='flex';
-  document.getElementById('ab-live-label').textContent=
-    (a.is_virtual?'Demo':'Real')+' ('+(a.login||a.account_id||'Deriv')+')';
-  renderAcctBar();
-  // Switch to Deriv tab to show loading trades
-  switchAcct('hist', document.getElementById('ab-hist'));
-  // Show loading indicator
-  const insightEl=document.getElementById('insightBox');
-  if(insightEl) insightEl.innerHTML='<span style="color:var(--gold)">Loading your Deriv trade history...</span>';
+  try {
+    isConn = true;
+    acct   = a;
+
+    // Hide login overlay
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('spinWrap').style.display     = 'none';
+    const st = document.getElementById('wsStatus');
+    if(st) st.style.display = 'none';
+
+    setConn(true);
+    // Clear the auth timeout
+    if(ws && ws._authTimeout) clearTimeout(ws._authTimeout);
+
+    // Update header
+    const badge = document.getElementById('acctBadge');
+    if(badge) badge.textContent = a.is_virtual ? 'Demo Account' : 'Live Account';
+    const hSub = document.getElementById('hSub');
+    if(hSub) hSub.innerHTML = '<span class="ldot"></span>' + (a.email||'Connected') + ' &middot; ' + (a.currency||'USD');
+    const liveBal = document.getElementById('liveBal');
+    if(liveBal) liveBal.textContent = (a.currency||'$') + parseFloat(a.balance||0).toFixed(2);
+
+    // Subscribe to live data
+    send({balance:1, subscribe:1});
+    send({portfolio:1});
+    send({transaction:1, subscribe:1});
+    ping = setInterval(()=>send({ping:1}), 30000);
+
+    // Fetch trade history
+    fetchPT(0);
+
+    // Update account bar
+    try {
+      const liveBtn = document.getElementById('ab-live');
+      if(liveBtn){
+        liveBtn.style.display = 'flex';
+        const liveLabel = document.getElementById('ab-live-label');
+        if(liveLabel) liveLabel.textContent = (a.is_virtual?'Demo':'Real') + ' (' + (a.login||a.account_id||'Deriv') + ')';
+      }
+      renderAcctBar();
+    } catch(e){ console.warn('renderAcctBar error:', e.message); }
+
+    // Refresh dashboard views (wrapped in try so a crash doesn't block login)
+    try { refreshAll(); } catch(e){ console.warn('refreshAll error:', e.message); }
+
+    // Show loading message
+    try {
+      const insightEl = document.getElementById('insightBox');
+      if(insightEl) insightEl.innerHTML = '<span style="color:var(--gold)">Loading your Deriv trade history...</span>';
+    } catch(e){}
+
+  } catch(e) {
+    console.error('onAuth crash:', e.message, e.stack);
+    // Still hide the overlay even if something crashes
+    document.getElementById('loginOverlay').style.display = 'none';
+    setConn(true);
+  }
 }
+
 function onBal(b){document.getElementById('liveBal').textContent=`${acct.currency||'$'}${parseFloat(b.balance).toFixed(2)}`;}
 function fetchPT(off){
   const req={
