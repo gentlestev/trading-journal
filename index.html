@@ -714,7 +714,9 @@ let activeAcct='all'; // 'all' | 'hist' | 'live' | broker name e.g. 'FTMO' | 'Th
 // ── Myfxbook state ──
 let mfxSession   = localStorage.getItem('mfxSession') || null;
 let mfxEmail     = localStorage.getItem('mfxEmail')   || '';
+let mfxCookies   = localStorage.getItem('mfxCookies') || '';
 let mfxAccounts  = JSON.parse(localStorage.getItem('mfxAccounts') || '[]');
+let mfxCookies   = localStorage.getItem('mfxCookies') || '';
 let mfxSyncTimer = null;
 let mfxSyncing   = false;
 const MFX_BASE   = 'https://www.myfxbook.com/api';
@@ -794,6 +796,7 @@ function handle(m){
   if(t==='authorize')onAuth(m.authorize);
   else if(t==='balance')onBal(m.balance);
   else if(t==='profit_table')onPT(m.profit_table);
+  else if(t==='statement')onStatement(m.statement);
   else if(t==='portfolio')onPort(m.portfolio);
   else if(t==='proposal_open_contract')onPOC(m.proposal_open_contract);
   else if(t==='transaction')onTx(m.transaction);
@@ -815,29 +818,109 @@ function onAuth(a){
   // Show live button in account bar
   document.getElementById('ab-live').style.display='flex';
   document.getElementById('ab-live-label').textContent=
-    (a.is_virtual?'Demo':'Real')+' ('+( a.login||a.account_id||'Deriv')+')';
+    (a.is_virtual?'Demo':'Real')+' ('+(a.login||a.account_id||'Deriv')+')';
   renderAcctBar();
+  // Switch to Deriv tab to show loading trades
+  switchAcct('hist', document.getElementById('ab-hist'));
+  // Show loading indicator
+  const insightEl=document.getElementById('insightBox');
+  if(insightEl) insightEl.innerHTML='<span style="color:var(--gold)">⟳ Loading your Deriv trade history...</span>';
 }
 function onBal(b){document.getElementById('liveBal').textContent=`${acct.currency||'$'}${parseFloat(b.balance).toFixed(2)}`;}
-function fetchPT(off){send({profit_table:1,description:1,limit:100,offset:off,sort:'DESC'});}
+function fetchPT(off){
+  const req={
+    profit_table:1,
+    description:1,
+    limit:100,
+    offset:off,
+    sort:'DESC',
+  };
+  send(req);
+  // Also request statement for comprehensive trade data
+  if(off===0){
+    send({statement:1,description:1,limit:100,offset:0,sort:'DESC'});
+  }
+}
 function onPT(pt){
   const tx=pt.transactions||[];
-  tx.forEach(t=>{const tr=txToTrade(t);if(tr&&!liveTrades.find(x=>x.id===tr.id))liveTrades.push(tr);});
-  if(tx.length===100)fetchPT(liveTrades.length);
-  else refreshAll();
-  if(tx.length<100)refreshAll();
+  let added=0;
+  tx.forEach(t=>{
+    const tr=txToTrade(t);
+    if(tr&&!liveTrades.find(x=>x.id===tr.id)){liveTrades.push(tr);added++;}
+  });
+  if(tx.length===100){
+    fetchPT(liveTrades.length); // fetch next page
+  } else {
+    refreshAll(); // only refresh once, when all pages loaded
+  }
 }
+// Handle statement API response (fallback for accounts with no profit_table data)
+function onStatement(st){
+  if(!st || !st.transactions) return;
+  let added = 0;
+  st.transactions.forEach(tx=>{
+    // Only process 'sell' actions (closed trades)
+    if(tx.action_type !== 'sell' && tx.action_type !== 'sell_expired') return;
+    const id = 'lv_stmt_' + (tx.transaction_id||tx.contract_id||Math.random());
+    if(liveTrades.find(x=>x.id===id)) return;
+    const d = tx.transaction_time
+      ? new Date(tx.transaction_time*1000).toISOString().slice(0,10)
+      : new Date().toISOString().slice(0,10);
+    liveTrades.push({
+      id,
+      instrument: tx.display_name || tx.shortcode || 'Trade',
+      idx:        symToIdx(tx.display_name||''),
+      direction:  (tx.shortcode||'').includes('CALL') ? 'BUY' : 'SELL',
+      lots:       Math.abs(parseFloat(tx.amount||0)),
+      open:       0,
+      close:      0,
+      date:       d,
+      pnl:        parseFloat(tx.amount||0),
+      src:        'live',
+      broker:     'Deriv',
+    });
+    added++;
+  });
+  if(added > 0){
+    console.log('Statement added', added, 'trades');
+    refreshAll();
+  }
+}
+
 function txToTrade(tx){
-  if(!tx||!tx.transaction_id)return null;
-  const sm={'R_10':'V10','R_25':'V25','R_50':'V50','R_75':'V75','R_100':'V100','1HZ10V':'V10','1HZ25V':'V25','1HZ50V':'V50','1HZ75V':'V75','1HZ100V':'V100'};
-  const raw=tx.underlying_symbol||'';
-  const idx=sm[raw]||(raw.startsWith('R_')?'V'+raw.slice(2):raw)||'OTHER';
-  const names={'V10':'Volatility 10 Index','V25':'Volatility 25 Index','V50':'Volatility 50 Index','V75':'Volatility 75 Index','V100':'Volatility 100 Index'};
-  const nm=names[idx]||tx.underlying_symbol||idx;
-  const ct=(tx.contract_type||'').toUpperCase();
-  const dir=ct.includes('CALL')||ct.includes('RISE')||ct.includes('HIGHER')?'BUY':'SELL';
-  const d=tx.purchase_time?new Date(tx.purchase_time*1000).toISOString().slice(0,10):new Date().toISOString().slice(0,10);
-  return{id:'lv_'+tx.transaction_id,instrument:nm,idx,direction:dir,lots:parseFloat(tx.buy_price||1),open:parseFloat(tx.entry_spot||0),close:parseFloat(tx.exit_spot||0),date:d,pnl:parseFloat(tx.profit_loss||0),src:'live',raw:tx};
+  if(!tx) return null;
+  // profit_table uses transaction_id; transaction stream uses transaction_id too
+  const tid = tx.transaction_id || tx.contract_id || tx.id;
+  if(!tid) return null;
+  const sm={'R_10':'V10','R_25':'V25','R_50':'V50','R_75':'V75','R_100':'V100',
+            '1HZ10V':'V10','1HZ25V':'V25','1HZ50V':'V50','1HZ75V':'V75','1HZ100V':'V100'};
+  const raw = tx.underlying_symbol || tx.symbol || '';
+  const idx = sm[raw]||(raw.startsWith('R_')?'V'+raw.slice(2):raw.slice(0,6))||'OTHER';
+  const names = {'V10':'Volatility 10','V25':'Volatility 25','V50':'Volatility 50',
+                 'V75':'Volatility 75','V100':'Volatility 100'};
+  const nm  = names[idx] || raw || idx;
+  const ct  = (tx.contract_type||tx.transaction_type||'').toUpperCase();
+  const dir = ct.includes('CALL')||ct.includes('RISE')||ct.includes('HIGHER')||ct.includes('TOUCH')
+              ? 'BUY' : 'SELL';
+  // Date from purchase_time or sell_time
+  const ts  = tx.purchase_time || tx.sell_time || tx.transaction_time || null;
+  const d   = ts ? new Date(ts*1000).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+  // P&L: profit_loss field or calculate from sell_price - buy_price
+  const pnl = parseFloat(tx.profit_loss ?? tx.sell_price ?? 0) - (tx.profit_loss===undefined ? parseFloat(tx.buy_price||0) : 0);
+  return {
+    id:         'lv_' + tid,
+    instrument: nm,
+    idx,
+    direction:  dir,
+    lots:       parseFloat(tx.buy_price||1),
+    open:       parseFloat(tx.entry_spot||tx.purchase_price||0),
+    close:      parseFloat(tx.exit_spot||tx.sell_price||0),
+    date:       d,
+    pnl:        parseFloat(tx.profit_loss||pnl||0),
+    src:        'live',
+    broker:     'Deriv',
+    raw:        tx
+  };
 }
 function onPort(p){
   openPos=(p.contracts||[]).map(c=>({id:c.contract_id,name:c.display_name||c.underlying,type:c.contract_type,bp:parseFloat(c.buy_price||0),cur:parseFloat(c.bid_price||0),pnl:parseFloat(c.bid_price||0)-parseFloat(c.buy_price||0),dt:new Date(c.purchase_time*1000).toLocaleTimeString()}));
@@ -2424,6 +2507,8 @@ async function mfxCall(endpoint, params={}){
     try {
       const allParams = {...params};
       if(mfxSession && !allParams.session) allParams.session = mfxSession;
+      // Always pass cookies if we have them
+      if(mfxCookies && !allParams.cookies) allParams.cookies = mfxCookies;
       return await mfxNetlifyCall(action, allParams);
     } catch(e){
       console.warn('Netlify proxy failed, trying CORS proxies:', e.message);
@@ -2463,11 +2548,28 @@ async function mfxConnect(){
 
     mfxSession = data.session;
     mfxEmail   = email;
+    mfxCookies = data.cookies || '';
     localStorage.setItem('mfxSession', mfxSession);
     localStorage.setItem('mfxEmail',   mfxEmail);
+    localStorage.setItem('mfxCookies', mfxCookies);
 
     // Accounts came back in same call
     mfxAccounts = data.accounts || [];
+
+    // If empty, fall back to known pre-configured accounts
+    if(!mfxAccounts.length){
+      console.log('No accounts from API — using pre-configured known accounts');
+      mfxAccounts = MFX_KNOWN.map(k => ({
+        id: k.id,
+        name: k.name,
+        broker: k.broker,
+        balance: 0,
+        equity: 0,
+        profit: 0,
+        gain: 0,
+        _manual: true,
+      }));
+    }
     localStorage.setItem('mfxAccounts', JSON.stringify(mfxAccounts));
 
     document.getElementById('mfxLoginForm').style.display    = 'none';
@@ -2478,6 +2580,9 @@ async function mfxConnect(){
     mfxRenderAccounts();
     mfxShowStatus('✅ Connected! Syncing trade history...','ok');
     await mfxSyncHistory();
+    // Start auto-sync every 10 minutes
+    if(mfxSyncTimer) clearInterval(mfxSyncTimer);
+    mfxSyncTimer = setInterval(mfxSyncHistory, 10*60*1000);
   } catch(err){
     let msg = err.message || '';
     let helpText = '';
@@ -2578,15 +2683,16 @@ async function mfxSyncHistory(){
     for(const acc of mfxAccounts){
       const known  = MFX_KNOWN.find(k=>k.id===String(acc.id));
       const broker = known ? known.broker : (acc.broker || 'MT5');
+      console.log(`Syncing ${broker} (ID: ${acc.id})...`);
 
-      // Fetch closed trade history — retry once on failure
+      // Fetch closed trade history — pass cookies for session validation
       try {
         let hist;
         try {
-          hist = await mfxCall('/get-history', {id: acc.id});
+          hist = await mfxNetlifyCall('history', {session: mfxSession, id: acc.id, cookies: mfxCookies});
         } catch(e1) {
           await new Promise(r=>setTimeout(r,1500));
-          hist = await mfxCall('/get-history', {id: acc.id});
+          hist = await mfxNetlifyCall('history', {session: mfxSession, id: acc.id, cookies: mfxCookies});
         }
         const trades = hist.history || [];
 
@@ -2741,9 +2847,10 @@ function mfxSetDot(state){
 
 // Auto-restore session on load
 async function mfxAutoRestore(){
-  // Restore proxy URL
+  // Restore proxy URL and cookies
   const savedProxy = localStorage.getItem('mfxProxyUrl')||'';
   if(savedProxy){ MFX_NETLIFY_PROXY = savedProxy; }
+  mfxCookies = localStorage.getItem('mfxCookies')||'';
   const proxyEl = document.getElementById('mfxProxyUrl');
   if(proxyEl) proxyEl.value = savedProxy;
 
@@ -2754,12 +2861,29 @@ async function mfxAutoRestore(){
 
   mfxShowStatus('<span class="spin">⟳</span> Restoring Myfxbook session...','info');
   try {
-    await mfxLoadAccounts();
+    // Re-sync with saved session
+    mfxAccounts = JSON.parse(localStorage.getItem('mfxAccounts')||'[]');
+    if(!mfxAccounts.length){
+      // Use known accounts as fallback
+      mfxAccounts = MFX_KNOWN.map(k=>({id:k.id,name:k.name,broker:k.broker,balance:0,equity:0,profit:0,gain:0,_manual:true}));
+    }
+    document.getElementById('mfxLoginForm').style.display    = 'none';
+    document.getElementById('mfxAccountsWrap').style.display = 'block';
+    document.getElementById('mfxSyncBtn').style.display      = 'flex';
+    mfxSetDot('connected');
+    mfxRenderAccounts();
+    mfxShowStatus('✅ Session restored. Syncing...','ok');
+    await mfxSyncHistory();
+    // Start auto-sync timer
+    if(mfxSyncTimer) clearInterval(mfxSyncTimer);
+    mfxSyncTimer = setInterval(mfxSyncHistory, 10*60*1000);
   } catch(e){
-    // Session expired — clear it
+    console.warn('MFX restore error:', e.message);
     mfxSession = null;
     localStorage.removeItem('mfxSession');
     mfxShowStatus('Session expired — please reconnect.','err');
+    document.getElementById('mfxLoginForm').style.display='block';
+    document.getElementById('mfxAccountsWrap').style.display='none';
   }
 }
 
