@@ -364,7 +364,8 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       <div id="wsStatus" style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px;display:none;"></div>
       <div class="login-note">
         Get token at <a href="https://app.deriv.com/account/api-token" target="_blank">app.deriv.com/account/api-token</a><br>
-        Scopes: <strong>Read</strong> + <strong>Trading information</strong>
+        Scopes: <strong>Read</strong> + <strong>Trading information</strong><br><br>
+        <a href="#" onclick="localStorage.removeItem('dtok');document.getElementById('tokenInput').value='';document.getElementById('loginErr').style.display='none';return false;" style="color:var(--red);font-size:9px;">Clear saved token</a>
       </div>
     </div>
 
@@ -545,8 +546,9 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       <div id="mfxAccountsList"></div>
       <div class="mfx-sync-info">
         <span id="mfxLastSync" style="color:var(--muted);">Never synced</span>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button onclick="mfxSyncNow()" style="padding:4px 12px;background:rgba(240,180,41,0.1);border:1px solid rgba(240,180,41,0.25);border-radius:5px;color:var(--gold);font-size:10px;cursor:pointer;">Sync Now</button>
+          <button onclick="mfxReconnect()" style="padding:4px 12px;background:rgba(61,155,255,0.1);border:1px solid rgba(61,155,255,0.25);border-radius:5px;color:var(--blue);font-size:10px;cursor:pointer;">Reconnect</button>
           <button onclick="mfxDisconnect()" style="padding:4px 12px;background:rgba(255,77,106,0.08);border:1px solid rgba(255,77,106,0.2);border-radius:5px;color:var(--red);font-size:10px;cursor:pointer;">Disconnect</button>
         </div>
       </div>
@@ -2816,6 +2818,54 @@ function mfxUpdateOpenTrades(trades, broker){
     if(!openPos.find(p=>p.id===t.id)) openPos.push(t);
   });
   renderOpenPos();
+}
+
+// Force full reconnect — clears session and re-authenticates
+async function mfxReconnect(){
+  const email = mfxEmail || localStorage.getItem('mfxEmail') || '';
+  const pass  = localStorage.getItem('mfxPass') || '';
+  if(!email || !pass){
+    mfxShowStatus('Please disconnect and log in again to reconnect.','err');
+    return;
+  }
+  // Clear existing session
+  mfxSession = null;
+  mfxCookies = '';
+  mfxAccounts = [];
+  localStorage.removeItem('mfxSession');
+  localStorage.removeItem('mfxCookies');
+  localStorage.removeItem('mfxAccounts');
+
+  mfxShowStatus('Reconnecting to Myfxbook...','info');
+  const btn = document.getElementById('mfxConnectBtn');
+  
+  try {
+    const data = await mfxNetlifyCall('loginandaccounts', {email, password: pass});
+    if(!data.session || data.error){
+      throw new Error(data.message || 'Login failed');
+    }
+    mfxSession = data.session;
+    mfxCookies = data.cookies || '';
+    localStorage.setItem('mfxSession', mfxSession);
+    localStorage.setItem('mfxCookies', mfxCookies);
+
+    // Use fresh accounts data
+    let accounts = data.accounts || [];
+    if(!accounts.length){
+      accounts = MFX_KNOWN.map(k=>({id:k.id,name:k.name,broker:k.broker,balance:0,equity:0,profit:0,gain:0,_manual:true}));
+    }
+    mfxAccounts = accounts;
+    localStorage.setItem('mfxAccounts', JSON.stringify(mfxAccounts));
+
+    mfxSetDot('connected');
+    mfxRenderAccounts();
+    mfxShowStatus('Reconnected! Syncing...','ok');
+    await mfxSyncHistory();
+    if(mfxSyncTimer) clearInterval(mfxSyncTimer);
+    mfxSyncTimer = setInterval(mfxSyncHistory, 10*60*1000);
+  } catch(e){
+    mfxShowStatus('Reconnect failed: ' + e.message, 'err');
+  }
 }
 
 // Sync now (manual button) — forces fresh login to get updated balances
