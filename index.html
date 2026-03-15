@@ -2771,18 +2771,19 @@ function mfxRenderAccounts(){
       </div>
       <div class="mfx-account-stats">
         <div class="mfx-stat">
-          <div class="mfx-stat-v" style="color:${bal>=0?'var(--green)':'var(--red)'}">$${bal.toLocaleString()}</div>
+          <div class="mfx-stat-v" style="color:${bal>0?'var(--green)':'var(--muted)'}">${bal>0?'$'+bal.toLocaleString():'—'}</div>
           <div class="mfx-stat-l">Balance</div>
         </div>
         <div class="mfx-stat">
-          <div class="mfx-stat-v" style="color:${profit>=0?'var(--green)':'var(--red)'}">${profit>=0?'+':''}$${Math.abs(profit).toLocaleString()}</div>
+          <div class="mfx-stat-v" style="color:${profit>=0?'var(--green)':'var(--red)'}">${profit!==0?(profit>=0?'+':'')+profit.toFixed(2):'—'}</div>
           <div class="mfx-stat-l">Profit</div>
         </div>
         <div class="mfx-stat">
-          <div class="mfx-stat-v" style="color:${gain>=0?'var(--green)':'var(--red)'}">${gain>=0?'+':''}${gain.toFixed(2)}%</div>
+          <div class="mfx-stat-v" style="color:${gain>=0?'var(--green)':'var(--red)'}">${gain!==0?(gain>=0?'+':'')+gain.toFixed(2)+'%':'—'}</div>
           <div class="mfx-stat-l">Gain</div>
         </div>
       </div>
+      ${bal===0?'<div style="font-size:9px;color:var(--gold);margin-top:6px;padding:5px 8px;background:rgba(240,180,41,0.08);border-radius:5px;">Set to <strong>Public</strong> on Myfxbook to see balance</div>':''}
     </div>`;
   }).join('');
 }
@@ -2798,6 +2799,31 @@ async function mfxSyncHistory(){
   let totalNew = 0;
 
   try {
+    // First fetch all account stats in one call to get real balances
+    try {
+      const statsRes = await mfxNetlifyCall('stats', {
+        session: mfxSession,
+        id:      mfxAccounts[0]?.id,
+        cookies: mfxCookies
+      });
+      if(statsRes.accounts && statsRes.accounts.length){
+        // Update balances for all known accounts
+        statsRes.accounts.forEach(a => {
+          const local = mfxAccounts.find(x => String(x.id) === String(a.id));
+          if(local){
+            local.balance = parseFloat(a.balance || 0);
+            local.equity  = parseFloat(a.equity  || 0);
+            local.profit  = parseFloat(a.profit  || 0);
+            local.gain    = parseFloat(a.gain    || 0);
+            local.name    = a.name || local.name;
+          }
+        });
+        localStorage.setItem('mfxAccounts', JSON.stringify(mfxAccounts));
+        mfxRenderAccounts();
+        console.log('Account stats updated for', statsRes.accounts.length, 'accounts');
+      }
+    } catch(e){ console.warn('Stats fetch failed:', e.message); }
+
     for(const acc of mfxAccounts){
       const known  = MFX_KNOWN.find(k=>k.id===String(acc.id));
       const broker = known ? known.broker : (acc.broker || 'MT5');
@@ -3136,18 +3162,25 @@ document.addEventListener('click', function(e){
 });
 
 window.addEventListener('load',()=>{
-  // Restore imported trades from storage
+  // Restore trades and state
   importedTrades = JSON.parse(localStorage.getItem('importedTrades')||'[]');
   importHistory  = JSON.parse(localStorage.getItem('importHistory')||'[]');
   updateImportBadge();
   refreshAll();
   renderJournal();
 
-  // Restore Deriv connection
-  const saved = localStorage.getItem('dtok');
-  if(saved){
-    document.getElementById('tokenInput').value = saved;
-    setTimeout(connectDeriv, 300);
+  // Restore Deriv API token if saved
+  const savedDtok = localStorage.getItem('dtok');
+  if(savedDtok){
+    document.getElementById('tokenInput').value = savedDtok;
+    setTimeout(connectDeriv, 400);
+  } else {
+    // Auto-skip login screen if user has imported trades or Myfxbook session
+    const hasTrades  = importedTrades.length > 0;
+    const hasMfxSess = !!localStorage.getItem('mfxSession');
+    if(hasTrades || hasMfxSess){
+      skipLogin();
+    }
   }
 
   // Restore Myfxbook session
@@ -3156,7 +3189,7 @@ window.addEventListener('load',()=>{
   // Pre-fill Myfxbook email if saved
   const mfxEmailEl = document.getElementById('mfxEmail');
   if(mfxEmailEl && mfxEmail) mfxEmailEl.value = mfxEmail;
-});
+});;
 </script>
 <!-- HELP DRAWER -->
 <div class="help-overlay" id="helpOverlay" onclick="closeHelp(event)">
