@@ -793,26 +793,24 @@ function skipLogin(){
   document.getElementById('hSub').innerHTML='<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-right:5px;"></span>Historical data only';
   document.getElementById('liveBal').textContent='N/A';
   setConn(false,'Historical mode — no live connection');
-  // Auto-skip if trades or Myfxbook session exist
   refreshAll();
   mfxAutoRestore();
 }
 function openWS(t){
   if(ws){try{ws.close();}catch(e){}}
   ws=new WebSocket(WSURL);
-  // Auth timeout — if no response in 15s, show error
   const authTimer=setTimeout(()=>{
     if(!isConn){
       showErr('Connection timed out. Get a new token from app.deriv.com/account/api-token');
       document.getElementById('connectBtn').disabled=false;
       document.getElementById('spinWrap').style.display='none';
-      if(ws){try{ws.close();}catch(e){}}
+      try{ws.close();}catch(e){}
     }
   },15000);
   ws.onopen=()=>send({authorize:t});
   ws.onmessage=e=>{
     const m=JSON.parse(e.data);
-    if(m.msg_type==='authorize'||m.error){clearTimeout(authTimer);}
+    if(m.msg_type==='authorize'||m.error) clearTimeout(authTimer);
     handle(m);
   };
   ws.onerror=()=>{
@@ -825,7 +823,15 @@ function openWS(t){
 }
 function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o));}
 function handle(m){
-  if(m.error){if(m.error.code==='InvalidToken'||m.error.code==='AuthorizationRequired'){showErr('Invalid token. Please try again.');document.getElementById('connectBtn').disabled=false;document.getElementById('spinWrap').style.display='none';localStorage.removeItem('dtok');}return;}
+  if(m.error){
+    if(m.error.code==='InvalidToken'||m.error.code==='AuthorizationRequired'){
+      showErr('Invalid token. Please try again.');
+      document.getElementById('connectBtn').disabled=false;
+      document.getElementById('spinWrap').style.display='none';
+      localStorage.removeItem('dtok');
+    }
+    return;
+  }
   const t=m.msg_type;
   if(t==='authorize')onAuth(m.authorize);
   else if(t==='balance')onBal(m.balance);
@@ -857,7 +863,7 @@ function onAuth(a){
   refreshAll();
 }
 function onBal(b){document.getElementById('liveBal').textContent=`${acct.currency||'$'}${parseFloat(b.balance).toFixed(2)}`;}
-function fetchPT(off){send({profit_table:1,description:1,limit:500,offset:off,sort:'DESC'});}
+function fetchPT(off){send({profit_table:1,description:1,limit:100,offset:off,sort:'DESC'});}
 function onPT(pt){
   const tx=pt.transactions||[];
   tx.forEach(t=>{const tr=txToTrade(t);if(tr&&!liveTrades.find(x=>x.id===tr.id))liveTrades.push(tr);});
@@ -882,7 +888,6 @@ function txToTrade(tx){
     open:parseFloat(tx.entry_spot||0),close:parseFloat(tx.exit_spot||0),
     date:d,pnl:parseFloat(tx.profit_loss||0),src:'live',broker:'Deriv'};
 }
-
 function onPort(p){
   openPos=(p.contracts||[]).map(c=>({id:c.contract_id,name:c.display_name||c.underlying,type:c.contract_type,bp:parseFloat(c.buy_price||0),cur:parseFloat(c.bid_price||0),pnl:parseFloat(c.bid_price||0)-parseFloat(c.buy_price||0),dt:new Date(c.purchase_time*1000).toLocaleTimeString()}));
   renderOpenPos();
@@ -909,7 +914,16 @@ function renderOpenPos(){
 }
 function setConn(live,msg){const b=document.getElementById('connBar');b.className='conn-bar '+(live?'live':'offline');b.textContent=msg||(live?'● Live — Connected to Deriv API':'● Disconnected — Reconnecting...');}
 function showErr(m){const e=document.getElementById('loginErr');e.textContent=m;e.style.display='block';document.getElementById('connectBtn').disabled=false;document.getElementById('spinWrap').style.display='none';}
-function disconnect(){isConn=false;if(ws)ws.close();if(ping)clearInterval(ping);liveTrades=[];openPos=[];localStorage.removeItem('dtok');tok=null;document.getElementById('loginOverlay').style.display='flex';document.getElementById('tokenInput').value='';document.getElementById('connectBtn').disabled=false;setConn(false);refreshAll();}
+function disconnect(){
+  isConn=false;if(ws)ws.close();if(ping)clearInterval(ping);
+  liveTrades=[];openPos=[];
+  localStorage.removeItem('dtok');
+  tok=null;
+  document.getElementById('loginOverlay').style.display='flex';
+  document.getElementById('tokenInput').value='';
+  document.getElementById('connectBtn').disabled=false;
+  setConn(false);refreshAll();
+}
 
 // CHARTS
 const CD={c:'rgba(232,234,240,0.8)',g:'rgba(28,32,50,0.8)'};
