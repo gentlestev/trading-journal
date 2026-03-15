@@ -359,8 +359,9 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
       <p style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.7;">Live connection · Auto-syncs all trades in real time · Works with Deriv demo &amp; real accounts</p>
       <input type="password" class="token-input" id="tokenInput" placeholder="Paste your Deriv API token here...">
       <button class="connect-btn" id="connectBtn" onclick="connectDeriv()">Connect to Deriv</button>
-      <div class="spin-wrap" id="spinWrap"><span class="sdot">●</span>&nbsp; Connecting...</div>
+      <div class="spin-wrap" id="spinWrap"><span class="sdot">●</span>&nbsp; Connecting to Deriv API...</div>
       <div class="login-error" id="loginErr"></div>
+      <div id="wsStatus" style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px;display:none;"></div>
       <div class="login-note">
         Get token at <a href="https://app.deriv.com/account/api-token" target="_blank">app.deriv.com/account/api-token</a><br>
         Scopes: <strong>Read</strong> + <strong>Trading information</strong>
@@ -716,7 +717,6 @@ let mfxSession   = localStorage.getItem('mfxSession') || null;
 let mfxEmail     = localStorage.getItem('mfxEmail')   || '';
 let mfxCookies   = localStorage.getItem('mfxCookies') || '';
 let mfxAccounts  = JSON.parse(localStorage.getItem('mfxAccounts') || '[]');
-let mfxCookies   = localStorage.getItem('mfxCookies') || '';
 let mfxSyncTimer = null;
 let mfxSyncing   = false;
 const MFX_BASE   = 'https://www.myfxbook.com/api';
@@ -771,27 +771,75 @@ const fK=(n)=>(n>=0?'+$':'-$')+(Math.abs(n)>=1000?(Math.abs(n)/1000).toFixed(1)+
 
 // WEBSOCKET
 function connectDeriv(){
-  const t=document.getElementById('tokenInput').value.trim();
-  if(!t){showErr('Please enter your API token.');return;}
-  tok=t;
-  document.getElementById('connectBtn').disabled=true;
-  document.getElementById('spinWrap').style.display='block';
-  document.getElementById('loginErr').style.display='none';
-  localStorage.setItem('dtok',t);
+  const t = document.getElementById('tokenInput').value.trim();
+  if(!t){ showErr('Please enter your API token.'); return; }
+  // Basic token format check — Deriv tokens are ~15 chars alphanumeric
+  if(t.length < 10){
+    showErr('Token looks too short. Copy the full token from Deriv.');
+    return;
+  }
+  tok = t;
+  document.getElementById('connectBtn').disabled = true;
+  document.getElementById('spinWrap').style.display = 'block';
+  document.getElementById('loginErr').style.display = 'none';
+  localStorage.setItem('dtok', t);
+  console.log('Connecting with token length:', t.length);
   openWS(t);
 }
 function skipLogin(){document.getElementById('loginOverlay').style.display='none';document.getElementById('acctBadge').textContent='Historical Mode';document.getElementById('hSub').innerHTML='<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-right:5px;"></span>Historical data only';document.getElementById('liveBal').textContent='N/A';setConn(false,'Historical mode — no live connection');refreshAll();}
 function openWS(t){
   if(ws){try{ws.close();}catch(e){}}
-  ws=new WebSocket(WSURL);
-  ws.onopen=()=>send({authorize:t});
-  ws.onmessage=e=>handle(JSON.parse(e.data));
-  ws.onerror=()=>{showErr('Connection error. Check token.');document.getElementById('connectBtn').disabled=false;document.getElementById('spinWrap').style.display='none';};
-  ws.onclose=()=>{if(isConn){setConn(false);setTimeout(()=>{if(tok)openWS(tok);},5000);}};
+  console.log('Opening WebSocket...');
+  try {
+    ws = new WebSocket(WSURL);
+  } catch(e){
+    showErr('WebSocket not supported. Try a different browser.');
+    return;
+  }
+  ws.onopen = () => {
+    console.log('WS connected — authorizing...');
+    const st = document.getElementById('wsStatus');
+    if(st){ st.style.display='block'; st.textContent='✓ Connected — verifying token...'; }
+    send({authorize: t});
+  };
+  ws.onmessage = e => {
+    try { handle(JSON.parse(e.data)); }
+    catch(err){ console.error('WS message parse error:', err); }
+  };
+  ws.onerror = (e) => {
+    console.error('WS error:', e);
+    showErr('Connection failed. Check your internet and try again.');
+    document.getElementById('connectBtn').disabled=false;
+    document.getElementById('spinWrap').style.display='none';
+  };
+  ws.onclose = (e) => {
+    console.log('WS closed — code:', e.code, 'reason:', e.reason);
+    if(isConn){
+      setConn(false);
+      setTimeout(()=>{ if(tok) openWS(tok); }, 5000);
+    }
+  };
 }
 function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o));}
 function handle(m){
-  if(m.error){if(m.error.code==='InvalidToken'||m.error.code==='AuthorizationRequired'){showErr('Invalid token.');document.getElementById('connectBtn').disabled=false;document.getElementById('spinWrap').style.display='none';localStorage.removeItem('dtok');}return;}
+  if(m.error){
+    const code = m.error.code||'';
+    const msg  = m.error.message||'Unknown error';
+    console.warn('Deriv WS error:', code, msg);
+    if(code==='InvalidToken'||code==='AuthorizationRequired'){
+      showErr('Invalid token — please check and try again.');
+      document.getElementById('connectBtn').disabled=false;
+      document.getElementById('spinWrap').style.display='none';
+      localStorage.removeItem('dtok');
+    } else if(code==='RateLimit'){
+      console.warn('Rate limited — retrying in 3s');
+      setTimeout(()=>{ if(tok) openWS(tok); }, 3000);
+    } else {
+      // Log other errors but don't break the connection
+      console.warn('Non-fatal Deriv error:', code, msg);
+    }
+    return;
+  }
   const t=m.msg_type;
   if(t==='authorize')onAuth(m.authorize);
   else if(t==='balance')onBal(m.balance);
@@ -806,6 +854,8 @@ function onAuth(a){
   isConn=true;acct=a;
   document.getElementById('loginOverlay').style.display='none';
   document.getElementById('spinWrap').style.display='none';
+  const st=document.getElementById('wsStatus');
+  if(st) st.style.display='none';
   setConn(true);
   document.getElementById('acctBadge').textContent=a.is_virtual?'Demo Account':'Live Account';
   document.getElementById('hSub').innerHTML=`<span class="ldot"></span>${a.email||'Connected'} · ${a.currency||'USD'}`;
@@ -2977,9 +3027,12 @@ window.addEventListener('load',()=>{
   refreshAll();
   renderJournal();
 
-  // Restore Deriv connection
-  const saved=localStorage.getItem('dtok');
-  if(saved){document.getElementById('tokenInput').value=saved;connectDeriv();}
+  // Restore Deriv connection — delay slightly to let DOM fully render
+  const saved = localStorage.getItem('dtok');
+  if(saved){
+    document.getElementById('tokenInput').value = saved;
+    setTimeout(connectDeriv, 300);
+  }
 
   // Restore Myfxbook session
   mfxAutoRestore();
