@@ -800,10 +800,28 @@ function skipLogin(){
 function openWS(t){
   if(ws){try{ws.close();}catch(e){}}
   ws=new WebSocket(WSURL);
+  // Auth timeout — if no response in 15s, show error
+  const authTimer=setTimeout(()=>{
+    if(!isConn){
+      showErr('Connection timed out. Get a new token from app.deriv.com/account/api-token');
+      document.getElementById('connectBtn').disabled=false;
+      document.getElementById('spinWrap').style.display='none';
+      if(ws){try{ws.close();}catch(e){}}
+    }
+  },15000);
   ws.onopen=()=>send({authorize:t});
-  ws.onmessage=e=>handle(JSON.parse(e.data));
-  ws.onerror=()=>{showErr('Connection error. Check token and try again.');document.getElementById('connectBtn').disabled=false;document.getElementById('spinWrap').style.display='none';};
-  ws.onclose=()=>{if(isConn){setConn(false);setTimeout(()=>{if(tok)openWS(tok);},5000);}};
+  ws.onmessage=e=>{
+    const m=JSON.parse(e.data);
+    if(m.msg_type==='authorize'||m.error){clearTimeout(authTimer);}
+    handle(m);
+  };
+  ws.onerror=()=>{
+    clearTimeout(authTimer);
+    showErr('Connection error. Check token and try again.');
+    document.getElementById('connectBtn').disabled=false;
+    document.getElementById('spinWrap').style.display='none';
+  };
+  ws.onclose=()=>{clearTimeout(authTimer);if(isConn){setConn(false);setTimeout(()=>{if(tok)openWS(tok);},5000);}};
 }
 function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o));}
 function handle(m){
@@ -842,9 +860,12 @@ function fetchPT(off){send({profit_table:1,description:1,limit:100,offset:off,so
 function onPT(pt){
   const tx=pt.transactions||[];
   tx.forEach(t=>{const tr=txToTrade(t);if(tr&&!liveTrades.find(x=>x.id===tr.id))liveTrades.push(tr);});
-  if(tx.length===100)fetchPT(liveTrades.length);
-  else refreshAll();
-  if(tx.length<100)refreshAll();
+  if(tx.length===100){
+    fetchPT(liveTrades.length); // fetch next page
+  } else {
+    console.log('Deriv: loaded',liveTrades.length,'trades');
+    refreshAll(); // done — render
+  }
 }
 function txToTrade(tx){
   if(!tx||!tx.transaction_id)return null;
