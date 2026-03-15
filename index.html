@@ -349,24 +349,20 @@ textarea.jf-input{resize:vertical;min-height:80px;line-height:1.6;}
 
     <!-- Option tabs -->
     <div class="login-opts">
-      <div class="login-opt active" onclick="switchLoginOpt('api',this)">Deriv API</div>
+      <div class="login-opt active" onclick="switchLoginOpt('api',this)">Deriv Live</div>
       <div class="login-opt" onclick="switchLoginOpt('csv',this)">MT5 Import</div>
       <div class="login-opt" onclick="skipLogin()">View Only</div>
     </div>
 
-    <!-- PANE A: Deriv API -->
+    <!-- PANE A: Deriv Live -->
     <div class="login-pane active" id="pane-api">
-      <p style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.7;">Live connection · Auto-syncs all trades in real time · Works with Deriv demo &amp; real accounts</p>
-      <input type="password" class="token-input" id="tokenInput" placeholder="Paste your Deriv API token here...">
-      <button class="connect-btn" id="connectBtn" onclick="connectDeriv()">Connect to Deriv</button>
+      <p style="font-size:10px;color:var(--muted);margin-bottom:12px;line-height:1.7;">Opens your working Deriv live dashboard in full screen</p>
+      <button class="connect-btn" id="connectBtn" onclick="openDerivDashboard()" style="background:var(--green);margin-bottom:12px;">Open Deriv Live Dashboard</button>
+      <p style="font-size:10px;color:var(--muted);line-height:1.7;">Or paste your token below to connect directly:</p>
+      <input type="password" class="token-input" id="tokenInput" placeholder="Paste your Deriv API token here..." style="margin-top:8px;">
+      <button class="connect-btn" id="connectBtnDirect" onclick="connectDeriv()" style="background:var(--surface2);color:var(--green);border:1px solid rgba(0,229,176,0.3);margin-top:6px;">Connect Token Directly</button>
       <div class="spin-wrap" id="spinWrap"><span class="sdot">●</span>&nbsp; Connecting to Deriv API...</div>
       <div class="login-error" id="loginErr"></div>
-      <div id="wsStatus" style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px;display:none;"></div>
-      <div class="login-note">
-        Get token at <a href="https://app.deriv.com/account/api-token" target="_blank">app.deriv.com/account/api-token</a><br>
-        Scopes: <strong>Read</strong> + <strong>Trading information</strong><br><br>
-        <a href="#" onclick="localStorage.removeItem('dtok');document.getElementById('tokenInput').value='';document.getElementById('loginErr').style.display='none';return false;" style="color:var(--red);font-size:9px;">Clear saved token</a>
-      </div>
     </div>
 
     <!-- PANE B: MT5 CSV Import -->
@@ -930,6 +926,21 @@ function renderOpenPos(){
 }
 function setConn(live,msg){const b=document.getElementById('connBar');b.className='conn-bar '+(live?'live':'offline');b.textContent=msg||(live?'● Live — Connected to Deriv API':'● Disconnected — Reconnecting...');}
 function showErr(m){const e=document.getElementById('loginErr');e.textContent=m;e.style.display='block';document.getElementById('connectBtn').disabled=false;document.getElementById('spinWrap').style.display='none';}
+function openDerivDashboard(){
+  const overlay = document.getElementById('derivOverlay');
+  const frame   = document.getElementById('derivFrame');
+  overlay.style.display = 'flex';
+  // Load the working dashboard
+  if(!frame.src || frame.src === window.location.href){
+    frame.src = 'https://gentlestev.github.io/trading-dashboard/';
+  }
+  document.getElementById('loginOverlay').style.display = 'none';
+}
+
+function closeDerivDashboard(){
+  document.getElementById('derivOverlay').style.display = 'none';
+}
+
 function disconnect(){
   isConn=false;if(ws)ws.close();if(ping)clearInterval(ping);
   liveTrades=[];openPos=[];
@@ -3410,6 +3421,29 @@ window.addEventListener('load',()=>{
     </div><!-- end help-body -->
   </div><!-- end help-drawer -->
 </div><!-- end help-overlay -->
+
+<!-- DERIV LIVE OVERLAY -->
+<div id="derivOverlay" style="display:none;position:fixed;inset:0;z-index:999;background:#000;flex-direction:column;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#0f1117;border-bottom:1px solid #1c2032;">
+    <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#00e5b0;">Deriv Live Dashboard</div>
+    <div style="display:flex;gap:8px;">
+      <a href="https://gentlestev.github.io/trading-dashboard/" target="_blank"
+         style="padding:6px 12px;background:rgba(0,229,176,0.1);border:1px solid rgba(0,229,176,0.3);border-radius:6px;color:#00e5b0;font-size:10px;text-decoration:none;">
+        Open in New Tab
+      </a>
+      <button onclick="closeDerivDashboard()"
+         style="padding:6px 12px;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.3);border-radius:6px;color:#ff4d6a;font-size:10px;cursor:pointer;font-family:'JetBrains Mono',monospace;">
+        Close
+      </button>
+    </div>
+  </div>
+  <iframe id="derivFrame"
+    src=""
+    style="flex:1;width:100%;border:none;"
+    allow="storage-access"
+    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-storage-access-by-user-activation">
+  </iframe>
+</div>
 
 <!-- FOOTER -->
 <div style="text-align:center;padding:28px 22px 20px;border-top:1px solid var(--border);margin-top:32px;">
