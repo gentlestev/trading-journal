@@ -734,8 +734,10 @@ const MFX_PROXIES = [
 ];
 // Pre-configured account IDs (yours)
 const MFX_KNOWN  = [
-  {id:'11970519', broker:'FTMO',     name:'FTMO DEMO2'},
-  {id:'11970510', broker:'The5ers',  name:'The5ers'},
+  {id:'11970519', broker:'FTMO',       name:'FTMO DEMO2'},
+  {id:'11970510', broker:'The5ers',    name:'The5ers'},
+  {id:'11970633', broker:'Deriv Real', name:'Deriv MT5 Real'},
+  {id:'11970638', broker:'Deriv Demo', name:'Deriv MT5 Demo'},
 ];
 let editingJournalId=null,jFilter='all',selectedStars=0,selectedMoods=[],selectedImages=[];
 let lbImages=[],lbIndex=0;
@@ -2503,11 +2505,13 @@ function renderAcctBar(){
     impDivider.style.display='block';
     // Color map — easily extendable
     const brokerColors = {
-      FTMO:      'var(--gold)',
-      The5ers:   'var(--purple)',
-      MyFundedFX:'var(--blue)',
-      E8:        '#f97316',
-      Topstep:   '#06b6d4',
+      FTMO:         'var(--gold)',
+      The5ers:      'var(--purple)',
+      'Deriv Real': 'var(--green)',
+      'Deriv Demo': '#22d3ee',
+      MyFundedFX:   'var(--blue)',
+      E8:           '#f97316',
+      Topstep:      '#06b6d4',
     };
     const defaultColor = 'var(--blue)';
 
@@ -2542,7 +2546,7 @@ function renderAcctBar(){
     // reset inline styles for imported btns
     if(btn.dataset.broker){
       const b   = btn.dataset.broker;
-      const brokerColors = {FTMO:'var(--gold)',The5ers:'var(--purple)'};
+      const brokerColors = {FTMO:'var(--gold)',The5ers:'var(--purple)','Deriv Real':'var(--green)','Deriv Demo':'#22d3ee'};
       const col = brokerColors[b]||'var(--blue)';
       if(activeAcct===b){
         btn.style.background=col; btn.style.borderColor=col; btn.style.color='#000';
@@ -2889,6 +2893,7 @@ function mfxTradeToLocal(t, broker, acc){
     broker,
     accountBalance: bal,
     source:         'myfxbook',
+    accountId:      String(acc.id),
   };
 }
 
