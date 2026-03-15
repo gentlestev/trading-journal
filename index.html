@@ -2480,6 +2480,7 @@ async function mfxConnect(){
     localStorage.setItem('mfxSession', mfxSession);
     localStorage.setItem('mfxEmail',   mfxEmail);
     localStorage.setItem('mfxCookies', mfxCookies);
+    localStorage.setItem('mfxPass',    pass); // Save for session refresh on sync
     localStorage.setItem('mfxPass',    pass); // saved for auto re-login on sync
 
     // Accounts came back in same call
@@ -2615,30 +2616,43 @@ async function mfxSyncHistory(){
   let totalNew = 0;
 
   try {
-    // First fetch all account stats in one call to get real balances
-    try {
-      const statsRes = await mfxNetlifyCall('stats', {
-        session: mfxSession,
-        id:      mfxAccounts[0]?.id,
-        cookies: mfxCookies
-      });
-      if(statsRes.accounts && statsRes.accounts.length){
-        // Update balances for all known accounts
-        statsRes.accounts.forEach(a => {
-          const local = mfxAccounts.find(x => String(x.id) === String(a.id));
-          if(local){
-            local.balance = parseFloat(a.balance || 0);
-            local.equity  = parseFloat(a.equity  || 0);
-            local.profit  = parseFloat(a.profit  || 0);
-            local.gain    = parseFloat(a.gain    || 0);
-            local.name    = a.name || local.name;
-          }
+    // Always re-login to get fresh session + cookies on every sync
+    // This prevents "Invalid session" errors from stale sessions
+    const mfxEmail = localStorage.getItem('mfxEmail') || '';
+    const mfxPass  = localStorage.getItem('mfxPass')  || '';
+    
+    if(mfxEmail && mfxPass){
+      try {
+        mfxShowStatus('Refreshing session...', 'info');
+        const freshLogin = await mfxNetlifyCall('loginandaccounts', {
+          email:    mfxEmail,
+          password: mfxPass
         });
-        localStorage.setItem('mfxAccounts', JSON.stringify(mfxAccounts));
-        mfxRenderAccounts();
-        console.log('Account stats updated for', statsRes.accounts.length, 'accounts');
-      }
-    } catch(e){ console.warn('Stats fetch failed:', e.message); }
+        if(freshLogin.session){
+          mfxSession = freshLogin.session;
+          mfxCookies = freshLogin.cookies || '';
+          localStorage.setItem('mfxSession', mfxSession);
+          localStorage.setItem('mfxCookies', mfxCookies);
+          console.log('Fresh session obtained for sync');
+          
+          // Update account balances from fresh login
+          if(freshLogin.accounts && freshLogin.accounts.length){
+            freshLogin.accounts.forEach(a => {
+              const local = mfxAccounts.find(x => String(x.id) === String(a.id));
+              if(local){
+                local.balance = parseFloat(a.balance || 0);
+                local.equity  = parseFloat(a.equity  || 0);
+                local.profit  = parseFloat(a.profit  || 0);
+                local.gain    = parseFloat(a.gain    || 0);
+                local.name    = a.name || local.name;
+              }
+            });
+            localStorage.setItem('mfxAccounts', JSON.stringify(mfxAccounts));
+            mfxRenderAccounts();
+          }
+        }
+      } catch(e){ console.warn('Session refresh failed:', e.message); }
+    }
 
     for(const acc of mfxAccounts){
       const known  = MFX_KNOWN.find(k=>k.id===String(acc.id));
@@ -2942,6 +2956,8 @@ function mfxDisconnect(){
   mfxSession = null;
   localStorage.removeItem('mfxSession');
   localStorage.removeItem('mfxAccounts');
+  localStorage.removeItem('mfxPass');
+  localStorage.removeItem('mfxCookies');
   localStorage.removeItem('mfxPass');
   localStorage.removeItem('mfxCookies');
   mfxAccounts = [];
