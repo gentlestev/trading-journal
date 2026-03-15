@@ -3119,17 +3119,12 @@ window.addEventListener('load',()=>{
   refreshAll();
   renderJournal();
 
-  // Restore Deriv token — connect immediately like original
-  const savedDtok = localStorage.getItem('dtok');
-  if(savedDtok){
-    document.getElementById('tokenInput').value = savedDtok;
-    connectDeriv();
-  } else {
-    // No Deriv token — skip login if trades or Myfxbook session exist
-    const hasTrades  = importedTrades.length > 0;
-    const hasMfxSess = !!localStorage.getItem('mfxSession');
-    if(hasTrades || hasMfxSess) skipLogin();
-  }
+  // Don't auto-connect — always show login screen for manual token entry
+  // Clear any saved token so user always enters fresh
+  localStorage.removeItem('dtok');
+  const hasTrades  = importedTrades.length > 0;
+  const hasMfxSess = !!localStorage.getItem('mfxSession');
+  if(hasTrades || hasMfxSess) skipLogin();
 
   // Restore Myfxbook
   mfxAutoRestore();
