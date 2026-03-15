@@ -865,64 +865,24 @@ function onPT(pt){
   else refreshAll();
   if(tx.length<100)refreshAll();
 }
-
 function txToTrade(tx){
-  if(!tx || !tx.transaction_id) return null;
-
-  const symbolMap={
-    'R_10':'V10','R_25':'V25','R_50':'V50','R_75':'V75','R_100':'V100',
-    '1HZ10V':'V10','1HZ25V':'V25','1HZ50V':'V50','1HZ75V':'V75','1HZ100V':'V100'
-  };
-
-  const raw = tx.underlying || tx.underlying_symbol || '';
-  const idx = symbolMap[raw] || raw;
-
-  const nameMap={
-    'V10':'Volatility 10 Index',
-    'V25':'Volatility 25 Index',
-    'V50':'Volatility 50 Index',
-    'V75':'Volatility 75 Index',
-    'V100':'Volatility 100 Index'
-  };
-
-  const instrument = nameMap[idx] || raw;
-
-  const buy = parseFloat(tx.buy_price || 0);
-  const sell = parseFloat(tx.sell_price || 0);
-
-  const pnl =
-    tx.profit !== undefined
-      ? parseFloat(tx.profit)
-      : sell - buy;
-
-  const date = tx.purchase_time
-    ? new Date(tx.purchase_time * 1000).toISOString().slice(0,10)
-    : new Date().toISOString().slice(0,10);
-
-  return {
-    id: 'lv_' + tx.transaction_id,
-    instrument: instrument,
-    idx: idx,
-    direction: 'BUY',
-    lots: buy,
-    open: parseFloat(tx.entry_tick || tx.entry_spot || 0),
-    close: parseFloat(tx.exit_tick || tx.exit_spot || 0),
-    date: date,
-    pnl: pnl,
-    src: 'live',
-    broker: 'Deriv'
-  };
-}
-;
+  if(!tx||!tx.transaction_id)return null;
+  const sm={'R_10':'V10','R_25':'V25','R_50':'V50','R_75':'V75','R_100':'V100',
+            '1HZ10V':'V10','1HZ25V':'V25','1HZ50V':'V50','1HZ75V':'V75','1HZ100V':'V100'};
   const raw=tx.underlying_symbol||'';
   const idx=sm[raw]||(raw.startsWith('R_')?'V'+raw.slice(2):raw)||'OTHER';
-  const names={'V10':'Volatility 10 Index','V25':'Volatility 25 Index','V50':'Volatility 50 Index','V75':'Volatility 75 Index','V100':'Volatility 100 Index'};
+  const names={'V10':'Volatility 10 Index','V25':'Volatility 25 Index','V50':'Volatility 50 Index',
+               'V75':'Volatility 75 Index','V100':'Volatility 100 Index'};
   const nm=names[idx]||tx.underlying_symbol||idx;
   const ct=(tx.contract_type||'').toUpperCase();
   const dir=ct.includes('CALL')||ct.includes('RISE')||ct.includes('HIGHER')||ct.includes('TOUCH')?'BUY':'SELL';
   const d=tx.purchase_time?new Date(tx.purchase_time*1000).toISOString().slice(0,10):new Date().toISOString().slice(0,10);
-  return{id:'lv_'+tx.transaction_id,instrument:nm,idx,direction:dir,lots:parseFloat(tx.buy_price||tx.stake||1),open:parseFloat(tx.entry_spot||0),close:parseFloat(tx.exit_spot||0),date:d,pnl:parseFloat(tx.profit_loss||0),src:'live',broker:'Deriv'};
+  return{id:'lv_'+tx.transaction_id,instrument:nm,idx,direction:dir,
+    lots:parseFloat(tx.buy_price||tx.stake||1),
+    open:parseFloat(tx.entry_spot||0),close:parseFloat(tx.exit_spot||0),
+    date:d,pnl:parseFloat(tx.profit_loss||0),src:'live',broker:'Deriv'};
 }
+
 function onPort(p){
   openPos=(p.contracts||[]).map(c=>({id:c.contract_id,name:c.display_name||c.underlying,type:c.contract_type,bp:parseFloat(c.buy_price||0),cur:parseFloat(c.bid_price||0),pnl:parseFloat(c.bid_price||0)-parseFloat(c.buy_price||0),dt:new Date(c.purchase_time*1000).toLocaleTimeString()}));
   renderOpenPos();
