@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trading Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" crossorigin="anonymous">
 <style>
 :root{--bg:#07090d;--surface:#0f1117;--surface2:#161922;--border:#1c2032;--green:#00e5b0;--red:#ff4d6a;--blue:#3d9bff;--gold:#f0b429;--purple:#a78bfa;--text:#e8eaf0;--muted:#5a6278;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -865,11 +865,22 @@ function onAuth(a){
   refreshAll();
 }
 function onBal(b){document.getElementById('liveBal').textContent=`${acct.currency||'$'}${parseFloat(b.balance).toFixed(2)}`;}
-function fetchPT(off){send({profit_table:1,description:1,limit:100,offset:off,sort:'DESC'});}
+function fetchPT(off){
+  // Add date_from: 0 to get ALL historical trades, not just recent ones
+  send({
+    profit_table:  1,
+    description:   1,
+    limit:         100,
+    offset:        off,
+    sort:          'DESC',
+    date_from:     0,
+  });
+}
 function onPT(pt){
   const tx=pt.transactions||[];
+  console.log('profit_table RAW:', JSON.stringify(pt).slice(0,300));
   console.log('profit_table received:', tx.length, 'transactions | total so far:', liveTrades.length);
-  if(tx.length > 0) console.log('First trade sample:', JSON.stringify(tx[0]).slice(0,150));
+  if(tx.length > 0) console.log('First trade sample:', JSON.stringify(tx[0]).slice(0,200));
   tx.forEach(t=>{const tr=txToTrade(t);if(tr&&!liveTrades.find(x=>x.id===tr.id))liveTrades.push(tr);});
   console.log('liveTrades after processing:', liveTrades.length);
   if(tx.length===100)fetchPT(liveTrades.length);
@@ -960,6 +971,7 @@ function getStartingBalance(){
 }
 
 function buildEq(){
+  try{
   dc('eq');
   const s=[...all()].sort((a,b)=>a.date.localeCompare(b.date));
   const startBal = getStartingBalance();
@@ -971,6 +983,7 @@ function buildEq(){
   const ctx=document.getElementById('eqChart').getContext('2d');
   const g=ctx.createLinearGradient(0,0,0,230);g.addColorStop(0,'rgba(0,229,176,0.2)');g.addColorStop(1,'rgba(0,229,176,0)');
   ch['eq']=new Chart(ctx,{type:'line',data:{labels:lb,datasets:[{data:dt,borderColor:'#00e5b0',backgroundColor:g,borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,tension:0.3}]},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{backgroundColor:'#0f1117',borderColor:'#1c2032',borderWidth:1,callbacks:{label:c=>'Balance: $'+c.parsed.y.toLocaleString()}}},scales:{x:{ticks:{color:CD.c,font:{size:9},maxTicksLimit:8},grid:{color:CD.g}},y:{ticks:{color:CD.c,font:{size:9},callback:v=>'$'+v.toLocaleString()},grid:{color:CD.g}}}}});
+  }catch(e){console.warn('Chart error:',e.message);}
 }
 function buildDay(){
   dc('day');
@@ -1619,7 +1632,17 @@ function switchTab(n){
   if(n==='journal')renderJournal();
 }
 
-function refreshAll(){renderAcctBar();renderKPIs();renderTable();renderTodayKPIs();updateInsight();buildEq();buildDay();buildIdx();buildMo();}
+function refreshAll(){
+  renderAcctBar();
+  renderKPIs();
+  renderTable();
+  renderTodayKPIs();
+  updateInsight();
+  try{buildEq();}catch(e){console.warn('buildEq failed:',e.message);}
+  try{buildDay();}catch(e){console.warn('buildDay failed:',e.message);}
+  try{buildIdx();}catch(e){console.warn('buildIdx failed:',e.message);}
+  try{buildMo();}catch(e){console.warn('buildMo failed:',e.message);}
+}
 
 // ============================================================
 // LOGIN OPTION SWITCHER
@@ -1658,7 +1681,7 @@ function parseMT5File(text, broker){
 // ============================================================
 async function parsePDF(file, broker){
   pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
