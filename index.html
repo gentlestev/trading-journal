@@ -2666,6 +2666,7 @@ async function mfxConnect(){
     localStorage.setItem('mfxSession', mfxSession);
     localStorage.setItem('mfxEmail',   mfxEmail);
     localStorage.setItem('mfxCookies', mfxCookies);
+    localStorage.setItem('mfxPass',    pass); // saved for auto re-login on sync
 
     // Accounts came back in same call
     mfxAccounts = data.accounts || [];
@@ -2839,7 +2840,10 @@ async function mfxSyncHistory(){
           cookies: mfxCookies
         });
         const trades = hist.history || [];
-        console.log(`${broker}: ${trades.length} trades in history`);
+        console.log(`${broker} (${accId}): ${trades.length} trades | error:${hist.error} | msg:${hist.message||'none'}`);
+        if(hist.error){
+          console.warn(`History error for ${broker}:`, hist.message);
+        }
 
         // Update account balance from history data if available
         if(hist.balance !== undefined){
@@ -2894,8 +2898,14 @@ async function mfxSyncHistory(){
     }
 
     const now = new Date().toLocaleTimeString();
+    console.log(`Sync complete: ${totalNew} new trades from ${mfxAccounts.length} accounts`);
     document.getElementById('mfxLastSync').textContent = `Last synced: ${now} · ${totalNew} new trades`;
-    mfxShowStatus(`Synced at ${now}${totalNew?' · '+totalNew+' new trades':'  · Up to date'}`, 'ok');
+    const statusMsg = totalNew > 0
+      ? `Synced · ${totalNew} new trades added`
+      : importedTrades.filter(t=>t.source==='myfxbook').length > 0
+        ? `Up to date · ${importedTrades.filter(t=>t.source==='myfxbook').length} trades loaded`
+        : `Synced · No trades found (check console for details)`;
+    mfxShowStatus(statusMsg, totalNew > 0 ? 'ok' : 'info');
     mfxSetDot('connected');
 
     // Add import history entry if new trades found
@@ -2996,9 +3006,59 @@ function mfxUpdateOpenTrades(trades, broker){
   renderOpenPos();
 }
 
-// Sync now (manual button)
+// Sync now (manual button) — forces fresh login to get updated balances
 async function mfxSyncNow(){
   if(!mfxSession){ switchTab('live'); return; }
+  
+  // Force fresh login to get updated account data (especially after making accounts Public)
+  const email = mfxEmail || localStorage.getItem('mfxEmail') || '';
+  const pass  = localStorage.getItem('mfxPass') || '';
+  
+  if(email && pass){
+    mfxShowStatus('Refreshing session...', 'info');
+    try {
+      const data = await mfxNetlifyCall('loginandaccounts', {email, password: pass});
+      if(data.session && !data.error){
+        mfxSession = data.session;
+        mfxCookies = data.cookies || '';
+        localStorage.setItem('mfxSession', mfxSession);
+        localStorage.setItem('mfxCookies', mfxCookies);
+        
+        // Update accounts with fresh balance data
+        if(data.accounts && data.accounts.length){
+          // Merge fresh data into existing accounts
+          data.accounts.forEach(a => {
+            const local = mfxAccounts.find(x => String(x.id) === String(a.id));
+            if(local){
+              local.balance = parseFloat(a.balance || 0);
+              local.equity  = parseFloat(a.equity  || 0);
+              local.profit  = parseFloat(a.profit  || 0);
+              local.gain    = parseFloat(a.gain    || 0);
+              local.name    = a.name || local.name;
+            }
+          });
+          // Also add any new accounts not in our list
+          data.accounts.forEach(a => {
+            if(!mfxAccounts.find(x => String(x.id) === String(a.id))){
+              const known = MFX_KNOWN.find(k => k.id === String(a.id));
+              mfxAccounts.push({
+                id:      a.id,
+                name:    a.name || (known ? known.name : 'Account '+a.id),
+                broker:  known ? known.broker : (a.broker || 'MT5'),
+                balance: parseFloat(a.balance || 0),
+                equity:  parseFloat(a.equity  || 0),
+                profit:  parseFloat(a.profit  || 0),
+                gain:    parseFloat(a.gain    || 0),
+              });
+            }
+          });
+          localStorage.setItem('mfxAccounts', JSON.stringify(mfxAccounts));
+          mfxRenderAccounts();
+        }
+      }
+    } catch(e){ console.warn('Re-login failed:', e.message); }
+  }
+  
   await mfxSyncHistory();
 }
 
@@ -3009,6 +3069,8 @@ function mfxDisconnect(){
   mfxSession = null;
   localStorage.removeItem('mfxSession');
   localStorage.removeItem('mfxAccounts');
+  localStorage.removeItem('mfxPass');
+  localStorage.removeItem('mfxCookies');
   mfxAccounts = [];
   document.getElementById('mfxLoginForm').style.display    = 'block';
   document.getElementById('mfxAccountsWrap').style.display = 'none';
@@ -3190,6 +3252,8 @@ window.addEventListener('load',()=>{
   // Pre-fill Myfxbook email if saved
   const mfxEmailEl = document.getElementById('mfxEmail');
   if(mfxEmailEl && mfxEmail) mfxEmailEl.value = mfxEmail;
+  const mfxPassEl = document.getElementById('mfxPassword');
+  if(mfxPassEl && localStorage.getItem('mfxPass')) mfxPassEl.value = localStorage.getItem('mfxPass');
 });;
 </script>
 <!-- HELP DRAWER -->
