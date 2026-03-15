@@ -857,7 +857,7 @@ function onAuth(a){
   refreshAll();
 }
 function onBal(b){document.getElementById('liveBal').textContent=`${acct.currency||'$'}${parseFloat(b.balance).toFixed(2)}`;}
-function fetchPT(off){send({profit_table:1,description:1,limit:100,offset:off,sort:'DESC'});}
+function fetchPT(off){send({profit_table:1,description:1,limit:500,offset:off,sort:'DESC'});}
 function onPT(pt){
   const tx=pt.transactions||[];
   tx.forEach(t=>{const tr=txToTrade(t);if(tr&&!liveTrades.find(x=>x.id===tr.id))liveTrades.push(tr);});
@@ -865,9 +865,55 @@ function onPT(pt){
   else refreshAll();
   if(tx.length<100)refreshAll();
 }
+
 function txToTrade(tx){
-  if(!tx||!tx.transaction_id)return null;
-  const sm={'R_10':'V10','R_25':'V25','R_50':'V50','R_75':'V75','R_100':'V100','1HZ10V':'V10','1HZ25V':'V25','1HZ50V':'V50','1HZ75V':'V75','1HZ100V':'V100'};
+  if(!tx || !tx.transaction_id) return null;
+
+  const symbolMap={
+    'R_10':'V10','R_25':'V25','R_50':'V50','R_75':'V75','R_100':'V100',
+    '1HZ10V':'V10','1HZ25V':'V25','1HZ50V':'V50','1HZ75V':'V75','1HZ100V':'V100'
+  };
+
+  const raw = tx.underlying || tx.underlying_symbol || '';
+  const idx = symbolMap[raw] || raw;
+
+  const nameMap={
+    'V10':'Volatility 10 Index',
+    'V25':'Volatility 25 Index',
+    'V50':'Volatility 50 Index',
+    'V75':'Volatility 75 Index',
+    'V100':'Volatility 100 Index'
+  };
+
+  const instrument = nameMap[idx] || raw;
+
+  const buy = parseFloat(tx.buy_price || 0);
+  const sell = parseFloat(tx.sell_price || 0);
+
+  const pnl =
+    tx.profit !== undefined
+      ? parseFloat(tx.profit)
+      : sell - buy;
+
+  const date = tx.purchase_time
+    ? new Date(tx.purchase_time * 1000).toISOString().slice(0,10)
+    : new Date().toISOString().slice(0,10);
+
+  return {
+    id: 'lv_' + tx.transaction_id,
+    instrument: instrument,
+    idx: idx,
+    direction: 'BUY',
+    lots: buy,
+    open: parseFloat(tx.entry_tick || tx.entry_spot || 0),
+    close: parseFloat(tx.exit_tick || tx.exit_spot || 0),
+    date: date,
+    pnl: pnl,
+    src: 'live',
+    broker: 'Deriv'
+  };
+}
+;
   const raw=tx.underlying_symbol||'';
   const idx=sm[raw]||(raw.startsWith('R_')?'V'+raw.slice(2):raw)||'OTHER';
   const names={'V10':'Volatility 10 Index','V25':'Volatility 25 Index','V50':'Volatility 50 Index','V75':'Volatility 75 Index','V100':'Volatility 100 Index'};
