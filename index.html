@@ -2599,7 +2599,7 @@ function mfxRenderAccounts(){
           <div class="mfx-stat-l">Gain</div>
         </div>
       </div>
-      ${bal===0?'<div style="font-size:9px;color:var(--gold);margin-top:6px;padding:5px 8px;background:rgba(240,180,41,0.08);border-radius:5px;">Set to <strong>Public</strong> on Myfxbook to see balance</div>':''}
+      ${bal===0?'<div style="font-size:9px;color:var(--muted);margin-top:6px;padding:5px 8px;background:rgba(255,255,255,0.03);border-radius:5px;">Click <strong>Sync Now</strong> to load balance &amp; trades</div>':''}
     </div>`;
   }).join('');
 }
@@ -2657,6 +2657,17 @@ async function mfxSyncHistory(){
         console.log(`${broker} (${accId}): ${trades.length} trades | error:${hist.error} | msg:${hist.message||'none'}`);
         if(hist.error){
           console.warn(`History error for ${broker}:`, hist.message);
+          // If invalid session, clear it so user can re-login
+          if(hist.message && (hist.message.toLowerCase().includes('session') || 
+             hist.message.toLowerCase().includes('invalid'))){
+            mfxSession = null;
+            localStorage.removeItem('mfxSession');
+            mfxShowStatus('Session expired — please reconnect Myfxbook', 'err');
+            document.getElementById('mfxLoginForm').style.display = 'block';
+            document.getElementById('mfxAccountsWrap').style.display = 'none';
+            mfxSyncing = false;
+            return;
+          }
         }
 
         // Update account balance from history data if available
@@ -2979,11 +2990,22 @@ async function mfxAutoRestore(){
   mfxShowStatus('Restoring Myfxbook session...','info');
   try {
     // Re-sync with saved session
-    mfxAccounts = JSON.parse(localStorage.getItem('mfxAccounts')||'[]');
-    if(!mfxAccounts.length){
-      // Use known accounts as fallback
-      mfxAccounts = MFX_KNOWN.map(k=>({id:k.id,name:k.name,broker:k.broker,balance:0,equity:0,profit:0,gain:0,_manual:true}));
-    }
+    // Always use MFX_KNOWN as base — get fresh data from sync
+    mfxAccounts = MFX_KNOWN.map(k=>{
+      // Try to restore cached balance if available
+      const cached = JSON.parse(localStorage.getItem('mfxAccounts')||'[]');
+      const cachedAcc = cached.find(a=>String(a.id)===k.id);
+      return {
+        id:      k.id,
+        name:    cachedAcc?.name  || k.name,
+        broker:  k.broker,
+        balance: cachedAcc?.balance || 0,
+        equity:  cachedAcc?.equity  || 0,
+        profit:  cachedAcc?.profit  || 0,
+        gain:    cachedAcc?.gain    || 0,
+        _manual: true,
+      };
+    });
     document.getElementById('mfxLoginForm').style.display    = 'none';
     document.getElementById('mfxAccountsWrap').style.display = 'block';
     document.getElementById('mfxSyncBtn').style.display      = 'flex';
