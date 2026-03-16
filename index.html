@@ -232,6 +232,7 @@
     <div class="tab" onclick="switchTab(this,'trades')">All Trades</div>
     <div class="tab" onclick="switchTab(this,'journal')">Journal</div>
     <div class="tab" onclick="switchTab(this,'analysis')">Analysis</div>
+    <div class="tab" onclick="switchTab(this,'help')">❓ Help</div>
   </div>
   <main>
     <!-- DASHBOARD -->
@@ -290,11 +291,11 @@
               <option value="Other">Other Prop Firm</option>
             </select>
           </div>
-          <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">Upload a .csv or .xlsx file exported from MT5, Deriv, or any broker. Columns needed: date, instrument, direction, entry, exit, profit/loss.</p>
+          <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">Upload a .csv, .xlsx or .html/.htm file exported from MT5, Deriv, or any broker. The AI will automatically detect the format and extract all trades.</p>
             <div id="csvDropZone" style="border:2px dashed var(--border);border-radius:6px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;" onclick="document.getElementById('csvFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleCSVDrop(event)">
-              <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);letter-spacing:1px;">📂 DROP FILE HERE OR CLICK TO BROWSE<br/><span style="font-size:0.65rem;">.csv or .xlsx accepted</span></div>
+              <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);letter-spacing:1px;">📂 DROP FILE HERE OR CLICK TO BROWSE<br/><span style="font-size:0.65rem;">.csv .xlsx .html .htm accepted</span></div>
             </div>
-            <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls" style="display:none;" onchange="handleCSVFile(this.files[0])"/>
+            <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls,.html,.htm" style="display:none;" onchange="handleCSVFile(this.files[0])"/>
             <div id="csvPreview" style="margin-top:14px;display:none;">
               <div style="font-family:var(--font-mono);font-size:0.68rem;color:var(--accent);margin-bottom:8px;" id="csvPreviewLabel"></div>
               <div style="overflow-x:auto;max-height:180px;overflow-y:auto;" id="csvPreviewTable"></div>
@@ -799,6 +800,32 @@ function handleImgDrop(e){e.preventDefault();document.getElementById('imgDropZon
 async function handleCSVFile(file){
   if(!file)return;
   const text=await file.text();
+  const name=file.name.toLowerCase();
+
+  // HTML/HTM — use AI to parse
+  if(name.endsWith('.html')||name.endsWith('.htm')){
+    showToast('🤖 AI is reading your HTML file...');
+    try{
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:3000,
+          messages:[{role:'user',content:'Extract all trades from this HTML trade history export. Return ONLY a JSON array with objects: {date (YYYY-MM-DD), instrument, direction (Buy/Sell), entry_price, exit_price, profit_loss (number), result (Win/Loss/Break Even)}. No markdown, no extra text.\n\n'+text.slice(0,15000)}]
+        })
+      });
+      const data=await resp.json();
+      const raw=data.content?.[0]?.text||'[]';
+      const clean=raw.replace(/```json|```/g,'').trim();
+      csvParsedTrades=JSON.parse(clean).map(t=>({...t,user_id:currentUser?.id}));
+      showTradePreview('csvPreview','csvPreviewLabel','csvPreviewTable',csvParsedTrades);
+      showToast('✅ Found '+csvParsedTrades.length+' trades in HTML file!');
+    }catch(e){showToast('Could not parse HTML file. Try CSV instead.',true);}
+    return;
+  }
+
+  // CSV — parse directly
   const lines=text.split('\n').filter(l=>l.trim());
   const trades=[];
   for(let i=1;i<lines.length;i++){
