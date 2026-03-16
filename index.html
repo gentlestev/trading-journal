@@ -399,9 +399,9 @@
           <div class="panel-body">
             <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">Upload screenshots of your MT5/Deriv trade history. AI will read and extract all trades automatically.</p>
             <div id="imgDropZone" style="border:2px dashed var(--border);border-radius:6px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;" onclick="document.getElementById('imgFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleImgDrop(event)">
-              <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);letter-spacing:1px;">🖼️ DROP SCREENSHOTS HERE OR CLICK<br/><span style="font-size:0.65rem;">.png .jpg .jpeg accepted</span></div>
+              <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);letter-spacing:1px;">🖼️ DROP SCREENSHOTS HERE OR CLICK<br/><span style="font-size:0.65rem;">.png .jpg .jpeg .heic and phone screenshots accepted</span></div>
             </div>
-            <input type="file" id="imgFileInput" accept="image/*" multiple style="display:none;" onchange="handleImgFiles(this.files)"/>
+            <input type="file" id="imgFileInput" accept="image/*,.heic,.heif" multiple style="display:none;" onchange="handleImgFiles(this.files)"/>
             <div id="imgStatus" style="margin-top:12px;font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);display:none;"></div>
             <div id="imgPreview" style="margin-top:10px;display:none;">
               <div style="overflow-x:auto;max-height:180px;overflow-y:auto;" id="imgPreviewTable"></div>
@@ -1414,36 +1414,109 @@ async function handleImgFiles(files){
   if(!files||!files.length)return;
   const status=document.getElementById('imgStatus');
   status.style.display='block';
-  status.textContent='🤖 AI is reading your screenshots...';
   imgParsedTrades=[];
-  for(const file of Array.from(files)){
-    const base64=await fileToBase64(file);
+
+  const fileArr=Array.from(files);
+  for(let i=0;i<fileArr.length;i++){
+    const file=fileArr[i];
+    status.textContent='🤖 Reading screenshot '+(i+1)+' of '+fileArr.length+'...';
+
     try{
+      // Convert to JPEG if HEIC or unknown format from phone
+      const {base64, mimeType} = await fileToBase64Safe(file);
+
       const resp=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           model:'claude-sonnet-4-20250514',
-          max_tokens:1000,
+          max_tokens:3000,
           messages:[{role:'user',content:[
-            {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
-            {type:'text',text:'Extract all trades from this trading history screenshot. Return ONLY a JSON array with objects: {date, instrument, direction, entry_price, exit_price, profit_loss, result}. result is Win/Loss/Break Even. No other text.'}
+            {type:'image',source:{type:'base64',media_type:mimeType,data:base64}},
+            {type:'text',text:`You are a trading data extraction expert. This is a screenshot from a trading platform (MT5, Deriv, or similar).
+
+Your job is to extract EVERY trade visible in this image, no matter how small the text appears.
+
+Look carefully for:
+- Trade date/time
+- Symbol/instrument (e.g. V75, EURUSD, XAUUSD, Volatility 75, etc.)
+- Direction (Buy/Sell or Long/Short)  
+- Entry price and exit/close price
+- Profit or loss amount (positive = profit, negative = loss)
+
+Return ONLY a valid JSON array. Each trade as:
+{"date":"YYYY-MM-DD","instrument":"symbol","direction":"Buy or Sell","entry_price":0,"exit_price":0,"profit_loss":0,"result":"Win or Loss or Break Even"}
+
+If profit_loss is positive = Win, negative = Loss, zero = Break Even.
+If you cannot determine a value use 0 or "Unknown".
+Do NOT include any text outside the JSON array. No markdown backticks.`}
           ]}]
         })
       });
+
       const data=await resp.json();
+
+      // Handle API errors gracefully
+      if(data.error){
+        console.warn('API error:',data.error);
+        status.textContent='⚠️ API error: '+data.error.message;
+        continue;
+      }
+
       const text=data.content?.[0]?.text||'[]';
       const clean=text.replace(/```json|```/g,'').trim();
-      const parsed=JSON.parse(clean);
-      imgParsedTrades.push(...parsed.map(t=>({...t,user_id:currentUser?.id})));
-    }catch(e){console.warn('Parse error:',e);}
+
+      // Find JSON array in response even if there's extra text
+      const jsonMatch=clean.match(/\[[\s\S]*\]/);
+      if(!jsonMatch){console.warn('No JSON array found in response');continue;}
+
+      const parsed=JSON.parse(jsonMatch[0]);
+      if(Array.isArray(parsed)&&parsed.length){
+        imgParsedTrades.push(...parsed.map(t=>({...t,user_id:currentUser?.id})));
+      }
+    }catch(e){
+      console.warn('Parse error for file',file.name,e);
+    }
   }
+
   if(imgParsedTrades.length){
-    status.textContent='✅ Found '+imgParsedTrades.length+' trades in screenshots!';
+    status.textContent='✅ Found '+imgParsedTrades.length+' trades across '+fileArr.length+' screenshot(s)!';
+    status.style.color='var(--green)';
     showTradePreview('imgPreview',null,'imgPreviewTable',imgParsedTrades);
+    document.getElementById('imgPreview').style.display='block';
   } else {
-    status.textContent='⚠️ Could not extract trades. Try clearer screenshots.';
+    status.textContent='⚠️ No trades found. Make sure the screenshot shows trade history rows with dates and amounts.';
+    status.style.color='var(--yellow)';
   }
+}
+
+// Safe base64 converter — handles HEIC, unknown types from phones
+async function fileToBase64Safe(file){
+  return new Promise((resolve, reject)=>{
+    const reader=new FileReader();
+    reader.onerror=reject;
+    reader.onload=()=>{
+      const dataUrl=reader.result;
+      const base64=dataUrl.split(',')[1];
+      
+      // Determine correct MIME type
+      let mimeType=file.type;
+      
+      // Fix empty, HEIC, or unsupported types
+      if(!mimeType||mimeType===''||mimeType==='image/heic'||mimeType==='image/heif'){
+        // Default to jpeg for phone photos
+        mimeType='image/jpeg';
+      }
+      // Only allow types Claude supports
+      const supported=['image/jpeg','image/png','image/gif','image/webp'];
+      if(!supported.includes(mimeType)){
+        mimeType='image/jpeg';
+      }
+      
+      resolve({base64, mimeType});
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function fileToBase64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
