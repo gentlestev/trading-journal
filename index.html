@@ -470,6 +470,60 @@
       </div>
       <div class="panel"><div class="panel-header"><span class="panel-title">MONTHLY PERFORMANCE</span></div><div class="panel-body" id="monthlyAnalysis"><div class="loading-state">Sync trades to see monthly breakdown</div></div></div>
     </div>
+
+    <!-- HELP PAGE -->
+    <div id="page-help" class="page">
+      <div style="max-width:800px;margin:0 auto;">
+        <div style="font-family:var(--font-display);font-size:2rem;letter-spacing:4px;color:var(--accent);margin-bottom:6px;">HELP &amp; GUIDE</div>
+        <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:28px;letter-spacing:1px;">HOW TO USE YOUR FSH EMPIRE DASHBOARD</div>
+
+        <div class="panel"><div class="panel-header"><span class="panel-title">🚀 GETTING STARTED</span></div><div class="panel-body" style="font-family:var(--font-mono);font-size:0.78rem;line-height:2;color:var(--text);">
+          <div style="margin-bottom:12px;"><span style="color:var(--accent);font-weight:600;">Step 1 — Create an account</span><br/>Click Register. Fill in account details on Step 1, then contact details on Step 2. Confirm your email then sign in.</div>
+          <div style="margin-bottom:12px;"><span style="color:var(--accent);font-weight:600;">Step 2 — Connect Deriv (optional)</span><br/>Click ⚡ DERIV button top right. Paste your API token from app.deriv.com/account/api-token. Balance and trades sync automatically.</div>
+          <div style="margin-bottom:12px;"><span style="color:var(--accent);font-weight:600;">Step 3 — Upload your trades</span><br/>Go to All Trades tab. Choose CSV, HTML, screenshot, or paste. Select account/firm from dropdown then save.</div>
+          <div><span style="color:var(--accent);font-weight:600;">Step 4 — Start journaling</span><br/>Go to Journal tab after each trade. Log emotion, reasoning, what went well and what to improve.</div>
+        </div></div>
+
+        <div class="panel"><div class="panel-header"><span class="panel-title">📑 WHAT EACH TAB DOES</span></div><div class="panel-body">
+          <table class="trades-table"><thead><tr><th>Tab</th><th>What it does</th></tr></thead><tbody>
+            <tr><td style="color:var(--accent);font-weight:600;">📊 Overview</td><td style="font-family:var(--font-mono);font-size:0.76rem;">Main dashboard — total stats, equity curve, FTMO-style risk limits across all accounts.</td></tr>
+            <tr><td style="color:var(--accent);font-weight:600;">Deriv</td><td style="font-family:var(--font-mono);font-size:0.76rem;">Only your Deriv personal account trades — stats, risk limits, trade history.</td></tr>
+            <tr><td style="color:var(--accent);font-weight:600;">FTMO</td><td style="font-family:var(--font-mono);font-size:0.76rem;">Only FTMO trades with FTMO-specific risk rules.</td></tr>
+            <tr><td style="color:var(--accent);font-weight:600;">The5ers</td><td style="font-family:var(--font-mono);font-size:0.76rem;">Only The5ers trades with their account rules.</td></tr>
+            <tr><td style="color:var(--accent);font-weight:600;">Other</td><td style="font-family:var(--font-mono);font-size:0.76rem;">Any other prop firm trades uploaded.</td></tr>
+            <tr><td style="color:var(--accent);font-weight:600;">All Trades</td><td style="font-family:var(--font-mono);font-size:0.76rem;">Upload new trades and view full trade history across all accounts.</td></tr>
+            <tr><td style="color:var(--accent);font-weight:600;">Journal</td><td style="font-family:var(--font-mono);font-size:0.76rem;">Add journal entries per trade — emotion, reasoning, lessons learned.</td></tr>
+            <tr><td style="color:var(--accent);font-weight:600;">Analysis</td><td style="font-family:var(--font-mono);font-size:0.76rem;">Win rate by instrument, emotion patterns, monthly breakdown.</td></tr>
+            <tr><td style="color:var(--accent);font-weight:600;">Help</td><td style="font-family:var(--font-mono);font-size:0.76rem;">This guide.</td></tr>
+          </tbody></table>
+        </div></div>
+
+        <div class="panel"><div class="panel-header"><span class="panel-title">📂 UPLOADING TRADES</span></div><div class="panel-body" style="font-family:var(--font-mono);font-size:0.78rem;line-height:1.9;color:var(--text);">
+          <div style="margin-bottom:14px;"><span style="color:var(--green);font-weight:600;">CSV / Excel / HTML</span><br/>Export from MT5 or your broker. Drop file in upload zone. For HTML/HTM the AI reads and extracts trades automatically.</div>
+          <div style="margin-bottom:14px;"><span style="color:var(--green);font-weight:600;">Screenshot Upload</span><br/>Screenshot your MT5 or Deriv history. AI reads and extracts all trades. Upload multiple screenshots at once.</div>
+          <div style="margin-bottom:14px;"><span style="color:var(--green);font-weight:600;">Paste Trade Data</span><br/>Copy from anywhere and paste in the text box. AI parses any format.</div>
+          <div style="color:var(--yellow);">⚠️ Always select the correct Account/Firm before saving so trades go to the right tab.</div>
+        </div></div>
+
+        <div class="panel"><div class="panel-header"><span class="panel-title">⚡ DERIV API</span></div><div class="panel-body" style="font-family:var(--font-mono);font-size:0.78rem;line-height:2;color:var(--text);">
+          <div style="color:var(--accent);">1. Go to app.deriv.com/account/api-token</div>
+          <div style="color:var(--accent);">2. Switch to Real account (not Demo)</div>
+          <div style="color:var(--accent);">3. Create token — enable Read and Trading information</div>
+          <div style="color:var(--accent);">4. Paste token in the ⚡ DERIV popup</div>
+          <div style="color:var(--accent);margin-bottom:10px;">5. Balance and trades sync automatically</div>
+          <div style="color:var(--muted);">Token is saved on your device. Never shared with anyone.</div>
+        </div></div>
+
+        <div class="panel"><div class="panel-header"><span class="panel-title">❓ FAQ</span></div><div class="panel-body" style="font-family:var(--font-mono);font-size:0.78rem;line-height:1.9;color:var(--text);">
+          <div style="margin-bottom:14px;"><span style="color:var(--accent);font-weight:600;">Is my data safe?</span><br/>Yes. Stored in your private Supabase database. Each user only sees their own data.</div>
+          <div style="margin-bottom:14px;"><span style="color:var(--accent);font-weight:600;">Will data be there on another device?</span><br/>Yes. Everything is in the cloud. Log in from any phone, tablet or computer.</div>
+          <div style="margin-bottom:14px;"><span style="color:var(--accent);font-weight:600;">Can other traders register?</span><br/>Yes. Each trader gets private data — they cannot see your trades and you cannot see theirs.</div>
+          <div style="margin-bottom:14px;"><span style="color:var(--accent);font-weight:600;">What is the FTMO risk meter?</span><br/>Tracks drawdown and profit against prop firm rules. Bars turn red as you approach limits.</div>
+          <div><span style="color:var(--accent);font-weight:600;">How do I delete a trade?</span><br/>Go to supabase.com → your project → Table Editor → trades table. In-dashboard delete button coming soon.</div>
+        </div></div>
+
+      </div>
+    </div>
   </main>
 </div>
 
