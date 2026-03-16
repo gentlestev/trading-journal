@@ -1391,13 +1391,68 @@ async function saveJournalEntry(){
   loadJournalEntries();
 }
 
+async function deleteJournalEntry(id){
+  if(!id||!currentUser)return;
+  if(!confirm('Delete this journal entry? This cannot be undone.'))return;
+  const{error}=await sb.from('journal_entries').delete().eq('id',id).eq('user_id',currentUser.id);
+  if(error){showToast('Error: '+error.message,true);return;}
+  showToast('Journal entry deleted.');
+  loadJournalEntries();
+}
+
+async function editJournalEntry(id){
+  if(!id||!currentUser)return;
+  const{data,error}=await sb.from('journal_entries').select('*').eq('id',id).single();
+  if(error||!data){showToast('Could not load entry',true);return;}
+  // Populate form with existing data
+  document.getElementById('jDate').value=data.entry_date||'';
+  document.getElementById('jInstrument').value=data.instrument||'';
+  document.getElementById('jResult').value=data.result||'';
+  document.getElementById('jReasoning').value=data.reasoning||'';
+  document.getElementById('jWell').value=data.what_went_well||'';
+  document.getElementById('jImprove').value=data.what_to_improve||'';
+  document.getElementById('jWeekly').value=data.weekly_review||'';
+  // Set emotion
+  selectedEmotion=data.emotions||'';
+  document.querySelectorAll('.emotion-btn').forEach(b=>{
+    b.classList.toggle('selected',b.textContent.includes(selectedEmotion)&&selectedEmotion!=='');
+  });
+  // Mark as editing
+  window._editingJournalId=id;
+  const btn=document.querySelector('[onclick="saveJournalEntry()"]');
+  if(btn){btn.textContent='UPDATE ENTRY';btn.style.background='var(--accent2)';}
+  // Scroll to form
+  document.querySelector('.journal-grid').scrollIntoView({behavior:'smooth'});
+  showToast('Entry loaded — make changes and click UPDATE ENTRY');
+}
+
 async function loadJournalEntries(){
   if(!currentUser)return;
   const{data,error}=await sb.from('journal_entries').select('*').eq('user_id',currentUser.id).order('entry_date',{ascending:false});
   if(error){console.warn(error);return;}
   const container=document.getElementById('journalEntries');
   if(!data||!data.length){container.innerHTML='<div class="no-entries">No journal entries yet.<br>Add your first entry →</div>';return;}
-  container.innerHTML=data.map(e=>`<div class="journal-entry-card"><div class="entry-meta"><div><div class="entry-date">${e.entry_date}</div><div class="entry-instrument">${e.instrument||'—'}</div></div><div style="text-align:right;">${e.emotions?`<span class="entry-emotion">${e.emotions}</span>`:''} ${e.result?`<div style="margin-top:4px;"><span class="badge ${e.result==='Win'?'badge-win':e.result==='Loss'?'badge-loss':'badge-be'}">${e.result}</span></div>`:''}</div></div>${e.reasoning?`<div class="entry-section"><div class="entry-section-label">Reasoning</div><div class="entry-text">${e.reasoning}</div></div>`:''}${e.what_went_well?`<div class="entry-section"><div class="entry-section-label">What went well</div><div class="entry-text">${e.what_went_well}</div></div>`:''}${e.what_to_improve?`<div class="entry-section"><div class="entry-section-label">To improve</div><div class="entry-text">${e.what_to_improve}</div></div>`:''}${e.weekly_review?`<div class="entry-section"><div class="entry-section-label">Weekly Review</div><div class="entry-text">${e.weekly_review}</div></div>`:''}${e.image_url?`<div class="entry-section"><div class="entry-section-label">Screenshot</div><img src="${e.image_url}" style="width:100%;border-radius:4px;border:1px solid var(--border);margin-top:4px;max-height:200px;object-fit:cover;" onclick="window.open('${e.image_url}','_blank')"/></div>`:''}</div>`).join('');
+  container.innerHTML=data.map(e=>{
+    const badgeClass=e.result==='Win'?'badge-win':e.result==='Loss'?'badge-loss':'badge-be';
+    return `<div class="journal-entry-card">
+      <div class="entry-meta">
+        <div><div class="entry-date">${e.entry_date}</div><div class="entry-instrument">${e.instrument||'—'}</div></div>
+        <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          ${e.emotions?`<span class="entry-emotion">${e.emotions}</span>`:''}
+          ${e.result?`<span class="badge ${badgeClass}">${e.result}</span>`:''}
+          <div style="display:flex;gap:5px;margin-top:4px;">
+            <button class="btn btn-outline btn-sm" onclick="editJournalEntry('${e.id}')" style="padding:3px 8px;font-size:0.65rem;">EDIT</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteJournalEntry('${e.id}')" style="padding:3px 8px;font-size:0.65rem;">DEL</button>
+          </div>
+        </div>
+      </div>
+      ${e.reasoning?`<div class="entry-section"><div class="entry-section-label">Reasoning</div><div class="entry-text">${e.reasoning}</div></div>`:''}
+      ${e.what_went_well?`<div class="entry-section"><div class="entry-section-label">What went well</div><div class="entry-text">${e.what_went_well}</div></div>`:''}
+      ${e.what_to_improve?`<div class="entry-section"><div class="entry-section-label">To improve</div><div class="entry-text">${e.what_to_improve}</div></div>`:''}
+      ${e.weekly_review?`<div class="entry-section"><div class="entry-section-label">Weekly Review</div><div class="entry-text">${e.weekly_review}</div></div>`:''}
+      ${e.image_url?`<div class="entry-section"><div class="entry-section-label">Screenshot</div><img src="${e.image_url}" style="width:100%;border-radius:4px;border:1px solid var(--border);margin-top:4px;max-height:200px;object-fit:cover;cursor:pointer;" onclick="window.open('${e.image_url}','_blank')"/></div>`:''}
+    </div>`;
+  }).join('');
 }
 
 function renderAnalysis(){
@@ -1601,30 +1656,30 @@ async function handleImgFiles(files){
     progressLabel.style.color='var(--yellow)';
   }
 }
-// Safe base64 converter — handles HEIC, unknown types from phones
+// Safe base64 converter — resizes and normalises phone images
 async function fileToBase64Safe(file){
-  return new Promise((resolve, reject)=>{
+  return new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onerror=reject;
     reader.onload=()=>{
-      const dataUrl=reader.result;
-      const base64=dataUrl.split(',')[1];
-      
-      // Determine correct MIME type
-      let mimeType=file.type;
-      
-      // Fix empty, HEIC, or unsupported types
-      if(!mimeType||mimeType===''||mimeType==='image/heic'||mimeType==='image/heif'){
-        // Default to jpeg for phone photos
-        mimeType='image/jpeg';
-      }
-      // Only allow types Claude supports
-      const supported=['image/jpeg','image/png','image/gif','image/webp'];
-      if(!supported.includes(mimeType)){
-        mimeType='image/jpeg';
-      }
-      
-      resolve({base64, mimeType});
+      const img=new Image();
+      img.onerror=()=>{
+        // Fallback: just return raw base64
+        resolve({base64:reader.result.split(',')[1],mimeType:'image/jpeg'});
+      };
+      img.onload=()=>{
+        // Resize to max 1600px wide for best AI reading while keeping file small
+        const MAX=1600;
+        let w=img.width,h=img.height;
+        if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+        const canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,w,h);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.92);
+        resolve({base64:dataUrl.split(',')[1],mimeType:'image/jpeg'});
+      };
+      img.src=reader.result;
     };
     reader.readAsDataURL(file);
   });
