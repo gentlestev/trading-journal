@@ -144,6 +144,19 @@
   @media(max-width:800px){.two-col{grid-template-columns:1fr;}}
   .no-entries{text-align:center;padding:42px;color:var(--muted);font-family:var(--font-mono);font-size:0.76rem;letter-spacing:1px;}
   @media(max-width:600px){main{padding:14px;}header{padding:10px 14px;}.nav-tabs{padding:0 14px;}}
+
+  .reg-step{display:none;}.reg-step.active{display:flex;flex-direction:column;gap:14px;}
+  .step-indicator{display:flex;gap:8px;margin-bottom:20px;align-items:center;}
+  .step-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);transition:all .3s;flex-shrink:0;}
+  .step-dot.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,0.1);}
+  .step-dot.done{border-color:var(--green);color:var(--green);background:rgba(0,230,118,0.1);}
+  .step-line{flex:1;height:1px;background:var(--border);}
+  .phone-wrap{display:flex;gap:8px;}
+  .phone-code{width:100px;flex-shrink:0;}
+  .two-input{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .field-error{font-family:var(--font-mono);font-size:0.62rem;color:var(--red);margin-top:3px;display:none;}
+  .form-input.invalid{border-color:var(--red);}
+  .form-input.valid{border-color:var(--green);}
 </style>
 </head>
 <body>
@@ -183,25 +196,78 @@
       <div id="registerForm" class="auth-form" style="display:none;">
         <div id="registerError" class="auth-error"></div>
         <div id="registerSuccess" class="auth-success-msg"></div>
-        <button class="btn-google" onclick="signInWithGoogle()"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Sign up with Google</button>
-        <div class="auth-divider"><span>or</span></div>
-        <div class="form-group">
-          <label class="form-label">Full Name</label>
-          <input type="text" class="form-input" id="regName" placeholder="Your full name"/>
+
+        <!-- Step indicator -->
+        <div class="step-indicator">
+          <div class="step-dot active" id="sdot1">1</div>
+          <div class="step-line"></div>
+          <div class="step-dot" id="sdot2">2</div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Email Address</label>
-          <input type="email" class="form-input" id="regEmail" placeholder="your@email.com"/>
+
+        <!-- STEP 1: Account details -->
+        <div id="regStep1" class="reg-step active">
+          <button class="btn-google" onclick="signInWithGoogle()"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Sign up with Google</button>
+          <div class="auth-divider"><span>or create account</span></div>
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-input" id="regName" placeholder="Your full name"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" id="regEmail" placeholder="your@email.com"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-input" id="regPassword" placeholder="Min. 6 characters"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm Password</label>
+            <input type="password" class="form-input" id="regConfirm" placeholder="Repeat password"/>
+          </div>
+          <button class="btn btn-primary" onclick="regNextStep()">NEXT — CONTACT DETAILS →</button>
         </div>
-        <div class="form-group">
-          <label class="form-label">Password</label>
-          <input type="password" class="form-input" id="regPassword" placeholder="Min. 6 characters"/>
+
+        <!-- STEP 2: Contact & address -->
+        <div id="regStep2" class="reg-step">
+          <div class="form-group">
+            <label class="form-label">Country of Residence</label>
+            <select class="form-select" id="regCountry" onchange="onCountryChange()">
+              <option value="">Select country...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">State / Province</label>
+            <select class="form-select" id="regState">
+              <option value="">Select state/province...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <input type="text" class="form-input" id="regCity" placeholder="Your city"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Street Address</label>
+            <input type="text" class="form-input" id="regAddress" placeholder="123 Main Street"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Zip / Postal Code</label>
+            <input type="text" class="form-input" id="regPostal" placeholder="Postal or zip code" oninput="validatePostal()"/>
+            <div class="field-error" id="postalError"></div>
+            <div id="postalHint" style="font-family:var(--font-mono);font-size:0.62rem;margin-top:3px;"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <div class="phone-wrap">
+              <input type="text" class="form-input phone-code" id="regDial" placeholder="+1" readonly style="color:var(--accent);"/>
+              <input type="tel" class="form-input" id="regPhone" placeholder="Phone number" oninput="validatePhone()"/>
+            </div>
+            <div class="field-error" id="phoneError"></div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline" onclick="regPrevStep()" style="flex:1;">← BACK</button>
+            <button class="btn btn-primary" onclick="doRegister()" id="registerBtn" style="flex:2;">CREATE ACCOUNT</button>
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Confirm Password</label>
-          <input type="password" class="form-input" id="regConfirm" placeholder="Repeat password" onkeydown="if(event.key==='Enter')doRegister()"/>
-        </div>
-        <button class="btn btn-primary" onclick="doRegister()" id="registerBtn">CREATE ACCOUNT</button>
       </div>
     </div>
     <div class="auth-footer">🔒 Secured by Supabase Auth &nbsp;·&nbsp; Each trader sees only their own data</div>
@@ -466,22 +532,153 @@ async function signInWithGoogle(){
   if(error)showToast('Google sign-in error: '+error.message,true);
 }
 
-async function doRegister(){
+
+const COUNTRIES=[
+  {name:"Nigeria",code:"NG",dial:"+234",postal:/^\d{6}$/,states:["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"]},
+  {name:"Canada",code:"CA",dial:"+1",postal:/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/,states:["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"]},
+  {name:"United States",code:"US",dial:"+1",postal:/^\d{5}(-\d{4})?$/,states:["Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"]},
+  {name:"United Kingdom",code:"GB",dial:"+44",postal:/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i,states:["England","Scotland","Wales","Northern Ireland"]},
+  {name:"Ghana",code:"GH",dial:"+233",postal:/^\d{5}$/,states:["Ahafo","Ashanti","Bono","Bono East","Central","Eastern","Greater Accra","North East","Northern","Oti","Savannah","Upper East","Upper West","Volta","Western","Western North"]},
+  {name:"Kenya",code:"KE",dial:"+254",postal:/^\d{5}$/,states:["Nairobi","Mombasa","Kisumu","Nakuru","Eldoret","Nyeri","Meru","Kakamega","Garissa","Kisii"]},
+  {name:"South Africa",code:"ZA",dial:"+27",postal:/^\d{4}$/,states:["Eastern Cape","Free State","Gauteng","KwaZulu-Natal","Limpopo","Mpumalanga","North West","Northern Cape","Western Cape"]},
+  {name:"Australia",code:"AU",dial:"+61",postal:/^\d{4}$/,states:["Australian Capital Territory","New South Wales","Northern Territory","Queensland","South Australia","Tasmania","Victoria","Western Australia"]},
+  {name:"India",code:"IN",dial:"+91",postal:/^\d{6}$/,states:["Andhra Pradesh","Assam","Bihar","Delhi","Goa","Gujarat","Haryana","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Odisha","Punjab","Rajasthan","Tamil Nadu","Telangana","Uttar Pradesh","West Bengal"]},
+  {name:"Germany",code:"DE",dial:"+49",postal:/^\d{5}$/,states:["Baden-Württemberg","Bavaria","Berlin","Brandenburg","Bremen","Hamburg","Hesse","Lower Saxony","Mecklenburg-Vorpommern","North Rhine-Westphalia","Rhineland-Palatinate","Saarland","Saxony","Saxony-Anhalt","Schleswig-Holstein","Thuringia"]},
+  {name:"France",code:"FR",dial:"+33",postal:/^\d{5}$/,states:["Auvergne-Rhône-Alpes","Bourgogne-Franche-Comté","Brittany","Centre-Val de Loire","Corsica","Grand Est","Hauts-de-France","Île-de-France","Normandy","Nouvelle-Aquitaine","Occitanie","Pays de la Loire","Provence-Alpes-Côte d'Azur"]},
+  {name:"Brazil",code:"BR",dial:"+55",postal:/^\d{5}-?\d{3}$/,states:["Acre","Alagoas","Amapá","Amazonas","Bahia","Ceará","Espírito Santo","Goiás","Maranhão","Mato Grosso","Mato Grosso do Sul","Minas Gerais","Pará","Paraíba","Paraná","Pernambuco","Piauí","Rio de Janeiro","Rio Grande do Norte","Rio Grande do Sul","Rondônia","Roraima","Santa Catarina","São Paulo","Sergipe","Tocantins"]},
+  {name:"Jamaica",code:"JM",dial:"+1876",postal:/^(JM)?\w{3}\d{2}$/i,states:["Clarendon","Hanover","Kingston","Manchester","Portland","Saint Andrew","Saint Ann","Saint Catherine","Saint Elizabeth","Saint James","Saint Mary","Saint Thomas","Trelawny","Westmoreland"]},
+  {name:"Trinidad and Tobago",code:"TT",dial:"+1868",postal:/^\d{6}$/,states:["Arima","Chaguanas","Diego Martin","Mayaro","Penal","Princes Town","Rio Claro","Sangre Grande","San Fernando","San Juan","Siparia","Tobago","Tunapuna"]},
+  {name:"Zimbabwe",code:"ZW",dial:"+263",postal:/^\d{4}$/,states:["Bulawayo","Harare","Manicaland","Mashonaland Central","Mashonaland East","Mashonaland West","Masvingo","Matabeleland North","Matabeleland South","Midlands"]},
+  {name:"Other",code:"XX",dial:"+",postal:/./,states:["Other"]}
+];
+
+function getCountry(name){return COUNTRIES.find(c=>c.name===name)||COUNTRIES[COUNTRIES.length-1];}
+
+function populateCountries(){
+  const sel=document.getElementById('regCountry');
+  if(!sel)return;
+  sel.innerHTML='<option value="">Select country...</option>'+
+    COUNTRIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+}
+
+function onCountryChange(){
+  const c=getCountry(document.getElementById('regCountry').value);
+  // Update dial code
+  document.getElementById('regDial').value=c.dial;
+  // Update states
+  const stSel=document.getElementById('regState');
+  stSel.innerHTML='<option value="">Select state/province...</option>'+
+    c.states.map(s=>`<option value="${s}">${s}</option>`).join('');
+  // Clear validation
+  document.getElementById('regPostal').value='';
+  document.getElementById('postalHint').textContent='';
+}
+
+function validatePhone(){
+  const dial=document.getElementById('regDial').value;
+  const num=document.getElementById('regPhone').value.trim();
+  const full=dial+num;
+  const el=document.getElementById('regPhone');
+  const err=document.getElementById('phoneError');
+  // Basic: must be 7-15 digits after dial code
+  if(num.length<7||num.length>12||!/^\d+$/.test(num)){
+    el.className='form-input invalid';
+    err.textContent='Enter a valid phone number (digits only, 7-12 digits)';
+    err.style.display='block';return false;
+  }
+  el.className='form-input valid';err.style.display='none';return true;
+}
+
+function validatePostal(){
+  const country=document.getElementById('regCountry').value;
+  const postal=document.getElementById('regPostal').value.trim();
+  const el=document.getElementById('regPostal');
+  const err=document.getElementById('postalError');
+  const hint=document.getElementById('postalHint');
+  if(!country){err.textContent='Select a country first';err.style.display='block';return false;}
+  const c=getCountry(country);
+  if(!c.postal.test(postal)){
+    el.className='form-input invalid';
+    err.textContent='Invalid postal/zip code for '+country;
+    err.style.display='block';
+    hint.textContent='';
+    return false;
+  }
+  el.className='form-input valid';
+  err.style.display='none';
+  hint.textContent='✓ Valid format';
+  hint.style.color='var(--green)';
+  return true;
+}
+
+function regNextStep(){
+  // Validate step 1
   const name=document.getElementById('regName').value.trim();
   const email=document.getElementById('regEmail').value.trim();
   const pass=document.getElementById('regPassword').value;
   const confirm=document.getElementById('regConfirm').value;
   const err=document.getElementById('registerError');
-  const suc=document.getElementById('registerSuccess');
-  err.style.display='none';suc.style.display='none';
+  err.style.display='none';
   if(!name||!email||!pass){err.textContent='All fields are required.';err.style.display='block';return;}
   if(pass.length<6){err.textContent='Password must be at least 6 characters.';err.style.display='block';return;}
   if(pass!==confirm){err.textContent='Passwords do not match.';err.style.display='block';return;}
+  // Move to step 2
+  document.getElementById('regStep1').classList.remove('active');
+  document.getElementById('regStep2').classList.add('active');
+  document.getElementById('sdot1').classList.remove('active');document.getElementById('sdot1').classList.add('done');
+  document.getElementById('sdot2').classList.add('active');
+  populateCountries();
+}
+
+function regPrevStep(){
+  document.getElementById('regStep2').classList.remove('active');
+  document.getElementById('regStep1').classList.add('active');
+  document.getElementById('sdot2').classList.remove('active');
+  document.getElementById('sdot1').classList.remove('done');document.getElementById('sdot1').classList.add('active');
+}
+
+async function doRegister(){
+  const err=document.getElementById('registerError');
+  const suc=document.getElementById('registerSuccess');
+  err.style.display='none';suc.style.display='none';
+
+  // Validate step 2 fields
+  const country=document.getElementById('regCountry').value;
+  const state=document.getElementById('regState').value;
+  const city=document.getElementById('regCity').value.trim();
+  const address=document.getElementById('regAddress').value.trim();
+  const postal=document.getElementById('regPostal').value.trim();
+  const phone=document.getElementById('regPhone').value.trim();
+  const dial=document.getElementById('regDial').value;
+
+  if(!country||!state||!city||!address||!postal||!phone){
+    err.textContent='All fields are required.';err.style.display='block';return;
+  }
+  if(!validatePhone()){return;}
+  if(!validatePostal()){return;}
+
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const pass=document.getElementById('regPassword').value;
+  const fullPhone=dial+phone;
+
   const btn=document.getElementById('registerBtn');btn.textContent='CREATING...';btn.disabled=true;
-  const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+  const{data,error}=await sb.auth.signUp({
+    email,password:pass,
+    options:{data:{full_name:name,phone:fullPhone,country,state,city,address,postal_code:postal}}
+  });
+  if(error){btn.textContent='CREATE ACCOUNT';btn.disabled=false;err.textContent=error.message;err.style.display='block';return;}
+
+  // Save profile to profiles table
+  if(data?.user){
+    await sb.from('profiles').upsert({
+      id:data.user.id,full_name:name,phone:fullPhone,
+      country,state,city,address,postal_code:postal
+    });
+  }
   btn.textContent='CREATE ACCOUNT';btn.disabled=false;
-  if(error){err.textContent=error.message;err.style.display='block';}
-  else{suc.textContent='✅ Account created! Check your email to confirm, then sign in.';suc.style.display='block';}
+  suc.textContent='✅ Account created! Check your email to confirm, then sign in.';
+  suc.style.display='block';
 }
 
 async function doLogin(){
