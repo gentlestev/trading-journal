@@ -343,6 +343,21 @@ let derivWS=null,derivToken='',allTrades=[],selectedEmotion='',currentUser=null;
 
 document.addEventListener('DOMContentLoaded',async()=>{
   startClock();
+
+  // Handle email confirmation redirect (token in URL hash or query)
+  const hash = window.location.hash;
+  const query = window.location.search;
+  if(hash.includes('access_token') || query.includes('access_token') || hash.includes('type=signup') || query.includes('type=signup')){
+    const { data, error } = await sb.auth.getSession();
+    if(data?.session){
+      // Clean the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      onLogin(data.session.user);
+      showToast('✅ Email confirmed! Welcome to FSH Empire!');
+      return;
+    }
+  }
+
   const{data:{session}}=await sb.auth.getSession();
   if(session)onLogin(session.user);
   sb.auth.onAuthStateChange((event,session)=>{
