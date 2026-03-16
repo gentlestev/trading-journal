@@ -1,3 +1,5 @@
+import { allTrades, currentUser } from './app.js';
+
 // ============================================================
 // FSH Empire — Utils: MT5 HTML parser, tradeKey, canvas helpers, base64
 // ============================================================

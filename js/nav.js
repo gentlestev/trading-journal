@@ -10,10 +10,7 @@ import { renderFirmJournal }  from '../pages/journal.js';
 import { renderFirmAnalysis } from '../pages/analysis.js';
 import { renderAllTradesTable, renderAllAnalysis } from '../pages/alltrades.js';
 
-let activeFirm='deriv';
-let activeSubTab='overview';
 
-const FIRMS={deriv:'Deriv',ftmo:'FTMO',the5ers:'The5ers',other:'Other'};
 
 function switchMainTab(el,name){
   document.querySelectorAll('#mainNav .tab').forEach(t=>t.classList.remove('active'));

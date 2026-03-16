@@ -2,7 +2,7 @@
 // FSH Empire — Auth: Login, register, Google OAuth, validation, country data
 // ============================================================
 
-import { sb, setCurrentUser } from './app.js';
+import { sb, setCurrentUser, allTrades, setAllTrades, derivWS, derivToken, setDerivToken } from './app.js';
 import { showToast } from './ui.js';
 
 function switchAuthTab(tab){
@@ -447,7 +447,7 @@ async function forgotPassword(){
 async function doLogout(){if(derivWS)derivWS.close();await sb.auth.signOut();}
 
 function onLogin(user){
-  currentUser=user;
+  setCurrentUser(user);
   document.getElementById('authScreen').style.display='none';
   document.getElementById('appScreen').style.display='block';
   const email=user.email||'';
@@ -456,7 +456,7 @@ function onLogin(user){
   document.getElementById('userAvatar').textContent=(name[0]||'?').toUpperCase();
   document.getElementById('jDate').value=new Date().toISOString().split('T')[0];
   const saved=localStorage.getItem('dt_'+user.id);
-  if(saved){derivToken=saved;connectDeriv(true);}
+  if(saved){setDerivToken(saved);connectDeriv(true);}
   loadTradesFromSupabase();
   // Boot to Deriv tab
   setTimeout(()=>{
@@ -466,7 +466,7 @@ function onLogin(user){
 }
 
 function onLogout(){
-  currentUser=null;allTrades=[];
+  setCurrentUser(null);setAllTrades([]);
   document.getElementById('appScreen').style.display='none';
   document.getElementById('authScreen').style.display='flex';
   document.getElementById('loginEmail').value='';
@@ -474,7 +474,4 @@ function onLogout(){
   document.getElementById('loginError').style.display='none';
 }
 
-let activeFirm='deriv';
-let activeSubTab='overview';
 
-const FIRMS={deriv:'Deriv',ftmo:'FTMO',the5ers:'The5ers',other:'Other'};

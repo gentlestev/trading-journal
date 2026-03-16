@@ -83,4 +83,3 @@ export function renderAllAnalysis(){
 }
 
 // ── FIRM-SPECIFIC UPLOAD HANDLERS ──
-const firmParsedTrades={};

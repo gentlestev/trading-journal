@@ -2,10 +2,11 @@
 // FSH Empire — Journal: Per-firm journal save/load/emotion tracking
 // ============================================================
 
+const firmEmotions={};
+
 import { sb, currentUser } from './app.js';
 import { showToast } from './ui.js';
 
-const firmEmotions={};
 
 function selectFirmEmotion(btn,firm,emotion){
   const container=btn.closest('.emotion-grid');
