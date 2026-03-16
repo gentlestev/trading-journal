@@ -1484,72 +1484,63 @@ async function handleCSVFile(file){
   const text=await file.text();
   const name=file.name.toLowerCase();
 
-  // HTML/HTM — parse tables directly from HTML
+  // HTML/HTM — handle MT5 UTF-16 export format
   if(name.endsWith('.html')||name.endsWith('.htm')){
-    showToast('Reading HTML file...');
+    showToast('Reading MT5 HTML file...');
     try{
-      const parser=new DOMParser();
-      const doc=parser.parseFromString(text,'text/html');
-      const trades=[];
-      const rows=doc.querySelectorAll('tr');
-      rows.forEach(row=>{
-        const cells=Array.from(row.querySelectorAll('td,th')).map(c=>c.textContent.trim());
-        if(cells.length<3) return;
-        // Skip header rows
-        const firstCell=cells[0].toLowerCase();
-        if(firstCell.includes('date')||firstCell.includes('time')||firstCell.includes('symbol')) return;
-        // Try to extract date — look for date pattern
-        const dateMatch=cells.join(' ').match(/\d{4}[.\-\/]\d{2}[.\-\/]\d{2}/);
-        if(!dateMatch) return;
-        const date=dateMatch[0].replace(/[.\/]/g,'-');
-        // Find numeric pnl — last numeric cell is usually profit
-        const nums=cells.map(c=>parseFloat(c.replace(/[^\d.\-]/g,''))).filter(n=>!isNaN(n)&&n!==0);
-        const pnl=nums[nums.length-1]||0;
-        // Find instrument — usually 2nd or 3rd column
-        const instrument=cells[1]||cells[2]||'Unknown';
-        // Find direction
-        const rowText=cells.join(' ').toLowerCase();
-        const direction=rowText.includes('sell')||rowText.includes('short')?'Sell':'Buy';
-        trades.push({
-          date,instrument,direction,
-          entry_price:nums[0]||0,
-          exit_price:nums[1]||0,
-          profit_loss:pnl,
-          result:pnl>0?'Win':pnl<0?'Loss':'Break Even',
-          user_id:currentUser?.id
-        });
-      });
+      // Read as binary to handle UTF-16
+      const arrayBuf = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuf);
+      // Detect UTF-16 BOM (FF FE or FE FF)
+      let htmlText = '';
+      if((bytes[0]===0xFF&&bytes[1]===0xFE)||(bytes[0]===0xFE&&bytes[1]===0xFF)){
+        htmlText = new TextDecoder('utf-16').decode(arrayBuf);
+      } else {
+        htmlText = new TextDecoder('utf-8').decode(arrayBuf);
+      }
+      // Remove null chars
+      htmlText = htmlText.replace(/ /g,'');
+
+      const trades = parseMT5Html(htmlText);
+
       if(trades.length){
-        csvParsedTrades=trades;
+        csvParsedTrades = trades.map(t=>({...t,user_id:currentUser?.id}));
         showTradePreview('csvPreview','csvPreviewLabel','csvPreviewTable',csvParsedTrades);
         showToast('Found '+trades.length+' trades in HTML file!');
       } else {
-        // Fallback — send raw text to AI worker
-        showToast('Trying AI extraction...');
-        const stripped=text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').slice(0,8000);
-        const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({text:'Extract all trades from this trading history text. Return ONLY a JSON array. Each item: {"date":"YYYY-MM-DD","instrument":"name","direction":"Buy or Sell","entry_price":0,"exit_price":0,"profit_loss":0,"result":"Win or Loss or Break Even"}\n\n'+stripped})
-        });
-        const data=await resp.json();
-        const raw=data.response||data.content?.[0]?.text||'[]';
-        const clean=raw.replace(/```json|```/g,'').trim();
-        const jsonMatch=clean.match(/\[[\s\S]*\]/);
-        if(jsonMatch){
-          csvParsedTrades=JSON.parse(jsonMatch[0]).map(t=>({...t,user_id:currentUser?.id}));
-          if(csvParsedTrades.length){
-            showTradePreview('csvPreview','csvPreviewLabel','csvPreviewTable',csvParsedTrades);
-            showToast('Found '+csvParsedTrades.length+' trades via AI!');
-          } else {
-            showToast('No trades found in HTML file. Try exporting as CSV instead.',true);
-          }
-        }
+        showToast('No trades found. Make sure this is a MT5 Trade History Report.',true);
       }
     }catch(e){
       console.warn('HTML parse error:',e);
-      showToast('Could not read HTML file. Try exporting as CSV instead.',true);
+      showToast('Could not read HTML. Please export from MT5 as HTML and try again.',true);
     }
     return;
+  }
+
+  function parseMT5Html(html){
+    const trades = [];
+    // Extract all table rows using regex
+    const rowMatches = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi)||[];
+    rowMatches.forEach(row=>{
+      const cellMatches = row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)||[];
+      const cells = cellMatches.map(c=>c.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim());
+      if(cells.length < 10) return;
+      // Must start with date pattern YYYY.MM.DD
+      if(!/^\d{4}\.\d{2}\.\d{2}/.test(cells[0])) return;
+      const dir = (cells[3]||'').toLowerCase();
+      if(dir!=='buy'&&dir!=='sell') return;
+      try{
+        const date = cells[0].slice(0,10).replace(/\./g,'-');
+        const symbol = cells[2]||'Unknown';
+        const entry = parseFloat((cells[6]||'0').replace(/\s/g,''))||0;
+        const exitP = parseFloat((cells[10]||'0').replace(/\s/g,''))||0;
+        const pnl = parseFloat((cells[13]||'0').replace(/[\s,]/g,''))||0;
+        trades.push({date,instrument:symbol,direction:dir.charAt(0).toUpperCase()+dir.slice(1),
+          entry_price:entry,exit_price:exitP,profit_loss:pnl,
+          result:pnl>0?'Win':pnl<0?'Loss':'Break Even'});
+      }catch(e){}
+    });
+    return trades;
   }
 
   // CSV — parse directly
