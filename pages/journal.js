@@ -1,11 +1,5 @@
-// ============================================================
-// FSH Empire — Page: Journal
-// ============================================================
-
-import { allTrades } from '../js/app.js';
-import { saveFirmJournal, loadFirmJournalEntries, selectFirmEmotion } from '../js/journal.js';
-
-export function renderFirmJournal(firm,firmName){
+// FSH Empire — Page: Journal per firm
+function renderFirmJournal(firm,firmName){
   const container=document.getElementById(firm+'-journal');
   const firmTrades=allTrades.filter(t=>t.account_provider===firmName);
   const instrumentOptions=`<option value="">Select instrument</option>`+

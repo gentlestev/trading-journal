@@ -1,10 +1,5 @@
-// ============================================================
-// FSH Empire — Page: Upload
-// ============================================================
-
-import { allTrades } from '../js/app.js';
-
-export function renderFirmUpload(firm,firmName){
+// FSH Empire — Page: Upload Trades per firm
+function renderFirmUpload(firm,firmName){
   const container=document.getElementById(firm+'-upload');
   container.innerHTML=`
     <div class="two-col" style="margin-bottom:18px;">

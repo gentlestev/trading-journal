@@ -1,17 +1,4 @@
-// ============================================================
-// FSH Empire — Nav: Tab switching (main nav + sub-nav), renderSubPage
-// ============================================================
-
-import { activeFirm, activeSubTab, setActiveFirm, setActiveSubTab, FIRMS } from './app.js';
-import { renderFirmOverview } from '../pages/overview.js';
-import { renderFirmUpload }   from '../pages/upload.js';
-import { renderFirmHistory }  from '../pages/history.js';
-import { renderFirmJournal }  from '../pages/journal.js';
-import { renderFirmAnalysis } from '../pages/analysis.js';
-import { renderAllTradesTable, renderAllAnalysis } from '../pages/alltrades.js';
-
-
-
+// FSH Empire — Nav: tab switching, renderSubPage
 function switchMainTab(el,name){
   document.querySelectorAll('#mainNav .tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');

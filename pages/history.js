@@ -1,11 +1,5 @@
-// ============================================================
-// FSH Empire — Page: History
-// ============================================================
-
-import { allTrades } from '../js/app.js';
-import { deleteTrade } from '../js/data.js';
-
-export function renderFirmHistory(firm,firmName){
+// FSH Empire — Page: Trade History per firm
+function renderFirmHistory(firm,firmName){
   const container=document.getElementById(firm+'-history');
   const trades=allTrades.filter(t=>t.account_provider===firmName);
   if(!trades.length){

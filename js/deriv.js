@@ -1,11 +1,4 @@
-// ============================================================
-// FSH Empire — Deriv: WebSocket connection & trade sync
-// ============================================================
-
-import { sb, currentUser, derivToken, derivWS, setDerivWS, setDerivToken } from './app.js';
-import { showToast } from './ui.js';
-import { loadTradesFromSupabase } from './data.js';
-
+// FSH Empire — Deriv: WebSocket, trade sync
 function connectDeriv(auto=false){
   const token=auto?derivToken:document.getElementById('derivTokenInput').value.trim();
   if(!token){showToast('Please enter your API token',true);return;}
@@ -45,26 +38,4 @@ async function processDerivTrades(transactions){
 async function syncTrades(){
   if(!derivWS||derivWS.readyState!==WebSocket.OPEN){showToast('Connect Deriv first',true);return;}
   showToast('Syncing...');derivWS.send(JSON.stringify({profit_table:1,description:1,limit:100,sort:'DESC'}));
-}
-
-async function deleteTrade(id){
-  if(!id||!currentUser) return;
-  if(!confirm('Delete this trade? This cannot be undone.')) return;
-  const{error}=await sb.from('trades').delete().eq('id',id).eq('user_id',currentUser.id);
-  if(error){showToast('Error deleting trade: '+error.message,true);return;}
-  showToast('Trade deleted.');
-  await loadTradesFromSupabase();
-}
-
-async function deleteAllTrades(){
-  if(!currentUser) return;
-  const filter=document.getElementById('tradeFilter')?.value||'all';
-  const label=filter==='all'?'ALL trades':'all '+filter+' trades';
-  if(!confirm('Delete '+label+'? This CANNOT be undone.')) return;
-  let query=sb.from('trades').delete().eq('user_id',currentUser.id);
-  if(filter!=='all') query=query.eq('account_provider',filter);
-  const{error}=await query;
-  if(error){showToast('Error: '+error.message,true);return;}
-  showToast('Deleted '+label+'.');
-  await loadTradesFromSupabase();
 }

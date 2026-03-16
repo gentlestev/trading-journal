@@ -1,190 +1,332 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FSH Empire — Trading Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet"/>
-  <!-- Styles -->
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FSH Empire — Trading Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>"/>
+  <!-- Styles (split from inline) -->
   <link rel="stylesheet" href="styles/main.css"/>
   <link rel="stylesheet" href="styles/auth.css"/>
   <link rel="stylesheet" href="styles/components.css"/>
 </head>
 <body>
 
-  <!-- AUTH: rendered by components/auth.js -->
-  <div id="authScreen"></div>
-
-  <!-- APP: rendered by components/header.js + pages/*.js -->
-  <div id="appScreen" style="display:none;">
-
-    <!-- Header + Nav: injected by renderHeader() -->
-    <div id="appHeader"></div>
-
-    <!-- Main content -->
-    <main>
-
-      <!-- FIRM CONTAINERS: one per firm, sub-pages rendered by nav.js -->
-      <div id="firm-deriv" class="firm-container">
-        <div id="deriv-overview"  class="sub-page"></div>
-        <div id="deriv-upload"    class="sub-page" style="display:none;"></div>
-        <div id="deriv-history"   class="sub-page" style="display:none;"></div>
-        <div id="deriv-journal"   class="sub-page" style="display:none;"></div>
-        <div id="deriv-analysis"  class="sub-page" style="display:none;"></div>
+<!-- AUTH SCREEN -->
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-logo">FSH EMPIRE</div>
+      <div class="auth-tagline">Professional Trading Dashboard</div>
+    </div>
+    <div class="auth-body">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">Sign In</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">Register</button>
       </div>
-
-      <div id="firm-ftmo" class="firm-container" style="display:none;">
-        <div id="ftmo-overview"   class="sub-page"></div>
-        <div id="ftmo-upload"     class="sub-page" style="display:none;"></div>
-        <div id="ftmo-history"    class="sub-page" style="display:none;"></div>
-        <div id="ftmo-journal"    class="sub-page" style="display:none;"></div>
-        <div id="ftmo-analysis"   class="sub-page" style="display:none;"></div>
+      <!-- LOGIN -->
+      <div id="loginForm" class="auth-form">
+        <div id="loginError" class="auth-error"></div>
+        <div id="loginSuccess" class="auth-success-msg"></div>
+        <button class="btn-google" onclick="signInWithGoogle()"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continue with Google</button>
+        <div class="auth-divider"><span>or</span></div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-input" id="loginEmail" placeholder="your@email.com"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-input" id="loginPassword" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()"/>
+        </div>
+        <button class="btn btn-primary" onclick="doLogin()" id="loginBtn">SIGN IN</button>
+        <div style="text-align:center;">
+          <span style="font-family:var(--font-mono);font-size:0.68rem;color:var(--muted);cursor:pointer;text-decoration:underline;" onclick="forgotPassword()">Forgot password?</span>
+        </div>
       </div>
+      <!-- REGISTER -->
+      <div id="registerForm" class="auth-form" style="display:none;">
+        <div id="registerError" class="auth-error"></div>
+        <div id="registerSuccess" class="auth-success-msg"></div>
 
-      <div id="firm-the5ers" class="firm-container" style="display:none;">
-        <div id="the5ers-overview"  class="sub-page"></div>
-        <div id="the5ers-upload"    class="sub-page" style="display:none;"></div>
-        <div id="the5ers-history"   class="sub-page" style="display:none;"></div>
-        <div id="the5ers-journal"   class="sub-page" style="display:none;"></div>
-        <div id="the5ers-analysis"  class="sub-page" style="display:none;"></div>
-      </div>
+        <!-- Step indicator -->
+        <div class="step-indicator">
+          <div class="step-dot active" id="sdot1">1</div>
+          <div class="step-line"></div>
+          <div class="step-dot" id="sdot2">2</div>
+        </div>
 
-      <div id="firm-other" class="firm-container" style="display:none;">
-        <div id="other-overview"  class="sub-page"></div>
-        <div id="other-upload"    class="sub-page" style="display:none;"></div>
-        <div id="other-history"   class="sub-page" style="display:none;"></div>
-        <div id="other-journal"   class="sub-page" style="display:none;"></div>
-        <div id="other-analysis"  class="sub-page" style="display:none;"></div>
-      </div>
+        <!-- STEP 1: Account details -->
+        <div id="regStep1" class="reg-step active">
+          <button class="btn-google" onclick="signInWithGoogle()"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Sign up with Google</button>
+          <div class="auth-divider"><span>or create account</span></div>
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-input" id="regName" placeholder="Your full name"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input type="email" class="form-input" id="regEmail" placeholder="your@email.com" oninput="validateEmail(this.value)"/>
+          <div class="field-error" id="regEmailError"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-input" id="regPassword" placeholder="Min. 6 characters"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm Password</label>
+            <input type="password" class="form-input" id="regConfirm" placeholder="Repeat password"/>
+          </div>
+          <button class="btn btn-primary" id="regNextBtn" onclick="regNextStep()">NEXT — CONTACT DETAILS →</button>
+        </div>
 
-      <!-- ALL TRADES: rendered by pages/alltrades.js -->
-      <div id="firm-alltrades" class="firm-container" style="display:none;">
-        <div class="stats-grid" id="allStatsGrid"></div>
-        <div class="panel">
-          <div class="panel-header">
-            <span class="panel-title">ALL TRADES</span>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <span style="font-family:var(--font-mono);font-size:0.68rem;color:var(--muted);" id="allTradeCount">0 trades</span>
-              <select class="form-select" id="allTradeFilter" onchange="renderAllTradesTable()"
-                      style="padding:4px 8px;font-size:0.72rem;width:auto;">
-                <option value="all">All Firms</option>
-                <option value="Deriv">Deriv</option>
-                <option value="FTMO">FTMO</option>
-                <option value="The5ers">The5ers</option>
-                <option value="Other">Other</option>
-              </select>
+        <!-- STEP 2: Contact & address -->
+        <div id="regStep2" class="reg-step">
+          <div class="form-group">
+            <label class="form-label">Country of Residence</label>
+            <select class="form-select" id="regCountry" onchange="onCountryChange()">
+              <option value="">Select country...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">State / Province</label>
+            <select class="form-select" id="regState" onchange="onStateChange()">
+              <option value="">Select state/province...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <select class="form-select" id="regCity">
+              <option value="">Select state/province first...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Street Address</label>
+            <input type="text" class="form-input" id="regAddress" placeholder="e.g. 12 Main Street" oninput="validateAddress()"/>
+            <div class="field-error" id="addressError"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Zip / Postal Code</label>
+            <input type="text" class="form-input" id="regPostal" placeholder="Postal or zip code" oninput="validatePostal()"/>
+            <div class="field-error" id="postalError"></div>
+            <div id="postalHint" style="font-family:var(--font-mono);font-size:0.62rem;margin-top:3px;"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <div class="phone-wrap">
+              <input type="text" class="form-input phone-code" id="regDial" placeholder="+1" readonly style="color:var(--accent);"/>
+              <input type="tel" class="form-input" id="regPhone" placeholder="Phone number" oninput="validatePhone()"/>
             </div>
+            <div class="field-error" id="phoneError"></div>
           </div>
-          <div style="overflow-x:auto;">
-            <table class="trades-table">
-              <thead>
-                <tr><th>Date</th><th>Firm</th><th>Instrument</th><th>Direction</th>
-                    <th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Actions</th></tr>
-              </thead>
-              <tbody id="allTradesBody">
-                <tr><td colspan="9"><div class="loading-state">Sign in to view all trades</div></td></tr>
-              </tbody>
-            </table>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline" onclick="regPrevStep()" style="flex:1;">← BACK</button>
+            <button class="btn btn-primary" onclick="doRegister()" id="registerBtn" style="flex:2;">CREATE ACCOUNT</button>
           </div>
         </div>
-        <div class="two-col" style="margin-top:18px;">
-          <div class="panel"><div class="panel-header"><span class="panel-title">WIN RATE BY INSTRUMENT</span></div>
-            <div class="panel-body" id="allInstrumentAnalysis"><div class="loading-state">Sync trades to see analysis</div></div></div>
-          <div class="panel"><div class="panel-header"><span class="panel-title">EMOTION ANALYSIS</span></div>
-            <div class="panel-body" id="allEmotionAnalysis"><div class="loading-state">Add journal entries to see patterns</div></div></div>
-        </div>
-        <div class="panel" style="margin-top:18px;">
-          <div class="panel-header"><span class="panel-title">MONTHLY PERFORMANCE — ALL FIRMS</span></div>
-          <div class="panel-body" id="allMonthlyAnalysis"><div class="loading-state">Sync trades to see monthly breakdown</div></div>
-        </div>
-      </div>
-
-      <!-- HELP -->
-      <div id="firm-help" class="firm-container" style="display:none;">
-        <div style="max-width:800px;margin:0 auto;">
-          <div style="font-family:var(--font-display);font-size:2rem;letter-spacing:4px;color:var(--accent);margin-bottom:6px;">HELP &amp; GUIDE</div>
-          <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:28px;letter-spacing:1px;">HOW TO USE FSH EMPIRE</div>
-          <div class="panel"><div class="panel-header"><span class="panel-title">🚀 GETTING STARTED</span></div>
-            <div class="panel-body" style="font-family:var(--font-mono);font-size:0.78rem;line-height:2;color:var(--text);">
-              <div style="margin-bottom:12px;"><span style="color:var(--accent);font-weight:600;">Step 1 — Select your firm tab</span><br/>Click Deriv, FTMO, The5ers, or Other from the top menu.</div>
-              <div style="margin-bottom:12px;"><span style="color:var(--accent);font-weight:600;">Step 2 — Upload trades</span><br/>Use ⬆ Upload Trades sub-tab. Drop CSV/HTML, screenshots (AI), or paste text. Trades save directly to that firm.</div>
-              <div style="margin-bottom:12px;"><span style="color:var(--accent);font-weight:600;">Step 3 — Review stats</span><br/>Overview shows equity curve, daily P&amp;L, risk limits. Trade History shows every trade.</div>
-              <div><span style="color:var(--accent);font-weight:600;">Step 4 — Journal &amp; Analysis</span><br/>Each firm has its own Journal and Analysis sub-tab for focused per-firm tracking.</div>
-            </div>
-          </div>
-          <div class="panel"><div class="panel-header"><span class="panel-title">⚡ DERIV API</span></div>
-            <div class="panel-body" style="font-family:var(--font-mono);font-size:0.78rem;line-height:2;color:var(--text);">
-              <div>1. Go to app.deriv.com/account/api-token</div>
-              <div>2. Switch to Real account (not Demo)</div>
-              <div>3. Create token — enable Read and Trading information</div>
-              <div>4. Click ⚡ DERIV button top-right and paste token</div>
-              <div style="color:var(--muted);margin-top:8px;">Token saved on your device only. Never shared.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </main>
-  </div><!-- /appScreen -->
-
-  <!-- DERIV MODAL -->
-  <div class="modal-overlay" id="connectModal">
-    <div class="modal">
-      <div class="modal-title">CONNECT DERIV</div>
-      <div class="modal-sub">Paste your real account API token</div>
-      <div class="form-group">
-        <label class="form-label">Deriv API Token</label>
-        <input type="password" class="form-input" id="derivTokenInput" placeholder="Paste token here..."/>
-      </div>
-      <div style="margin-top:8px;font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);line-height:1.8;">
-        Get token → <span style="color:var(--accent);">app.deriv.com/account/api-token</span><br/>
-        Permissions: ✅ Read &nbsp; ✅ Trading information
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-danger btn-sm" onclick="closeDerivModal()">CANCEL</button>
-        <button class="btn btn-primary btn-sm" onclick="connectDeriv()">CONNECT</button>
       </div>
     </div>
+    <div class="auth-footer">🔒 Secured by Supabase Auth &nbsp;·&nbsp; Each trader sees only their own data</div>
   </div>
+</div>
 
-  <!-- CONGRATS SCREEN -->
-  <div id="congratsScreen">
-    <div style="position:absolute;inset:0;pointer-events:none;" id="confettiContainer"></div>
-    <div class="congrats-card">
-      <div class="congrats-header">
-        <span class="congrats-icon">🎉</span>
-        <div class="congrats-title">WELCOME ABOARD!</div>
-        <div class="congrats-name" id="congratsName">Trader</div>
-        <div class="congrats-sub">YOUR ACCOUNT HAS BEEN CREATED SUCCESSFULLY</div>
+<!-- APP SCREEN -->
+<div id="appScreen">
+  <header>
+    <div class="logo">FSH EMPIRE</div>
+    <div class="header-right">
+      <div class="live-badge"><div class="live-dot"></div><span id="liveTime">--:--:--</span></div>
+      <span id="derivStatus" class="deriv-status disconnected">DERIV OFF</span>
+      <button class="btn btn-outline btn-sm" onclick="openDerivModal()">⚡ DERIV</button>
+      <div class="user-pill">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <span class="user-email" id="userEmail">—</span>
       </div>
-      <div class="congrats-body">
-        <div class="congrats-steps">
-          <div class="congrats-step">
-            <div class="congrats-step-num">1</div>
-            <div class="congrats-step-text"><span class="congrats-step-label">Confirm your email</span>Check your inbox and click the confirmation link.</div>
-          </div>
-          <div class="congrats-step">
-            <div class="congrats-step-num">2</div>
-            <div class="congrats-step-text"><span class="congrats-step-label">Sign in</span>Come back and sign in with your email and password.</div>
-          </div>
-          <div class="congrats-step">
-            <div class="congrats-step-num">3</div>
-            <div class="congrats-step-text"><span class="congrats-step-label">Upload trades</span>Select your firm tab → Upload Trades to get started.</div>
+      <button class="btn btn-danger btn-sm" onclick="doLogout()">LOGOUT</button>
+    </div>
+  </header>
+  <div class="nav-tabs" id="mainNav">
+    <div class="tab active" onclick="switchMainTab(this,'deriv')">Deriv</div>
+    <div class="tab" onclick="switchMainTab(this,'ftmo')">FTMO</div>
+    <div class="tab" onclick="switchMainTab(this,'the5ers')">The5ers</div>
+    <div class="tab" onclick="switchMainTab(this,'other')">Other</div>
+    <div class="tab" onclick="switchMainTab(this,'alltrades')">📊 All Trades</div>
+    <div class="tab" onclick="switchMainTab(this,'help')">❓ Help</div>
+  </div>
+  <!-- SUB-NAV: shown when a firm tab is active -->
+  <div class="nav-tabs sub-nav" id="subNav" style="background:var(--bg);border-bottom:1px solid var(--border);padding-left:28px;">
+    <div class="sub-tab active" onclick="switchSubTab(this,'overview')">📊 Overview</div>
+    <div class="sub-tab" onclick="switchSubTab(this,'upload')">⬆ Upload Trades</div>
+    <div class="sub-tab" onclick="switchSubTab(this,'history')">📋 Trade History</div>
+    <div class="sub-tab" onclick="switchSubTab(this,'journal')">📝 Journal</div>
+    <div class="sub-tab" onclick="switchSubTab(this,'analysis')">📈 Analysis</div>
+  </div>
+  <main>
+    <!-- FIRM CONTAINER: one per firm, each has its own sub-pages -->
+    <div id="firm-deriv" class="firm-container active">
+      <div id="deriv-overview" class="sub-page active"></div>
+      <div id="deriv-upload" class="sub-page" style="display:none;"></div>
+      <div id="deriv-history" class="sub-page" style="display:none;"></div>
+      <div id="deriv-journal" class="sub-page" style="display:none;"></div>
+      <div id="deriv-analysis" class="sub-page" style="display:none;"></div>
+    </div>
+    <div id="firm-ftmo" class="firm-container" style="display:none;">
+      <div id="ftmo-overview" class="sub-page active"></div>
+      <div id="ftmo-upload" class="sub-page" style="display:none;"></div>
+      <div id="ftmo-history" class="sub-page" style="display:none;"></div>
+      <div id="ftmo-journal" class="sub-page" style="display:none;"></div>
+      <div id="ftmo-analysis" class="sub-page" style="display:none;"></div>
+    </div>
+    <div id="firm-the5ers" class="firm-container" style="display:none;">
+      <div id="the5ers-overview" class="sub-page active"></div>
+      <div id="the5ers-upload" class="sub-page" style="display:none;"></div>
+      <div id="the5ers-history" class="sub-page" style="display:none;"></div>
+      <div id="the5ers-journal" class="sub-page" style="display:none;"></div>
+      <div id="the5ers-analysis" class="sub-page" style="display:none;"></div>
+    </div>
+    <div id="firm-other" class="firm-container" style="display:none;">
+      <div id="other-overview" class="sub-page active"></div>
+      <div id="other-upload" class="sub-page" style="display:none;"></div>
+      <div id="other-history" class="sub-page" style="display:none;"></div>
+      <div id="other-journal" class="sub-page" style="display:none;"></div>
+      <div id="other-analysis" class="sub-page" style="display:none;"></div>
+    </div>
+
+    <!-- ALL TRADES PAGE -->
+    <div id="firm-alltrades" class="firm-container" style="display:none;">
+      <div class="stats-grid" id="allStatsGrid"></div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">ALL TRADES</span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span style="font-family:var(--font-mono);font-size:0.68rem;color:var(--muted);" id="allTradeCount">0 trades</span>
+            <select class="form-select" id="allTradeFilter" onchange="renderAllTradesTable()" style="padding:4px 8px;font-size:0.72rem;width:auto;">
+              <option value="all">All Firms</option>
+              <option value="Deriv">Deriv</option>
+              <option value="FTMO">FTMO</option>
+              <option value="The5ers">The5ers</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
         </div>
-        <button class="btn btn-primary" onclick="closeCongratsScreen()" style="letter-spacing:2px;">GO TO SIGN IN →</button>
+        <div style="overflow-x:auto;">
+          <table class="trades-table">
+            <thead><tr><th>Date</th><th>Firm</th><th>Instrument</th><th>Direction</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Actions</th></tr></thead>
+            <tbody id="allTradesBody"><tr><td colspan="9"><div class="loading-state">Sign in to view all trades</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="two-col" style="margin-top:18px;">
+        <div class="panel"><div class="panel-header"><span class="panel-title">WIN RATE BY INSTRUMENT</span></div><div class="panel-body" id="allInstrumentAnalysis"><div class="loading-state">Sync trades to see analysis</div></div></div>
+        <div class="panel"><div class="panel-header"><span class="panel-title">EMOTION ANALYSIS</span></div><div class="panel-body" id="allEmotionAnalysis"><div class="loading-state">Add journal entries to see patterns</div></div></div>
+      </div>
+      <div class="panel" style="margin-top:18px;"><div class="panel-header"><span class="panel-title">MONTHLY PERFORMANCE — ALL FIRMS</span></div><div class="panel-body" id="allMonthlyAnalysis"><div class="loading-state">Sync trades to see monthly breakdown</div></div></div>
+    </div>
+
+    <!-- HELP PAGE -->
+    <div id="firm-help" class="firm-container" style="display:none;">
+      <div style="max-width:800px;margin:0 auto;">
+        <div style="font-family:var(--font-display);font-size:2rem;letter-spacing:4px;color:var(--accent);margin-bottom:6px;">HELP &amp; GUIDE</div>
+        <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:28px;letter-spacing:1px;">HOW TO USE YOUR FSH EMPIRE DASHBOARD</div>
+        <div class="panel"><div class="panel-header"><span class="panel-title">🚀 GETTING STARTED</span></div><div class="panel-body" style="font-family:var(--font-mono);font-size:0.78rem;line-height:2;color:var(--text);">
+          <div style="margin-bottom:12px;"><span style="color:var(--accent);font-weight:600;">Step 1 — Select your firm tab</span><br/>Click Deriv, FTMO, The5ers, or Other from the top menu.</div>
+          <div style="margin-bottom:12px;"><span style="color:var(--accent);font-weight:600;">Step 2 — Upload trades for that firm</span><br/>Go to ⬆ Upload Trades sub-tab. Upload CSV, HTML, screenshots, or paste. Trades are saved under that firm automatically.</div>
+          <div style="margin-bottom:12px;"><span style="color:var(--accent);font-weight:600;">Step 3 — Review stats &amp; history</span><br/>Use Overview for stats, Trade History to see all trades for that firm.</div>
+          <div><span style="color:var(--accent);font-weight:600;">Step 4 — Journal &amp; Analysis</span><br/>Each firm has its own Journal and Analysis sub-tab for focused tracking.</div>
+        </div></div>
+        <div class="panel"><div class="panel-header"><span class="panel-title">⚡ DERIV API</span></div><div class="panel-body" style="font-family:var(--font-mono);font-size:0.78rem;line-height:2;color:var(--text);">
+          <div>1. Go to app.deriv.com/account/api-token</div>
+          <div>2. Switch to Real account (not Demo)</div>
+          <div>3. Create token — enable Read and Trading information</div>
+          <div>4. Click ⚡ DERIV button top right and paste token</div>
+          <div style="color:var(--muted);margin-top:8px;">Token is saved on your device only.</div>
+        </div></div>
       </div>
     </div>
+  </main>
+</div>
+
+<!-- DERIV MODAL -->
+<div class="modal-overlay" id="connectModal">
+  <div class="modal">
+    <div class="modal-title">CONNECT DERIV</div>
+    <div class="modal-sub">Paste your real account API token</div>
+    <div class="form-group"><label class="form-label">Deriv API Token</label><input type="password" class="form-input" id="derivTokenInput" placeholder="Paste token here..."/></div>
+    <div style="margin-top:8px;font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);line-height:1.8;">Get token → <span style="color:var(--accent)">app.deriv.com/account/api-token</span><br/>Permissions: ✅ Read &nbsp; ✅ Trading information</div>
+    <div class="modal-actions"><button class="btn btn-danger btn-sm" onclick="closeDerivModal()">CANCEL</button><button class="btn btn-primary btn-sm" onclick="connectDeriv()">CONNECT</button></div>
   </div>
+</div>
+<div class="toast" id="toast"></div>
 
-  <!-- Toast notification -->
-  <div class="toast" id="toast"></div>
+<!-- CONGRATS SCREEN -->
+<div id="congratsScreen">
+  <div style="position:absolute;inset:0;pointer-events:none;" id="confettiContainer"></div>
+  <div class="congrats-card">
+    <div class="congrats-header">
+      <span class="congrats-icon">🎉</span>
+      <div class="congrats-title">WELCOME ABOARD!</div>
+      <div class="congrats-name" id="congratsName">Trader</div>
+      <div class="congrats-sub">YOUR ACCOUNT HAS BEEN CREATED SUCCESSFULLY</div>
+    </div>
+    <div class="congrats-body">
+      <div class="congrats-steps">
+        <div class="congrats-step">
+          <div class="congrats-step-num">1</div>
+          <div class="congrats-step-text"><span class="congrats-step-label">Confirm your email</span>Check your inbox and click the confirmation link we sent you.</div>
+        </div>
+        <div class="congrats-step">
+          <div class="congrats-step-num">2</div>
+          <div class="congrats-step-text"><span class="congrats-step-label">Sign in</span>Come back here and sign in with your email and password.</div>
+        </div>
+        <div class="congrats-step">
+          <div class="congrats-step-num">3</div>
+          <div class="congrats-step-text"><span class="congrats-step-label">Connect Deriv & upload trades</span>Click ⚡ DERIV to sync your account or upload trades manually.</div>
+        </div>
+        <div class="congrats-step">
+          <div class="congrats-step-num">4</div>
+          <div class="congrats-step-text"><span class="congrats-step-label">Start journaling</span>Track your emotions and performance after every trade.</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="closeCongratsScreen()" style="letter-spacing:2px;">GO TO SIGN IN →</button>
+    </div>
+  </div>
+</div>
 
-  <!-- Supabase SDK (must load before ES modules) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Single entry point — ES module, loads everything via import -->
-  <script type="module" src="js/app.js"></script>
+
+<!-- ═══════════════════════════════════════════
+     SCRIPTS — plain <script> tags, load order matters
+     No ES modules — works on GitHub Pages as-is
+     ═══════════════════════════════════════════ -->
+
+<!-- 1. Supabase SDK (must be first) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- 2. Config: Supabase client, global vars, DOMContentLoaded boot -->
+<script src="js/config.js"></script>
+
+<!-- 3. UI helpers: clock, toast, modals -->
+<script src="js/ui.js"></script>
+
+<!-- 4. Auth: login, register, Google, validation, country data -->
+<script src="js/auth.js"></script>
+
+<!-- 5. Nav: switchMainTab, switchSubTab, renderSubPage -->
+<script src="js/nav.js"></script>
+
+<!-- 6. Pages: each file adds render functions to global scope -->
+<script src="pages/overview.js"></script>
+<script src="pages/upload.js"></script>
+<script src="pages/history.js"></script>
+<script src="pages/journal.js"></script>
+<script src="pages/analysis.js"></script>
+<script src="pages/alltrades.js"></script>
+
+<!-- 7. Core logic -->
+<script src="js/deriv.js"></script>
+<script src="js/data.js"></script>
+<script src="js/journal.js"></script>
+<script src="js/upload.js"></script>
 
 </body>
 </html>

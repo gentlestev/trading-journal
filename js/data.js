@@ -1,11 +1,25 @@
-// ============================================================
-// FSH Empire — Data: Supabase CRUD, renderAllTradesTable
-// ============================================================
+// FSH Empire — Data: Supabase CRUD, renderTradesTable
+async function deleteTrade(id){
+  if(!id||!currentUser) return;
+  if(!confirm('Delete this trade? This cannot be undone.')) return;
+  const{error}=await sb.from('trades').delete().eq('id',id).eq('user_id',currentUser.id);
+  if(error){showToast('Error deleting trade: '+error.message,true);return;}
+  showToast('Trade deleted.');
+  await loadTradesFromSupabase();
+}
 
-import { sb, allTrades, setAllTrades, currentUser, activeFirm, activeSubTab, FIRMS } from './app.js';
-import { showToast } from './ui.js';
-import { renderSubPage } from './nav.js';
-import { renderAllAnalysis } from '../pages/alltrades.js';
+async function deleteAllTrades(){
+  if(!currentUser) return;
+  const filter=document.getElementById('tradeFilter')?.value||'all';
+  const label=filter==='all'?'ALL trades':'all '+filter+' trades';
+  if(!confirm('Delete '+label+'? This CANNOT be undone.')) return;
+  let query=sb.from('trades').delete().eq('user_id',currentUser.id);
+  if(filter!=='all') query=query.eq('account_provider',filter);
+  const{error}=await query;
+  if(error){showToast('Error: '+error.message,true);return;}
+  showToast('Deleted '+label+'.');
+  await loadTradesFromSupabase();
+}
 
 async function loadTradesFromSupabase(){
   if(!currentUser)return;
@@ -29,3 +43,7 @@ function renderTradesTable(){
     return`<tr><td>${t.date}</td><td style="color:var(--accent);font-weight:600;">${t.instrument}</td><td>${t.direction||'—'}</td><td>${t.entry_price?'$'+parseFloat(t.entry_price).toFixed(2):'—'}</td><td>${t.exit_price?'$'+parseFloat(t.exit_price).toFixed(2):'—'}</td><td class="${pc}" style="font-weight:600;">${pnl>=0?'+':''}$${pnl.toFixed(2)}</td><td><span class="badge ${badge}">${t.result}</span></td><td><button class="btn btn-outline btn-sm" onclick="quickJournal('${t.instrument}','${t.date}')">+ NOTE</button></td></tr>`;
   }).join('');
 }
+
+function renderDashboard(){}
+
+function drawEquityCurve(){}
