@@ -438,7 +438,7 @@
         </div>
         <div style="overflow-x:auto;">
           <table class="trades-table">
-            <thead><tr><th>Date</th><th>Instrument</th><th>Direction</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Journal</th></tr></thead>
+            <thead><tr><th>Date</th><th>Instrument</th><th>Direction</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th>Actions</th></tr></thead>
             <tbody id="tradesBody"><tr><td colspan="8"><div class="loading-state">Sign in and connect Deriv to load trades</div></td></tr></tbody>
           </table>
         </div>
@@ -1237,6 +1237,15 @@ async function syncTrades(){
   showToast('Syncing...');derivWS.send(JSON.stringify({profit_table:1,description:1,limit:100,sort:'DESC'}));
 }
 
+async function deleteTrade(id){
+  if(!id||!currentUser) return;
+  if(!confirm('Delete this trade? This cannot be undone.')) return;
+  const{error}=await sb.from('trades').delete().eq('id',id).eq('user_id',currentUser.id);
+  if(error){showToast('Error deleting trade: '+error.message,true);return;}
+  showToast('Trade deleted.');
+  await loadTradesFromSupabase();
+}
+
 async function loadTradesFromSupabase(){
   if(!currentUser)return;
   const{data,error}=await sb.from('trades').select('*').eq('user_id',currentUser.id).order('date',{ascending:true});
@@ -1420,22 +1429,71 @@ async function handleCSVFile(file){
   const text=await file.text();
   const name=file.name.toLowerCase();
 
-  // HTML/HTM — use AI to parse
+  // HTML/HTM — parse tables directly from HTML
   if(name.endsWith('.html')||name.endsWith('.htm')){
-    showToast('🤖 AI is reading your HTML file...');
+    showToast('Reading HTML file...');
     try{
-      const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({text:'Extract all trades from this HTML trade history. Return ONLY JSON array.\n\n'+text.slice(0,15000)})
+      const parser=new DOMParser();
+      const doc=parser.parseFromString(text,'text/html');
+      const trades=[];
+      const rows=doc.querySelectorAll('tr');
+      rows.forEach(row=>{
+        const cells=Array.from(row.querySelectorAll('td,th')).map(c=>c.textContent.trim());
+        if(cells.length<3) return;
+        // Skip header rows
+        const firstCell=cells[0].toLowerCase();
+        if(firstCell.includes('date')||firstCell.includes('time')||firstCell.includes('symbol')) return;
+        // Try to extract date — look for date pattern
+        const dateMatch=cells.join(' ').match(/\d{4}[.\-\/]\d{2}[.\-\/]\d{2}/);
+        if(!dateMatch) return;
+        const date=dateMatch[0].replace(/[.\/]/g,'-');
+        // Find numeric pnl — last numeric cell is usually profit
+        const nums=cells.map(c=>parseFloat(c.replace(/[^\d.\-]/g,''))).filter(n=>!isNaN(n)&&n!==0);
+        const pnl=nums[nums.length-1]||0;
+        // Find instrument — usually 2nd or 3rd column
+        const instrument=cells[1]||cells[2]||'Unknown';
+        // Find direction
+        const rowText=cells.join(' ').toLowerCase();
+        const direction=rowText.includes('sell')||rowText.includes('short')?'Sell':'Buy';
+        trades.push({
+          date,instrument,direction,
+          entry_price:nums[0]||0,
+          exit_price:nums[1]||0,
+          profit_loss:pnl,
+          result:pnl>0?'Win':pnl<0?'Loss':'Break Even',
+          user_id:currentUser?.id
+        });
       });
-      const data=await resp.json();
-      const raw=data.response||data.content?.[0]?.text||'[]';
-      const clean=raw.replace(/```json|```/g,'').trim();
-      csvParsedTrades=JSON.parse(clean).map(t=>({...t,user_id:currentUser?.id}));
-      showTradePreview('csvPreview','csvPreviewLabel','csvPreviewTable',csvParsedTrades);
-      showToast('✅ Found '+csvParsedTrades.length+' trades in HTML file!');
-    }catch(e){showToast('Could not parse HTML file. Try CSV instead.',true);}
+      if(trades.length){
+        csvParsedTrades=trades;
+        showTradePreview('csvPreview','csvPreviewLabel','csvPreviewTable',csvParsedTrades);
+        showToast('Found '+trades.length+' trades in HTML file!');
+      } else {
+        // Fallback — send raw text to AI worker
+        showToast('Trying AI extraction...');
+        const stripped=text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').slice(0,8000);
+        const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({text:'Extract all trades from this trading history text. Return ONLY a JSON array. Each item: {"date":"YYYY-MM-DD","instrument":"name","direction":"Buy or Sell","entry_price":0,"exit_price":0,"profit_loss":0,"result":"Win or Loss or Break Even"}\n\n'+stripped})
+        });
+        const data=await resp.json();
+        const raw=data.response||data.content?.[0]?.text||'[]';
+        const clean=raw.replace(/```json|```/g,'').trim();
+        const jsonMatch=clean.match(/\[[\s\S]*\]/);
+        if(jsonMatch){
+          csvParsedTrades=JSON.parse(jsonMatch[0]).map(t=>({...t,user_id:currentUser?.id}));
+          if(csvParsedTrades.length){
+            showTradePreview('csvPreview','csvPreviewLabel','csvPreviewTable',csvParsedTrades);
+            showToast('Found '+csvParsedTrades.length+' trades via AI!');
+          } else {
+            showToast('No trades found in HTML file. Try exporting as CSV instead.',true);
+          }
+        }
+      }
+    }catch(e){
+      console.warn('HTML parse error:',e);
+      showToast('Could not read HTML file. Try exporting as CSV instead.',true);
+    }
     return;
   }
 
