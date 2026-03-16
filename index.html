@@ -1569,6 +1569,32 @@ let _imgRawText = "";
 function handleCSVDrop(e){e.preventDefault();document.getElementById('csvDropZone').style.borderColor='var(--border)';if(e.dataTransfer.files.length)handleCSVFiles(e.dataTransfer.files);}
 function handleImgDrop(e){e.preventDefault();document.getElementById('imgDropZone').style.borderColor='var(--border)';handleImgFiles(e.dataTransfer.files);}
 
+function parseMT5Html(html){
+    const trades = [];
+    // Extract all table rows using regex
+    const rowMatches = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi)||[];
+    rowMatches.forEach(row=>{
+      const cellMatches = row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)||[];
+      const cells = cellMatches.map(c=>c.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim());
+      if(cells.length < 10) return;
+      // Must start with date pattern YYYY.MM.DD
+      if(!/^\d{4}\.\d{2}\.\d{2}/.test(cells[0])) return;
+      const dir = (cells[3]||'').toLowerCase();
+      if(dir!=='buy'&&dir!=='sell') return;
+      try{
+        const date = cells[0].slice(0,10).replace(/\./g,'-');
+        const symbol = cells[2]||'Unknown';
+        const entry = parseFloat((cells[6]||'0').replace(/\s/g,''))||0;
+        const exitP = parseFloat((cells[10]||'0').replace(/\s/g,''))||0;
+        const pnl = parseFloat((cells[13]||'0').replace(/[\s,]/g,''))||0;
+        trades.push({date,instrument:symbol,direction:dir.charAt(0).toUpperCase()+dir.slice(1),
+          entry_price:entry,exit_price:exitP,profit_loss:pnl,
+          result:pnl>0?'Win':pnl<0?'Loss':'Break Even'});
+      }catch(e){}
+    });
+    return trades;
+  }
+
 async function handleCSVFiles(files){
   if(!files||!files.length)return;
   csvParsedTrades=[];
@@ -1694,18 +1720,35 @@ async function handleImgFiles(files){
     document.getElementById('ftrades_'+i).textContent='reading...';
     try{
       const {base64,mimeType}=await fileToBase64Safe(file);
+      
+      // Show size info for debugging
+      const sizeKB = Math.round(base64.length * 0.75 / 1024);
+      document.getElementById('ftrades_'+i).textContent='sending '+sizeKB+'KB...';
+      
       const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({image:base64,mimeType:mimeType})
       });
+      
+      if(!resp.ok) throw new Error('Worker returned HTTP '+resp.status);
+      
       const data=await resp.json();
-      if(data.error) throw new Error(data.error.message||'API error');
-      const text=data.response||data.content?.[0]?.text||'[]';
+      console.log('Worker response:', JSON.stringify(data).slice(0,300));
+      
+      if(data.error) throw new Error(JSON.stringify(data.error));
+      
+      const text=data.response||data.content?.[0]?.text||'';
+      console.log('Raw AI response:', text.slice(0,500));
+      
+      if(!text||text.trim()==='') throw new Error('Empty response from worker');
+      
       const clean=text.replace(/```json|```/g,'').trim();
       const jsonMatch=clean.match(/\[[\s\S]*\]/);
-      if(!jsonMatch) throw new Error('No trades found');
+      if(!jsonMatch) throw new Error('No JSON found in: '+clean.slice(0,100));
+      
       const parsed=JSON.parse(jsonMatch[0]);
-      if(!Array.isArray(parsed)||!parsed.length) throw new Error('Empty');
+      if(!Array.isArray(parsed)||!parsed.length) throw new Error('Empty trade array');
+      
       document.getElementById('ficon_'+i).style.color='var(--green)';
       document.getElementById('ficon_'+i).textContent='[OK]';
       document.getElementById('ftrades_'+i).style.color='var(--green)';
@@ -1716,9 +1759,9 @@ async function handleImgFiles(files){
       document.getElementById('ficon_'+i).style.color='var(--red)';
       document.getElementById('ficon_'+i).textContent='[X]';
       document.getElementById('ftrades_'+i).style.color='var(--red)';
-      document.getElementById('ftrades_'+i).textContent='failed';
+      document.getElementById('ftrades_'+i).textContent=e.message.slice(0,40);
       updateProgress();
-      console.warn('Error:',file.name,e.message);
+      console.error('Image parse error for',file.name,':',e.message);
       return [];
     }
   }));
@@ -1821,31 +1864,6 @@ function tradeKey(t){
   return [t.date,t.instrument,t.direction,String(parseFloat(t.entry_price||0).toFixed(5)),String(parseFloat(t.profit_loss||0).toFixed(2))].join('|');
 }
 
-function parseMT5Html(html){
-    const trades = [];
-    // Extract all table rows using regex
-    const rowMatches = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi)||[];
-    rowMatches.forEach(row=>{
-      const cellMatches = row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)||[];
-      const cells = cellMatches.map(c=>c.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim());
-      if(cells.length < 10) return;
-      // Must start with date pattern YYYY.MM.DD
-      if(!/^\d{4}\.\d{2}\.\d{2}/.test(cells[0])) return;
-      const dir = (cells[3]||'').toLowerCase();
-      if(dir!=='buy'&&dir!=='sell') return;
-      try{
-        const date = cells[0].slice(0,10).replace(/\./g,'-');
-        const symbol = cells[2]||'Unknown';
-        const entry = parseFloat((cells[6]||'0').replace(/\s/g,''))||0;
-        const exitP = parseFloat((cells[10]||'0').replace(/\s/g,''))||0;
-        const pnl = parseFloat((cells[13]||'0').replace(/[\s,]/g,''))||0;
-        trades.push({date,instrument:symbol,direction:dir.charAt(0).toUpperCase()+dir.slice(1),
-          entry_price:entry,exit_price:exitP,profit_loss:pnl,
-          result:pnl>0?'Win':pnl<0?'Loss':'Break Even'});
-      }catch(e){}
-    });
-    return trades;
-  }
 
 async function saveCSVTrades(){
   const provider = detectOrGetProvider('uploadProvider', csvParsedTrades);
