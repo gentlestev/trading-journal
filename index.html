@@ -244,7 +244,7 @@
             <label class="form-label">Confirm Password</label>
             <input type="password" class="form-input" id="regConfirm" placeholder="Repeat password"/>
           </div>
-          <button class="btn btn-primary" onclick="regNextStep()">NEXT — CONTACT DETAILS →</button>
+          <button class="btn btn-primary" id="regNextBtn" onclick="regNextStep()">NEXT — CONTACT DETAILS →</button>
         </div>
 
         <!-- STEP 2: Contact & address -->
@@ -904,17 +904,38 @@ function validateAddress(){
   el.className='form-input valid';err.style.display='none';return true;
 }
 
-function regNextStep(){
+async function regNextStep(){
   const name=document.getElementById('regName').value.trim();
   const email=document.getElementById('regEmail').value.trim();
   const pass=document.getElementById('regPassword').value;
   const confirm=document.getElementById('regConfirm').value;
   const err=document.getElementById('registerError');
+  const btn=document.getElementById('regNextBtn');
   err.style.display='none';
+
   if(!name){err.textContent='Full name is required.';err.style.display='block';return;}
   if(!validateEmail(email)){return;}
   if(!pass||pass.length<6){err.textContent='Password must be at least 6 characters.';err.style.display='block';return;}
   if(pass!==confirm){err.textContent='Passwords do not match.';err.style.display='block';return;}
+
+  // Check if email already exists in database
+  btn.textContent='CHECKING...';btn.disabled=true;
+  try{
+    const{data,error}=await sb.rpc('email_exists',{check_email:email});
+    if(error)throw error;
+    if(data===true){
+      err.textContent='⚠️ This email is already registered. Please sign in or use a different email.';
+      err.style.display='block';
+      document.getElementById('regEmail').className='form-input invalid';
+      btn.textContent='NEXT — CONTACT DETAILS →';btn.disabled=false;
+      return;
+    }
+  }catch(e){
+    // If RPC fails, continue anyway — Supabase will catch duplicate on signup
+    console.warn('Email check error:',e);
+  }
+
+  btn.textContent='NEXT — CONTACT DETAILS →';btn.disabled=false;
   document.getElementById('regStep1').classList.remove('active');
   document.getElementById('regStep2').classList.add('active');
   document.getElementById('sdot1').classList.remove('active');document.getElementById('sdot1').classList.add('done');
@@ -933,6 +954,16 @@ async function doRegister(){
   const err=document.getElementById('registerError');
   const suc=document.getElementById('registerSuccess');
   err.style.display='none';suc.style.display='none';
+
+  // Final email duplicate check before submitting
+  const emailVal=document.getElementById('regEmail').value.trim();
+  try{
+    const{data:exists}=await sb.rpc('email_exists',{check_email:emailVal});
+    if(exists===true){
+      err.textContent='⚠️ This email is already registered. Please sign in or use a different email.';
+      err.style.display='block';return;
+    }
+  }catch(e){console.warn('Final email check error:',e);}
 
   // Validate step 2 fields
   const country=document.getElementById('regCountry').value;
