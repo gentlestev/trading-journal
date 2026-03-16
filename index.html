@@ -263,12 +263,68 @@
 
     <!-- TRADES -->
     <div id="page-trades" class="page">
+
+      <!-- UPLOAD METHODS -->
+      <div class="two-col" style="margin-bottom:18px;">
+
+        <!-- CSV/Excel Upload -->
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">UPLOAD CSV / EXCEL</span></div>
+          <div class="panel-body">
+            <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">Upload a .csv or .xlsx file exported from MT5, Deriv, or any broker. Columns needed: date, instrument, direction, entry, exit, profit/loss.</p>
+            <div id="csvDropZone" style="border:2px dashed var(--border);border-radius:6px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;" onclick="document.getElementById('csvFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleCSVDrop(event)">
+              <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);letter-spacing:1px;">📂 DROP FILE HERE OR CLICK TO BROWSE<br/><span style="font-size:0.65rem;">.csv or .xlsx accepted</span></div>
+            </div>
+            <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls" style="display:none;" onchange="handleCSVFile(this.files[0])"/>
+            <div id="csvPreview" style="margin-top:14px;display:none;">
+              <div style="font-family:var(--font-mono);font-size:0.68rem;color:var(--accent);margin-bottom:8px;" id="csvPreviewLabel"></div>
+              <div style="overflow-x:auto;max-height:180px;overflow-y:auto;" id="csvPreviewTable"></div>
+              <button class="btn btn-success btn-sm" onclick="saveCSVTrades()" style="margin-top:10px;width:100%;">SAVE TO DASHBOARD</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screenshot Upload -->
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">UPLOAD SCREENSHOTS</span><span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--accent);">AI-POWERED</span></div>
+          <div class="panel-body">
+            <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">Upload screenshots of your MT5/Deriv trade history. AI will read and extract all trades automatically.</p>
+            <div id="imgDropZone" style="border:2px dashed var(--border);border-radius:6px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;" onclick="document.getElementById('imgFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleImgDrop(event)">
+              <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);letter-spacing:1px;">🖼️ DROP SCREENSHOTS HERE OR CLICK<br/><span style="font-size:0.65rem;">.png .jpg .jpeg accepted</span></div>
+            </div>
+            <input type="file" id="imgFileInput" accept="image/*" multiple style="display:none;" onchange="handleImgFiles(this.files)"/>
+            <div id="imgStatus" style="margin-top:12px;font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);display:none;"></div>
+            <div id="imgPreview" style="margin-top:10px;display:none;">
+              <div style="overflow-x:auto;max-height:180px;overflow-y:auto;" id="imgPreviewTable"></div>
+              <button class="btn btn-success btn-sm" onclick="saveImgTrades()" style="margin-top:10px;width:100%;">SAVE TO DASHBOARD</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Paste Text -->
+      <div class="panel" style="margin-bottom:18px;">
+        <div class="panel-header"><span class="panel-title">PASTE TRADE DATA</span></div>
+        <div class="panel-body">
+          <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6;">Paste raw trade data copied from MT5, Deriv history, or any format. AI will parse it automatically.</p>
+          <textarea id="pasteTradeData" class="form-textarea" style="min-height:110px;width:100%;" placeholder="Paste your trade history here... e.g:&#10;2026-02-01, V75, Sell, 36000, 35500, +250&#10;2026-02-03, V100, Buy, 8000, 8200, +180&#10;...any format works"></textarea>
+          <button class="btn btn-primary" onclick="parsePastedTrades()" style="margin-top:10px;width:100%;padding:10px;">PARSE &amp; PREVIEW TRADES</button>
+          <div id="pastePreview" style="margin-top:14px;display:none;">
+            <div style="font-family:var(--font-mono);font-size:0.68rem;color:var(--accent);margin-bottom:8px;" id="pastePreviewLabel"></div>
+            <div style="overflow-x:auto;max-height:180px;overflow-y:auto;" id="pastePreviewTable"></div>
+            <button class="btn btn-success btn-sm" onclick="savePastedTrades()" style="margin-top:10px;width:100%;">SAVE TO DASHBOARD</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trade History Table -->
       <div class="panel">
         <div class="panel-header">
           <span class="panel-title">TRADE HISTORY</span>
           <div style="display:flex;gap:10px;align-items:center;">
             <span style="font-family:var(--font-mono);font-size:0.68rem;color:var(--muted);" id="tradeCount">0 trades</span>
-            <button class="btn btn-outline btn-sm" onclick="syncTrades()">↻ SYNC</button>
+            <button class="btn btn-outline btn-sm" onclick="syncTrades()">↻ SYNC DERIV</button>
           </div>
         </div>
         <div style="overflow-x:auto;">
@@ -635,6 +691,132 @@ function renderAnalysis(){
   if(!Object.keys(months).length){monthDiv.innerHTML='<div class="loading-state">No trade data yet</div>';}
   else{monthDiv.innerHTML=`<table class="trades-table"><thead><tr><th>Month</th><th>Trades</th><th>Win Rate</th><th>Net P&L</th><th>Status</th></tr></thead><tbody>`+Object.entries(months).sort().map(([m,d])=>{const wr=(d.wins/d.trades*100).toFixed(1);return`<tr><td style="color:var(--accent);font-weight:600;">${m}</td><td>${d.trades}</td><td>${wr}%</td><td class="${d.pnl>=0?'stat-green':'stat-red'}" style="font-weight:600;">${d.pnl>=0?'+':''}$${d.pnl.toFixed(2)}</td><td><span class="badge ${d.pnl>=0?'badge-win':'badge-loss'}">${d.pnl>=0?'PROFITABLE':'DRAWDOWN'}</span></td></tr>`;}).join('')+'</tbody></table>';}
 }
+
+// ── CSV/EXCEL UPLOAD ──
+let csvParsedTrades = [];
+let imgParsedTrades = [];
+
+function handleCSVDrop(e){e.preventDefault();document.getElementById('csvDropZone').style.borderColor='var(--border)';const file=e.dataTransfer.files[0];if(file)handleCSVFile(file);}
+function handleImgDrop(e){e.preventDefault();document.getElementById('imgDropZone').style.borderColor='var(--border)';handleImgFiles(e.dataTransfer.files);}
+
+async function handleCSVFile(file){
+  if(!file)return;
+  const text=await file.text();
+  const lines=text.split('\n').filter(l=>l.trim());
+  const trades=[];
+  for(let i=1;i<lines.length;i++){
+    const cols=lines[i].split(',').map(c=>c.trim().replace(/"/g,''));
+    if(cols.length<3)continue;
+    const pnl=parseFloat(cols[5]||cols[4]||0);
+    trades.push({
+      date:cols[0]||new Date().toISOString().split('T')[0],
+      instrument:cols[1]||'Unknown',
+      direction:cols[2]||'—',
+      entry_price:parseFloat(cols[3])||0,
+      exit_price:parseFloat(cols[4])||0,
+      profit_loss:pnl,
+      result:pnl>0?'Win':pnl<0?'Loss':'Break Even',
+      user_id:currentUser?.id
+    });
+  }
+  csvParsedTrades=trades;
+  showTradePreview('csvPreview','csvPreviewLabel','csvPreviewTable',trades);
+}
+
+// ── SCREENSHOT AI PARSE ──
+async function handleImgFiles(files){
+  if(!files||!files.length)return;
+  const status=document.getElementById('imgStatus');
+  status.style.display='block';
+  status.textContent='🤖 AI is reading your screenshots...';
+  imgParsedTrades=[];
+  for(const file of Array.from(files)){
+    const base64=await fileToBase64(file);
+    try{
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-20250514',
+          max_tokens:1000,
+          messages:[{role:'user',content:[
+            {type:'image',source:{type:'base64',media_type:file.type,data:base64}},
+            {type:'text',text:'Extract all trades from this trading history screenshot. Return ONLY a JSON array with objects: {date, instrument, direction, entry_price, exit_price, profit_loss, result}. result is Win/Loss/Break Even. No other text.'}
+          ]}]
+        })
+      });
+      const data=await resp.json();
+      const text=data.content?.[0]?.text||'[]';
+      const clean=text.replace(/```json|```/g,'').trim();
+      const parsed=JSON.parse(clean);
+      imgParsedTrades.push(...parsed.map(t=>({...t,user_id:currentUser?.id})));
+    }catch(e){console.warn('Parse error:',e);}
+  }
+  if(imgParsedTrades.length){
+    status.textContent='✅ Found '+imgParsedTrades.length+' trades in screenshots!';
+    showTradePreview('imgPreview',null,'imgPreviewTable',imgParsedTrades);
+  } else {
+    status.textContent='⚠️ Could not extract trades. Try clearer screenshots.';
+  }
+}
+
+function fileToBase64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
+
+// ── PASTE PARSE ──
+let pasteParsedTrades=[];
+async function parsePastedTrades(){
+  const text=document.getElementById('pasteTradeData').value.trim();
+  if(!text){showToast('Please paste some trade data first',true);return;}
+  showToast('🤖 Parsing trades...');
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:2000,
+        messages:[{role:'user',content:'Extract all trades from this text. Return ONLY a JSON array with objects: {date (YYYY-MM-DD), instrument, direction (Buy/Sell), entry_price, exit_price, profit_loss (number), result (Win/Loss/Break Even)}. No other text, no markdown.\n\n'+text}]
+      })
+    });
+    const data=await resp.json();
+    const raw=data.content?.[0]?.text||'[]';
+    const clean=raw.replace(/```json|```/g,'').trim();
+    pasteParsedTrades=JSON.parse(clean).map(t=>({...t,user_id:currentUser?.id}));
+    showTradePreview('pastePreview','pastePreviewLabel','pastePreviewTable',pasteParsedTrades);
+    showToast('✅ Found '+pasteParsedTrades.length+' trades!');
+  }catch(e){showToast('Could not parse trades. Try a different format.',true);}
+}
+
+function showTradePreview(containerId, labelId, tableId, trades){
+  const container=document.getElementById(containerId);
+  if(labelId)document.getElementById(labelId).textContent='Found '+trades.length+' trades — review before saving:';
+  container.style.display='block';
+  const tableEl=document.getElementById(tableId);
+  tableEl.innerHTML=`<table class="trades-table"><thead><tr><th>Date</th><th>Instrument</th><th>Direction</th><th>P&L</th><th>Result</th></tr></thead><tbody>`+
+    trades.map(t=>{
+      const pnl=parseFloat(t.profit_loss);
+      const badge=t.result==='Win'?'badge-win':t.result==='Loss'?'badge-loss':'badge-be';
+      return`<tr><td>${t.date}</td><td style="color:var(--accent)">${t.instrument}</td><td>${t.direction||'—'}</td><td class="${pnl>=0?'stat-green':'stat-red'}">${pnl>=0?'+':''}$${pnl.toFixed(2)}</td><td><span class="badge ${badge}">${t.result}</span></td></tr>`;
+    }).join('')+'</tbody></table>';
+}
+
+async function saveCSVTrades(){await saveUploadedTrades(csvParsedTrades,'csvPreview');}
+async function saveImgTrades(){await saveUploadedTrades(imgParsedTrades,'imgPreview');}
+async function savePastedTrades(){await saveUploadedTrades(pasteParsedTrades,'pastePreview');}
+
+async function saveUploadedTrades(trades, containerId){
+  if(!trades.length){showToast('No trades to save',true);return;}
+  if(!currentUser){showToast('Please sign in first',true);return;}
+  let saved=0;
+  for(const trade of trades){
+    const{error}=await sb.from('trades').insert([{...trade,user_id:currentUser.id}]);
+    if(!error)saved++;
+  }
+  showToast('✅ Saved '+saved+' trades to your dashboard!');
+  document.getElementById(containerId).style.display='none';
+  await loadTradesFromSupabase();
+}
+
 window.addEventListener('resize',()=>{if(allTrades.length)drawEquityCurve();});
 </script>
 </body>
