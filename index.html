@@ -397,20 +397,9 @@
         <div class="panel">
           <div class="panel-header"><span class="panel-title">UPLOAD CSV / EXCEL</span></div>
           <div class="panel-body">
-            <div class="form-group" style="margin-bottom:14px;">
-            <label class="form-label">Account / Firm</label>
-            <select class="form-select" id="uploadProvider">
-              <option value="Deriv">Deriv (Personal)</option>
-              <option value="FTMO">FTMO</option>
-              <option value="The5ers">The5ers</option>
-              <option value="Other">Other Prop Firm</option>
-            </select>
-          </div>
-          <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">Upload a .csv, .xlsx or .html/.htm file exported from MT5, Deriv, or any broker. The AI will automatically detect the format and extract all trades.</p>
-            <div id="csvDropZone" style="border:2px dashed var(--border);border-radius:6px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;" onclick="document.getElementById('csvFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleCSVDrop(event)">
-              <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);letter-spacing:1px;">📂 DROP FILES HERE OR CLICK TO BROWSE<br/><span style="font-size:0.65rem;">.csv .xlsx .html .htm — select multiple files at once</span></div>
-            </div>
+            
             <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls,.html,.htm" multiple style="display:none;" onchange="handleCSVFiles(this.files)"/>
+            <div id="csvDetectedFirm" style="display:none;margin-top:10px;padding:8px 12px;border-radius:4px;font-family:var(--font-mono);font-size:0.72rem;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.3);color:var(--accent);"></div>
             <div id="csvPreview" style="margin-top:14px;display:none;">
               <div style="font-family:var(--font-mono);font-size:0.68rem;color:var(--accent);margin-bottom:8px;" id="csvPreviewLabel"></div>
               <div style="overflow-x:auto;max-height:180px;overflow-y:auto;" id="csvPreviewTable"></div>
@@ -423,19 +412,7 @@
         <div class="panel">
           <div class="panel-header"><span class="panel-title">UPLOAD SCREENSHOTS</span><span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--accent);">AI-POWERED</span></div>
           <div class="panel-body">
-            <div class="form-group" style="margin-bottom:14px;">
-              <label class="form-label">Account / Firm</label>
-              <select class="form-select" id="imgUploadProvider">
-                <option value="Deriv">Deriv (Personal)</option>
-                <option value="FTMO">FTMO</option>
-                <option value="The5ers">The5ers</option>
-                <option value="Other">Other Prop Firm</option>
-              </select>
-            </div>
-            <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">Upload screenshots of your MT5/Deriv trade history. AI will read and extract all trades automatically.</p>
-            <div id="imgDropZone" style="border:2px dashed var(--border);border-radius:6px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;" onclick="document.getElementById('imgFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleImgDrop(event)">
-              <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);letter-spacing:1px;">🖼️ DROP SCREENSHOTS HERE OR CLICK<br/><span style="font-size:0.65rem;">.png .jpg .jpeg .heic and phone screenshots accepted</span></div>
-            </div>
+            
             <input type="file" id="imgFileInput" accept="image/*,.heic,.heif" multiple style="display:none;" onchange="handleImgFiles(this.files)"/>
             <div id="imgStatus" style="margin-top:12px;font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);display:none;"></div>
             <div id="imgPreview" style="margin-top:10px;display:none;">
@@ -454,6 +431,7 @@
           <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6;">Paste raw trade data copied from MT5, Deriv history, or any format. AI will parse it automatically.</p>
           <textarea id="pasteTradeData" class="form-textarea" style="min-height:110px;width:100%;" placeholder="Paste your trade history here... e.g:&#10;2026-02-01, V75, Sell, 36000, 35500, +250&#10;2026-02-03, V100, Buy, 8000, 8200, +180&#10;...any format works"></textarea>
           <button class="btn btn-primary" onclick="parsePastedTrades()" style="margin-top:10px;width:100%;padding:10px;">PARSE &amp; PREVIEW TRADES</button>
+          <div id="pasteDetectedFirm" style="display:none;margin-top:10px;padding:8px 12px;border-radius:4px;font-family:var(--font-mono);font-size:0.72rem;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.3);color:var(--accent);"></div>
           <div id="pastePreview" style="margin-top:14px;display:none;">
             <div style="font-family:var(--font-mono);font-size:0.68rem;color:var(--accent);margin-bottom:8px;" id="pastePreviewLabel"></div>
             <div style="overflow-x:auto;max-height:180px;overflow-y:auto;" id="pastePreviewTable"></div>
@@ -1611,17 +1589,11 @@ async function handleCSVFile(file){
       const trades = parseMT5Html(htmlText);
 
       if(trades.length){
-        // Auto-detect firm from file content and update dropdown
-        const detectedFirm = autoDetectFirm(htmlText);
-        if(detectedFirm){
-          const dropdown = document.getElementById('uploadProvider');
-          if(dropdown) dropdown.value = detectedFirm;
-          showToast('Detected: '+detectedFirm+' — Found '+trades.length+' trades!');
-        } else {
-          showToast('Found '+trades.length+' trades — please select firm above');
-        }
+        _csvFirm = autoDetectFirm(htmlText) || 'Other';
+        showDetectedFirm('csvDetectedFirm', _csvFirm==='Other'?null:_csvFirm);
         csvParsedTrades.push(...trades.map(t=>({...t,user_id:currentUser?.id})));
         showTradePreview('csvPreview','csvPreviewLabel','csvPreviewTable',csvParsedTrades);
+        showToast('Found '+trades.length+' trades → '+_csvFirm);
       } else {
         showToast('No trades found. Make sure this is a MT5 Trade History Report.',true);
       }
@@ -1652,6 +1624,10 @@ async function handleCSVFile(file){
       user_id:currentUser?.id
     });
   }
+  // Auto-detect from instrument names in CSV
+  const instText = trades.map(t=>t.instrument||'').join(' ');
+  _csvFirm = autoDetectFirm(instText) || 'Other';
+  showDetectedFirm('csvDetectedFirm', _csvFirm==='Other'?null:_csvFirm);
   csvParsedTrades.push(...trades);
 }
 
@@ -1726,6 +1702,9 @@ async function handleImgFiles(files){
     }
   }));
   results.forEach(r=>{ if(r.status==='fulfilled') imgParsedTrades.push(...r.value); });
+  const imgInstText = imgParsedTrades.map(t=>t.instrument||'').join(' ');
+  _imgFirm = autoDetectFirm(imgInstText) || 'Other';
+  showDetectedFirm('imgDetectedFirm', _imgFirm==='Other'?null:_imgFirm);
   if(imgParsedTrades.length){
     progressLabel.textContent='Found '+imgParsedTrades.length+' trades across '+total+' file'+(total>1?'s':'')+'!';
     progressLabel.style.color='var(--green)';
@@ -1784,6 +1763,8 @@ async function parsePastedTrades(){
     const raw=data.response||data.content?.[0]?.text||'[]';
     const clean=raw.replace(/```json|```/g,'').trim();
     pasteParsedTrades=JSON.parse(clean).map(t=>({...t,user_id:currentUser?.id}));
+    _pasteFirm = autoDetectFirm(text) || 'Other';
+    showDetectedFirm('pasteDetectedFirm', _pasteFirm==='Other'?null:_pasteFirm);
     showTradePreview('pastePreview','pastePreviewLabel','pastePreviewTable',pasteParsedTrades);
     showToast('✅ Found '+pasteParsedTrades.length+' trades!');
   }catch(e){showToast('Could not parse trades. Try a different format.',true);}
