@@ -1,4 +1,9 @@
-// ── FSH Empire · AUTH ──
+// ============================================================
+// FSH Empire — Auth: Login, register, Google OAuth, validation, country data
+// ============================================================
+
+import { sb, setCurrentUser } from './app.js';
+import { showToast } from './ui.js';
 
 function switchAuthTab(tab){
   document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));
