@@ -157,6 +157,25 @@
   .field-error{font-family:var(--font-mono);font-size:0.62rem;color:var(--red);margin-top:3px;display:none;}
   .form-input.invalid{border-color:var(--red);}
   .form-input.valid{border-color:var(--green);}
+
+  /* CONGRATS SCREEN */
+  #congratsScreen{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:var(--bg);}
+  #congratsScreen.show{display:flex;}
+  .congrats-card{width:480px;max-width:95vw;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;text-align:center;box-shadow:0 0 100px rgba(0,212,255,0.08);}
+  .congrats-header{padding:40px 36px 28px;background:var(--surface2);border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+  .congrats-header::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(0,212,255,0.08),transparent 70%);}
+  .congrats-icon{font-size:3.5rem;margin-bottom:14px;display:block;}
+  .congrats-title{font-family:var(--font-display);font-size:2.2rem;letter-spacing:4px;background:linear-gradient(135deg,var(--accent),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;}
+  .congrats-name{font-family:var(--font-display);font-size:1.4rem;letter-spacing:3px;color:var(--text);margin-bottom:6px;}
+  .congrats-sub{font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);letter-spacing:1px;}
+  .congrats-body{padding:28px 36px;}
+  .congrats-steps{display:flex;flex-direction:column;gap:12px;margin-bottom:24px;text-align:left;}
+  .congrats-step{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;}
+  .congrats-step-num{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:0.85rem;color:#000;flex-shrink:0;}
+  .congrats-step-text{font-family:var(--font-mono);font-size:0.72rem;color:var(--text);line-height:1.6;}
+  .congrats-step-label{color:var(--accent);font-weight:600;display:block;margin-bottom:2px;}
+  .confetti{position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall linear forwards;}
+  @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
 </style>
 </head>
 <body>
@@ -731,8 +750,7 @@ async function doRegister(){
     });
   }
   btn.textContent='CREATE ACCOUNT';btn.disabled=false;
-  suc.textContent='✅ Account created! Check your email to confirm, then sign in.';
-  suc.style.display='block';
+  showCongratsScreen(name);
 }
 
 async function doLogin(){
@@ -863,6 +881,37 @@ function renderFirmPage(pageId, firmName){
       </div>
     </div>`}
   `;
+}
+
+
+function showCongratsScreen(name){
+  document.getElementById('congratsName').textContent = name.toUpperCase();
+  document.getElementById('congratsScreen').classList.add('show');
+  launchConfetti();
+}
+
+function closeCongratsScreen(){
+  document.getElementById('congratsScreen').classList.remove('show');
+  switchAuthTab('login');
+}
+
+function launchConfetti(){
+  const container = document.getElementById('confettiContainer');
+  container.innerHTML = '';
+  const colors = ['#00d4ff','#00e676','#ff6b35','#ffd600','#ff1744','#7c4dff'];
+  for(let i = 0; i < 80; i++){
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.cssText = [
+      'left:'+Math.random()*100+'vw',
+      'background:'+colors[Math.floor(Math.random()*colors.length)],
+      'width:'+(6+Math.random()*8)+'px',
+      'height:'+(6+Math.random()*8)+'px',
+      'animation-duration:'+(2+Math.random()*3)+'s',
+      'animation-delay:'+(Math.random()*2)+'s'
+    ].join(';');
+    container.appendChild(el);
+  }
 }
 
 function showToast(msg,isError=false){
@@ -1194,5 +1243,40 @@ async function saveUploadedTrades(trades, containerId){
 
 window.addEventListener('resize',()=>{if(allTrades.length)drawEquityCurve();});
 </script>
+
+<!-- CONGRATS SCREEN -->
+<div id="congratsScreen">
+  <div style="position:absolute;inset:0;pointer-events:none;" id="confettiContainer"></div>
+  <div class="congrats-card">
+    <div class="congrats-header">
+      <span class="congrats-icon">🎉</span>
+      <div class="congrats-title">WELCOME ABOARD!</div>
+      <div class="congrats-name" id="congratsName">Trader</div>
+      <div class="congrats-sub">YOUR ACCOUNT HAS BEEN CREATED SUCCESSFULLY</div>
+    </div>
+    <div class="congrats-body">
+      <div class="congrats-steps">
+        <div class="congrats-step">
+          <div class="congrats-step-num">1</div>
+          <div class="congrats-step-text"><span class="congrats-step-label">Confirm your email</span>Check your inbox and click the confirmation link we sent you.</div>
+        </div>
+        <div class="congrats-step">
+          <div class="congrats-step-num">2</div>
+          <div class="congrats-step-text"><span class="congrats-step-label">Sign in</span>Come back here and sign in with your email and password.</div>
+        </div>
+        <div class="congrats-step">
+          <div class="congrats-step-num">3</div>
+          <div class="congrats-step-text"><span class="congrats-step-label">Connect Deriv & upload trades</span>Click ⚡ DERIV to sync your account or upload trades manually.</div>
+        </div>
+        <div class="congrats-step">
+          <div class="congrats-step-num">4</div>
+          <div class="congrats-step-text"><span class="congrats-step-label">Start journaling</span>Track your emotions and performance after every trade.</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="closeCongratsScreen()" style="letter-spacing:2px;">GO TO SIGN IN →</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
