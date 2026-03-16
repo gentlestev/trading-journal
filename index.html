@@ -1847,6 +1847,19 @@ function showTradePreview(containerId, labelId, tableId, trades){
     }).join('')+'</tbody></table>';
 }
 
+// ── SHOW DETECTED FIRM BANNER ──
+function showDetectedFirm(elementId, firm){
+  const el = document.getElementById(elementId);
+  if(!el) return;
+  if(!firm){
+    el.style.display = 'none';
+    el.textContent = '';
+    return;
+  }
+  el.textContent = '⚡ Auto-detected firm: ' + firm;
+  el.style.display = 'block';
+}
+
 // ── AUTO-DETECT FIRM FROM FILE CONTENT ──
 function autoDetectFirm(text){
   const t = text.toLowerCase();
