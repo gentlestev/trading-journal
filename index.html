@@ -69,10 +69,11 @@
   .deriv-status.disconnected{color:var(--red);background:rgba(255,23,68,0.1);}
   .deriv-status.connecting{color:var(--yellow);background:rgba(255,214,0,0.1);}
 
-  .nav-tabs{position:relative;z-index:20;display:flex;gap:2px;padding:0 28px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
-  .tab{font-family:var(--font-ui);font-weight:600;font-size:0.82rem;letter-spacing:1.5px;text-transform:uppercase;padding:12px 18px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
-  .tab:hover{color:var(--text);}
-  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  /* Main nav — v2 style: rounded top tabs */
+  .nav-tabs{position:relative;display:flex;gap:3px;padding:14px 22px 0;border-bottom:1px solid var(--border);background:var(--surface);overflow-x:auto;flex-shrink:0;}
+  .tab{padding:7px 16px;border-radius:7px 7px 0 0;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;color:var(--muted);border:1px solid transparent;border-bottom:none;transition:all .2s;background:transparent;white-space:nowrap;font-family:var(--font-mono);}
+  .tab:hover:not(.active){color:var(--text);}
+  .tab.active{color:var(--green);background:var(--bg);border-color:var(--border);}
 
   main{position:relative;z-index:5;max-width:1400px;margin:0 auto;padding:22px 28px;}
   .page{display:none;}
@@ -176,12 +177,11 @@
   .congrats-step-text{font-family:var(--font-mono);font-size:0.72rem;color:var(--text);line-height:1.6;}
   .congrats-step-label{color:var(--accent);font-weight:600;display:block;margin-bottom:2px;}
   .confetti{position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall linear forwards;}
-  /* Sub-nav: floats as dropdown below the active main tab */
-  #subNav{position:absolute;left:0;right:0;top:100%;z-index:50;background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:0 0 10px 10px;box-shadow:0 12px 32px rgba(0,0,0,0.5);padding:4px 10px;display:none;gap:0;animation:subNavIn .15s ease;}
-  @keyframes subNavIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
-  .sub-tab{font-family:var(--font-ui);font-weight:600;font-size:0.78rem;letter-spacing:1.5px;text-transform:uppercase;padding:10px 14px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;background:none;}
-  .sub-tab:hover{color:var(--text);}
-  .sub-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  /* Sub-nav — v2 style: same tab look, sits below main nav */
+  #subNav{display:none;gap:3px;padding:10px 22px 0;border-bottom:1px solid var(--border);background:var(--bg);overflow-x:auto;flex-shrink:0;}
+  .sub-tab{padding:6px 14px;border-radius:6px 6px 0 0;font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;color:var(--muted);border:1px solid transparent;border-bottom:none;transition:all .2s;background:transparent;white-space:nowrap;font-family:var(--font-mono);}
+  .sub-tab:hover:not(.active){color:var(--text);}
+  .sub-tab.active{color:var(--accent);background:var(--surface);border-color:var(--border);}
   .firm-container{display:block;}
   .chart-canvas-wrap{position:relative;width:100%;height:200px;}
   .chart-canvas-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
@@ -377,7 +377,7 @@
       <button class="btn btn-danger btn-sm" onclick="doLogout()">LOGOUT</button>
     </div>
   </header>
-  <div class="nav-tabs" id="mainNav" style="position:relative;">
+  <div class="nav-tabs" id="mainNav">
     <div class="tab active" onclick="switchMainTab(this,'deriv')">Deriv</div>
     <div class="tab" onclick="switchMainTab(this,'ftmo')">FTMO</div>
     <div class="tab" onclick="switchMainTab(this,'the5ers')">The5ers</div>
