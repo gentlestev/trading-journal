@@ -1395,30 +1395,39 @@ function renderFirmCharts(firm, trades){
       },
       plugins:[{
         id:'ftmoGradient',
-        afterLayout(chart){
-          // Called after axes are laid out — Y pixel positions are now accurate
+        afterRender(chart){
+          // afterRender fires after full paint — Y pixel coords are guaranteed accurate
           const {ctx:cx, chartArea:{top,bottom}, scales:{y}} = chart;
           const baselinePx = startBal ? y.getPixelForValue(startBal) : bottom;
           const clampedPx  = Math.max(top, Math.min(bottom, baselinePx));
           const totalH     = bottom - top;
           const splitRatio = Math.max(0, Math.min(1, (clampedPx - top) / totalH));
 
-          // Line gradient: green above baseline pixel, red below
+          // Line gradient: green above baseline, red below
           const lineG = cx.createLinearGradient(0, top, 0, bottom);
-          lineG.addColorStop(0,                         '#00e676');
-          lineG.addColorStop(Math.max(0,splitRatio-0.001), '#00e676');
-          lineG.addColorStop(Math.min(1,splitRatio+0.001), '#ff1744');
-          lineG.addColorStop(1,                         '#ff1744');
+          lineG.addColorStop(0,                              '#00e676');
+          lineG.addColorStop(Math.max(0,splitRatio-0.0001), '#00e676');
+          lineG.addColorStop(Math.min(1,splitRatio+0.0001), '#ff1744');
+          lineG.addColorStop(1,                              '#ff1744');
 
           // Fill gradient: green above, red below
           const fillG = cx.createLinearGradient(0, top, 0, bottom);
-          fillG.addColorStop(0,                         'rgba(0,230,118,0.22)');
-          fillG.addColorStop(Math.max(0,splitRatio-0.001), 'rgba(0,230,118,0.08)');
-          fillG.addColorStop(Math.min(1,splitRatio+0.001), 'rgba(255,23,68,0.08)');
-          fillG.addColorStop(1,                         'rgba(255,23,68,0.22)');
+          fillG.addColorStop(0,                              'rgba(0,230,118,0.22)');
+          fillG.addColorStop(Math.max(0,splitRatio-0.0001), 'rgba(0,230,118,0.06)');
+          fillG.addColorStop(Math.min(1,splitRatio+0.0001), 'rgba(255,23,68,0.06)');
+          fillG.addColorStop(1,                              'rgba(255,23,68,0.22)');
 
-          chart.data.datasets[0].borderColor     = lineG;
-          chart.data.datasets[0].backgroundColor = fillG;
+          // Only update if gradient actually changed
+          const ds = chart.data.datasets[0];
+          ds.borderColor     = lineG;
+          ds.backgroundColor = fillG;
+          // Redraw once with updated gradients (prevent infinite loop with flag)
+          if(!chart._gradientApplied){
+            chart._gradientApplied = true;
+            chart.update('none'); // 'none' = no animation, just redraw
+          } else {
+            chart._gradientApplied = false; // reset for next real update
+          }
         },
         afterDraw(chart){
           if(!startBal) return;
