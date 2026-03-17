@@ -381,6 +381,8 @@
 
 <!-- APP SCREEN -->
 <div id="appScreen">
+
+
   <header>
     <div class="logo">FSH EMPIRE</div>
     <div class="header-right">
@@ -400,6 +402,12 @@
     <div class="tab" onclick="switchMainTab(this,'other')">Other</div>
     <div class="tab" onclick="switchMainTab(this,'alltrades')">📊 All Trades</div>
     <div class="tab" onclick="switchMainTab(this,'help')">❓ Help</div>
+    <!-- Page zoom — right end of main menu -->
+    <div style="display:flex;align-items:center;gap:5px;margin-left:auto;padding:0 8px 0 16px;">
+      <button onclick="pageZoom(-1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">−</button>
+      <span id="pageZoomPct" style="font-size:9px;color:var(--muted);font-family:var(--font-mono);min-width:28px;text-align:center;">100%</span>
+      <button onclick="pageZoom(1)"  style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">+</button>
+    </div>
   </div>
   <!-- SUB-NAV: hidden until a firm tab is clicked -->
   <div class="nav-tabs sub-nav" id="subNav" style="display:none;background:var(--bg);border-bottom:1px solid var(--border);padding-left:28px;">
@@ -1037,6 +1045,9 @@ function onLogin(user){
   loadTradesFromSupabase().then(()=>{
     const firstTab=document.querySelector('#mainNav .tab');
     if(firstTab)switchMainTab(firstTab,'deriv');
+    // Restore saved zoom label
+    const lbl=document.getElementById('eq-zoom-pct');
+    if(lbl) lbl.textContent=Math.round(getEqScale()*100)+'%';
   });
 }
 
@@ -1075,6 +1086,7 @@ function switchMainTab(el,name){
     const firstVisible=[...document.querySelectorAll('#subNav .sub-tab')].find(t=>t.style.display!=='none');
     if(firstVisible)firstVisible.classList.add('active');
     renderSubPage(name,'overview');
+
   }
 }
 
@@ -1083,6 +1095,7 @@ function switchSubTab(el,sub){
   el.classList.add('active');
   activeSubTab=sub;
   renderSubPage(activeFirm,sub);
+
 }
 
 function renderSubPage(firm,sub){
@@ -1222,9 +1235,20 @@ function renderFirmOverview(firm,firmName){
   <div style="height:8px;"></div>
 
   <!-- Large equity curve -->
-  <div class="chart-card" style="margin-bottom:8px;">
-    <div class="chart-title">EQUITY CURVE <span id="eq-val-${firm}" style="font-size:11px;"></span></div>
-    <canvas id="eq-${firm}" height="160"></canvas>
+  <div style="position:relative;margin-bottom:8px;">
+    <!-- TOP-RIGHT: scale zoom — stays fixed as card scales -->
+    <div id="eqZoomControls" style="display:none;position:absolute;top:8px;right:8px;z-index:50;display:flex;align-items:center;gap:5px;">
+      <span id="eq-zoom-pct" style="font-size:9px;color:var(--muted);font-family:var(--font-mono);letter-spacing:1px;">100%</span>
+      <button onclick="zoomEqChart(-1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;">−</button>
+      <button onclick="zoomEqChart(1)"  style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;">+</button>
+    </div>
+
+    <!-- Chart card — height zoom buttons INSIDE, bottom-right, moves with box -->
+    <div class="chart-card" id="eq-card-${firm}" style="position:relative;">
+      <div class="chart-title">EQUITY CURVE <span id="eq-val-${firm}" style="font-size:11px;"></span></div>
+      <canvas id="eq-${firm}" height="160"></canvas>
+
+    </div>
   </div>
 
   <!-- 8px invisible spacer below equity curve -->
@@ -1308,7 +1332,11 @@ function renderFirmOverview(firm,firmName){
   </div>`;
 
   // Draw Chart.js charts
-  setTimeout(()=>renderFirmCharts(firm, trades), 60);
+  setTimeout(()=>{
+    applySavedEqHeight(firm);
+    renderFirmCharts(firm, trades);
+    setTimeout(()=>applyEqScale(firm), 80);
+  }, 60);
 }
 
 function setFirmStartBal(firm, val){
@@ -1321,6 +1349,69 @@ function setFirmStartBal(firm, val){
   // Redraw just the equity curve with new baseline
   const trades = allTrades.filter(t=>t.account_provider===FIRMS[firm]);
   if(trades.length) renderFirmCharts(firm, trades);
+}
+
+
+// ── EQUITY CURVE ZOOM — persists in localStorage ──
+const EQ_SCALE_STEP = 0.1;
+const EQ_SCALE_MIN  = 0.3;
+const EQ_SCALE_MAX  = 1.0;
+const EQ_SCALE_KEY  = 'eq_scale'; // single value for all firms
+
+function getEqScale(){
+  return parseFloat(localStorage.getItem(EQ_SCALE_KEY)||'1.0');
+}
+
+function applyEqScale(firm){
+  const scale = getEqScale();
+  const card  = document.getElementById('eq-card-'+firm);
+  if(!card) return;
+  card.style.transformOrigin = 'center center';
+  card.style.transform = 'scale('+scale+')';
+  const lbl = document.getElementById('eq-zoom-pct');
+  if(lbl) lbl.textContent = Math.round(scale*100)+'%';
+}
+
+function zoomEqChart(dir){
+  const current = getEqScale();
+  const next = parseFloat(Math.max(EQ_SCALE_MIN, Math.min(EQ_SCALE_MAX, current + dir * EQ_SCALE_STEP)).toFixed(1));
+  localStorage.setItem(EQ_SCALE_KEY, next);
+  // Apply to whichever firm is currently active
+  applyEqScale(activeFirm);
+  const lbl = document.getElementById('eq-zoom-pct');
+  if(lbl) lbl.textContent = Math.round(next*100)+'%';
+}
+
+
+// ── EQUITY CURVE Y-AXIS ZOOM — scaleY only ──
+const EQ_SCALEY_STEP = 0.1;
+const EQ_SCALEY_MIN  = 0.3;
+const EQ_SCALEY_MAX  = 1.0;
+const EQ_SCALEY_KEY  = 'eqScaleY';
+
+function getEqScaleY(firm){
+  return parseFloat(localStorage.getItem(EQ_SCALEY_KEY+'_'+firm)||'1.0');
+}
+
+function zoomEqHeight(firm, dir){
+  const current = getEqScaleY(firm);
+  const next = parseFloat(Math.max(EQ_SCALEY_MIN, Math.min(EQ_SCALEY_MAX, current + dir * EQ_SCALEY_STEP)).toFixed(1));
+  localStorage.setItem(EQ_SCALEY_KEY+'_'+firm, next);
+  applyEqScaleY(firm, next);
+}
+
+function applyEqScaleY(firm, scale){
+  const card = document.getElementById('eq-card-'+firm);
+  if(!card) return;
+  card.style.transformOrigin = 'center top';
+  card.style.transform = (scale < 1.0 ? 'scaleY('+scale+')' : '');
+  const lbl = document.getElementById('eq-height-label-'+firm);
+  if(lbl) lbl.textContent = Math.round(scale*100)+'%';
+}
+
+function applySavedEqHeight(firm){
+  const saved = getEqScaleY(firm);
+  applyEqScaleY(firm, saved);
 }
 
 
@@ -3225,6 +3316,36 @@ async function saveUploadedTrades(trades, containerId, provider){
   // Auto-navigate to firm history tab after save
   // (handled by renderSubPage refresh in loadTradesFromSupabase)
 }
+
+// ── PAGE ZOOM — scales entire app inward with black surround ──
+const PAGE_ZOOM_STEP = 0.05;
+const PAGE_ZOOM_MIN  = 0.5;
+const PAGE_ZOOM_MAX  = 1.0;
+
+function pageZoom(dir){
+  const current = parseFloat(localStorage.getItem('pageZoomScale')||'1.0');
+  const next = parseFloat(Math.max(PAGE_ZOOM_MIN, Math.min(PAGE_ZOOM_MAX, current + dir * PAGE_ZOOM_STEP)).toFixed(2));
+  localStorage.setItem('pageZoomScale', next);
+  applyPageZoom(next);
+}
+
+function applyPageZoom(scale){
+  const el = document.getElementById('appScreen');
+  if(!el) return;
+  el.style.transformOrigin = 'center top';
+  el.style.transform = scale < 1.0 ? 'scale('+scale+')' : 'scale(1)';
+  // Black background on body so surroundings are dark
+  document.body.style.background = '#000';
+  const lbl = document.getElementById('pageZoomPct');
+  if(lbl) lbl.textContent = Math.round(scale*100)+'%';
+}
+
+// Restore on load
+document.addEventListener('DOMContentLoaded', ()=>{
+  const saved = parseFloat(localStorage.getItem('pageZoomScale')||'1.0');
+  applyPageZoom(saved);
+});
+
 
 window.addEventListener('resize',()=>{if(allTrades.length)drawEquityCurve();});
 
