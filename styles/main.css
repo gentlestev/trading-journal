@@ -1,9 +1,0 @@
-:root {
-    --bg:#0a0c0f;--surface:#111418;--surface2:#181c22;--border:#1e2530;
-    --accent:#00d4ff;--accent2:#ff6b35;--green:#00e676;--red:#ff1744;--yellow:#ffd600;
-    --text:#e8edf5;--muted:#5a6478;
-    --font-display:'Bebas Neue',sans-serif;--font-ui:'Rajdhani',sans-serif;--font-mono:'IBM Plex Mono',monospace;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-height:100vh;overflow-x:hidden;}
-  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
