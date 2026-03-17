@@ -69,7 +69,7 @@
   .deriv-status.disconnected{color:var(--red);background:rgba(255,23,68,0.1);}
   .deriv-status.connecting{color:var(--yellow);background:rgba(255,214,0,0.1);}
 
-  .nav-tabs{position:relative;z-index:10;display:flex;gap:2px;padding:0 28px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
+  .nav-tabs{position:relative;z-index:20;display:flex;gap:2px;padding:0 28px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
   .tab{font-family:var(--font-ui);font-weight:600;font-size:0.82rem;letter-spacing:1.5px;text-transform:uppercase;padding:12px 18px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
   .tab:hover{color:var(--text);}
   .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
@@ -176,8 +176,10 @@
   .congrats-step-text{font-family:var(--font-mono);font-size:0.72rem;color:var(--text);line-height:1.6;}
   .congrats-step-label{color:var(--accent);font-weight:600;display:block;margin-bottom:2px;}
   .confetti{position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall linear forwards;}
-  .sub-nav{background:var(--bg) !important;padding-top:0 !important;border-top:1px solid rgba(0,212,255,0.08);}
-  .sub-tab{font-family:var(--font-ui);font-weight:600;font-size:0.82rem;letter-spacing:1.5px;text-transform:uppercase;padding:12px 18px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
+  /* Sub-nav: floats as dropdown below the active main tab */
+  #subNav{position:absolute;left:0;right:0;top:100%;z-index:50;background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--accent);border-radius:0 0 10px 10px;box-shadow:0 12px 32px rgba(0,0,0,0.5);padding:4px 10px;display:none;gap:0;animation:subNavIn .15s ease;}
+  @keyframes subNavIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+  .sub-tab{font-family:var(--font-ui);font-weight:600;font-size:0.78rem;letter-spacing:1.5px;text-transform:uppercase;padding:10px 14px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;background:none;}
   .sub-tab:hover{color:var(--text);}
   .sub-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
   .firm-container{display:block;}
@@ -375,7 +377,7 @@
       <button class="btn btn-danger btn-sm" onclick="doLogout()">LOGOUT</button>
     </div>
   </header>
-  <div class="nav-tabs" id="mainNav">
+  <div class="nav-tabs" id="mainNav" style="position:relative;">
     <div class="tab active" onclick="switchMainTab(this,'deriv')">Deriv</div>
     <div class="tab" onclick="switchMainTab(this,'ftmo')">FTMO</div>
     <div class="tab" onclick="switchMainTab(this,'the5ers')">The5ers</div>
@@ -1003,7 +1005,32 @@ async function forgotPassword(){
   else showToast('✅ Reset link sent to your email!');
 }
 
-async function doLogout(){if(derivWS)derivWS.close();await sb.auth.signOut();}
+async function doLogout(){
+  try{
+    if(derivWS){derivWS.close();derivWS=null;}
+    derivToken='';
+    await sb.auth.signOut();
+    // Force UI reset immediately — don't wait for auth state event
+    currentUser=null;
+    allTrades=[];
+    document.getElementById('appScreen').style.display='none';
+    document.getElementById('authScreen').style.display='flex';
+    // Reset sub-nav
+    const subNav=document.getElementById('subNav');
+    if(subNav)subNav.style.display='none';
+    // Clear login fields safely
+    ['loginEmail','loginPassword'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el)el.value='';
+    });
+    const errEl=document.getElementById('loginError');
+    if(errEl)errEl.style.display='none';
+  }catch(e){
+    console.error('Logout error:',e);
+    // Force redirect as fallback
+    window.location.reload();
+  }
+}
 
 function onLogin(user){
   currentUser=user;
@@ -1586,18 +1613,22 @@ async function handleFirmCSVFiles(files,firm,firmName){
   if(!files||!files.length)return;
   if(!firmParsedTrades[firm])firmParsedTrades[firm]={};
   firmParsedTrades[firm].csv=[];
-  const label=document.getElementById(firm+'-csvPreviewLabel');
-  const preview=document.getElementById(firm+'-csvPreview');
-  label.textContent='Processing '+files.length+' file(s)...';
-  preview.style.display='block';
+  const label   = document.getElementById(firm+'-csvPreviewLabel');
+  const preview = document.getElementById(firm+'-csvPreview');
+  const table   = document.getElementById(firm+'-csvPreviewTable');
+  if(label)  label.textContent='Processing '+files.length+' file(s)...';
+  if(preview)preview.style.display='block';
+  if(table)  table.innerHTML='<div style="padding:10px;font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);">Reading files...</div>';
   for(const file of Array.from(files)){
     const trades=await parseFirmCSVFile(file,firm);
     firmParsedTrades[firm].csv.push(...trades);
   }
+  console.log('CSV parsed:',firmParsedTrades[firm].csv.length,'trades');
   if(firmParsedTrades[firm].csv.length){
     showFirmTradePreview(firm+'-csvPreviewTable',firm+'-csvPreviewLabel',firmParsedTrades[firm].csv);
+    if(preview)preview.style.display='block';
   } else {
-    label.textContent='No trades found in uploaded files.';
+    if(label)label.textContent='No trades found. Check file format (CSV with headers: date,instrument,direction,entry,exit,pnl).';
   }
 }
 
@@ -1635,14 +1666,15 @@ async function handleFirmImgFiles(files,firm,firmName){
   firmParsedTrades[firm].img=[];
   const fileArr=Array.from(files);
   const total=fileArr.length;
-  const progressArea=document.getElementById(firm+'-imgProgressArea');
-  const progressLabel=document.getElementById(firm+'-imgProgressLabel');
-  const progressCount=document.getElementById(firm+'-imgProgressCount');
-  const progressBar=document.getElementById(firm+'-imgProgressBar');
-  const fileStatuses=document.getElementById(firm+'-imgFileStatuses');
-  const imgPreview=document.getElementById(firm+'-imgPreview');
+  const progressArea  = document.getElementById(firm+'-imgProgressArea');
+  const progressLabel = document.getElementById(firm+'-imgProgressLabel');
+  const progressCount = document.getElementById(firm+'-imgProgressCount');
+  const progressBar   = document.getElementById(firm+'-imgProgressBar');
+  const fileStatuses  = document.getElementById(firm+'-imgFileStatuses');
+  const imgPreview    = document.getElementById(firm+'-imgPreview');
+  if(!progressArea){showToast('UI not ready — open Upload tab first',true);return;}
   progressArea.style.display='block';
-  imgPreview.style.display='none';
+  if(imgPreview)imgPreview.style.display='none';
   progressLabel.textContent='Processing '+total+' screenshot'+(total>1?'s':'')+'...';
   progressCount.textContent='0/'+total;
   progressBar.style.width='0%';
@@ -1659,7 +1691,7 @@ async function handleFirmImgFiles(files,firm,firmName){
     document.getElementById(firm+'-ftrades_'+i).textContent='reading...';
     try{
       const {base64,mimeType}=await fileToBase64Safe(file);
-      const imgPrompt='You are a trading journal assistant. This screenshot shows trade history from a trading platform (MT5, Deriv, FTMO, The5ers, or similar). Extract ALL visible trades and return ONLY a JSON array, no explanation, no markdown. Each object: date (YYYY-MM-DD), instrument (string), direction (Buy or Sell), entry_price (number), exit_price (number), profit_loss (number, negative for losses), result (Win/Loss/Break Even). Use 0 for missing numbers, Unknown for missing strings. Return [] ONLY if truly no trade rows exist.';
+      const imgPrompt='You are a trading data extraction tool. The image shows a trade history table from a trading platform (MT5, Deriv, FTMO, The5ers, or cTrader). Your job: extract EVERY row in the table as a JSON array. Return ONLY the raw JSON array - no markdown fences, no explanation text, nothing else before or after the array. Required fields per trade: date (YYYY-MM-DD format), instrument (symbol string e.g. EURUSD), direction (exactly "Buy" or "Sell"), entry_price (number), exit_price (number), profit_loss (positive number for profits, negative for losses), result (exactly "Win", "Loss", or "Break Even"). If any field is not visible use: 0 for numbers, "Unknown" for strings. Example of valid response: [{"date":"2024-03-15","instrument":"EURUSD","direction":"Buy","entry_price":1.0850,"exit_price":1.0920,"profit_loss":70.00,"result":"Win"}]';
       const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:base64,mimeType:mimeType,prompt:imgPrompt})});
       if(!resp.ok)throw new Error('Worker HTTP '+resp.status);
       const data=await resp.json();
@@ -1728,24 +1760,67 @@ async function saveFirmTrades(firm,firmName,type){
   const trades=(firmParsedTrades[firm]||{})[type]||[];
   if(!trades.length){showToast('No trades to save',true);return;}
   if(!currentUser){showToast('Please sign in first',true);return;}
-  const{data:existing}=await sb.from('trades').select('date,instrument,direction,entry_price,profit_loss').eq('user_id',currentUser.id);
+
+  showToast('Saving '+trades.length+' trades...');
+
+  // Fetch existing to deduplicate
+  const{data:existing,error:fetchErr}=await sb.from('trades')
+    .select('date,instrument,direction,profit_loss')
+    .eq('user_id',currentUser.id);
+
+  if(fetchErr){
+    console.error('Fetch error:',fetchErr);
+    showToast('DB error: '+fetchErr.message,true);
+    return;
+  }
+
   const existingKeys=new Set((existing||[]).map(t=>tradeKey(t)));
   const newTrades=trades.filter(t=>!existingKeys.has(tradeKey(t)));
   const dupeCount=trades.length-newTrades.length;
-  if(!newTrades.length){showToast('All trades already exist — no duplicates saved.',true);return;}
-  const batch=newTrades.map(t=>({...t,user_id:currentUser.id,account_provider:firmName}));
-  let saved=0;
-  for(let i=0;i<batch.length;i+=50){
-    const{error}=await sb.from('trades').insert(batch.slice(i,i+50));
-    if(!error)saved+=Math.min(50,batch.length-i);
-    else console.warn('Insert error:',error.message);
+
+  console.log('saveFirmTrades:',{total:trades.length,existing:existingKeys.size,new:newTrades.length,dupes:dupeCount});
+  console.log('Sample new key:', newTrades.length?tradeKey(newTrades[0]):'none');
+  console.log('Sample existing keys:', [...existingKeys].slice(0,3));
+
+  if(!newTrades.length){
+    showToast('All '+trades.length+' trades already saved ('+dupeCount+' duplicates skipped).',true);
+    return;
   }
-  let msg='Saved '+saved+' trades to '+firmName+'!';
-  if(dupeCount>0)msg+=' ('+dupeCount+' duplicates skipped)';
-  showToast(msg);
-  document.getElementById(firm+'-'+type+'Preview').style.display='none';
+
+  // Clean batch — only send columns that exist in DB
+  const batch=newTrades.map(t=>({
+    user_id:     currentUser.id,
+    account_provider: firmName,
+    date:        String(t.date||'').trim(),
+    instrument:  String(t.instrument||'Unknown').trim(),
+    direction:   String(t.direction||'—').trim(),
+    entry_price: parseFloat(t.entry_price)||0,
+    exit_price:  parseFloat(t.exit_price)||0,
+    profit_loss: parseFloat(t.profit_loss)||0,
+    result:      String(t.result||'').trim()||((parseFloat(t.profit_loss)||0)>0?'Win':(parseFloat(t.profit_loss)||0)<0?'Loss':'Break Even'),
+  }));
+
+  let saved=0;
+  const errs=[];
+  for(let i=0;i<batch.length;i+=50){
+    const chunk=batch.slice(i,i+50);
+    const{error}=await sb.from('trades').insert(chunk);
+    if(!error) saved+=chunk.length;
+    else { console.error('Insert error:',error); errs.push(error.message); }
+  }
+
+  if(errs.length) showToast('Partial save — errors: '+errs[0],true);
+  else {
+    let msg='Saved '+saved+' trades to '+firmName+'!';
+    if(dupeCount>0) msg+=' ('+dupeCount+' duplicates skipped)';
+    showToast(msg);
+  }
+
+  // Hide preview
+  const previewEl=document.getElementById(firm+'-'+type+'Preview');
+  if(previewEl) previewEl.style.display='none';
+
   await loadTradesFromSupabase();
-  // Refresh current sub-page
   renderSubPage(firm,activeSubTab);
 }
 
@@ -1778,7 +1853,9 @@ async function saveFirmJournal(firm,firmName){
   const went_well=document.getElementById(firm+'-jWell').value;
   const improve=document.getElementById(firm+'-jImprove').value;
   if(!date||!instrument||!result){showToast('Date, instrument and result are required',true);return;}
-  const{error}=await sb.from('journal_entries').insert({user_id:currentUser.id,date,instrument,result,emotion,reasoning,went_well,improve,account_provider:firmName});
+  const insertData={user_id:currentUser.id,date,instrument,result,emotion,reasoning,went_well,improve};
+  try{insertData.account_provider=firmName;}catch(e){}
+  const{error}=await sb.from('journal_entries').insert(insertData);
   if(error){showToast('Error: '+error.message,true);return;}
   showToast('Journal entry saved!');
   document.getElementById(firm+'-jReasoning').value='';
@@ -2522,16 +2599,13 @@ function autoDetectFirm(text){
 
 // ── GENERATE DUPLICATE KEY ──
 function tradeKey(t){
-  // Robust key: normalise types so DB strings and parsed numbers match
-  const ep  = parseFloat(String(t.entry_price||0).replace(/[^0-9.\-]/g,'')||0);
-  const pnl = parseFloat(String(t.profit_loss||0).replace(/[^0-9.\-]/g,'')||0);
-  return [
-    String(t.date||'').trim(),
-    String(t.instrument||'').trim().toLowerCase(),
-    String(t.direction||'').trim().toLowerCase(),
-    ep.toFixed(2),
-    pnl.toFixed(2)
-  ].join('|');
+  // Use date + instrument + direction + pnl rounded to 0dp
+  // Avoids float precision mismatches between parsed CSV and DB storage
+  const pnl = Math.round(parseFloat(String(t.profit_loss||0))||0);
+  const dir  = String(t.direction||'').trim().toLowerCase().slice(0,4);
+  const inst = String(t.instrument||'').trim().toLowerCase().replace(/\s+/g,'');
+  const date = String(t.date||'').trim().slice(0,10);
+  return date+'|'+inst+'|'+dir+'|'+pnl;
 }
 
 
@@ -2563,7 +2637,7 @@ async function saveUploadedTrades(trades, containerId, provider){
   if(!currentUser){showToast('Please sign in first',true);return;}
 
   // Get existing trades to prevent duplicates
-  const{data:existing}=await sb.from('trades').select('date,instrument,direction,entry_price,profit_loss').eq('user_id',currentUser.id);
+  const{data:existing}=await sb.from('trades').select('date,instrument,direction,profit_loss').eq('user_id',currentUser.id);
   const existingKeys=new Set((existing||[]).map(t=>tradeKey(t)));
 
   // Filter out duplicates
