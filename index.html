@@ -5,11 +5,241 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>FSH Empire — Trading Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>"/>
-  <!-- Styles (split from inline) -->
-  <link rel="stylesheet" href="styles/main.css"/>
-  <link rel="stylesheet" href="styles/auth.css"/>
-  <link rel="stylesheet" href="styles/components.css"/>
+<style>
+  :root {
+    --bg:#0a0c0f;--surface:#111418;--surface2:#181c22;--border:#1e2530;
+    --accent:#00d4ff;--accent2:#ff6b35;--green:#00e676;--red:#ff1744;--yellow:#ffd600;
+    --text:#e8edf5;--muted:#5a6478;
+    --font-display:'Bebas Neue',sans-serif;--font-ui:'Rajdhani',sans-serif;--font-mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+
+  /* AUTH */
+  #authScreen{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:var(--bg);}
+  .auth-card{width:420px;max-width:95vw;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 0 80px rgba(0,212,255,0.06);}
+  .auth-header{padding:32px 36px 20px;text-align:center;border-bottom:1px solid var(--border);background:var(--surface2);}
+  .auth-logo{font-family:var(--font-display);font-size:2.8rem;letter-spacing:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:5px;}
+  .auth-tagline{font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+  .auth-body{padding:28px 36px;}
+  .auth-tabs{display:flex;margin-bottom:24px;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .auth-tab{flex:1;padding:10px;text-align:center;font-family:var(--font-ui);font-weight:600;font-size:0.82rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;color:var(--muted);background:transparent;border:none;transition:all .2s;}
+  .auth-tab.active{background:var(--accent);color:#000;}
+  .auth-form{display:flex;flex-direction:column;gap:14px;}
+  .form-group{display:flex;flex-direction:column;gap:5px;}
+  .form-label{font-family:var(--font-mono);font-size:0.62rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+  .form-input,.form-select,.form-textarea{background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--font-mono);font-size:0.82rem;padding:11px 13px;width:100%;transition:border-color .2s;outline:none;}
+  .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--accent);}
+  .form-select option{background:var(--surface);}
+  .form-textarea{resize:vertical;min-height:78px;}
+  .btn{font-family:var(--font-ui);font-weight:600;font-size:0.85rem;letter-spacing:1.5px;padding:11px 18px;border:none;border-radius:4px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+  .btn-primary{background:var(--accent);color:#000;width:100%;}
+  .btn-primary:hover{background:#00b8d9;transform:translateY(-1px);}
+  .btn-outline{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+  .btn-outline:hover{background:rgba(0,212,255,0.08);}
+  .btn-danger{background:transparent;color:var(--red);border:1px solid var(--red);}
+  .btn-danger:hover{background:rgba(255,23,68,0.08);}
+  .btn-success{background:var(--green);color:#000;}
+  .btn-success:hover{background:#00c853;}
+  .btn-sm{padding:6px 13px;font-size:0.75rem;}
+  .auth-error{background:rgba(255,23,68,0.1);border:1px solid rgba(255,23,68,0.3);border-radius:4px;padding:10px 13px;font-family:var(--font-mono);font-size:0.72rem;color:var(--red);display:none;}
+  .auth-success-msg{background:rgba(0,230,118,0.1);border:1px solid rgba(0,230,118,0.3);border-radius:4px;padding:10px 13px;font-family:var(--font-mono);font-size:0.72rem;color:var(--green);display:none;}
+  .auth-footer{padding:14px 36px 22px;text-align:center;font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);}
+  .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px;background:#fff;color:#333;border:1px solid #ddd;border-radius:4px;font-family:var(--font-ui);font-weight:600;font-size:0.85rem;cursor:pointer;transition:all .2s;letter-spacing:0.5px;}
+  .btn-google:hover{background:#f5f5f5;transform:translateY(-1px);}
+  .auth-divider{display:flex;align-items:center;gap:12px;margin:4px 0;color:var(--muted);font-family:var(--font-mono);font-size:0.68rem;}
+  .auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--border);}
+
+  /* APP */
+  #appScreen{display:none;}
+  header{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:13px 28px;border-bottom:1px solid var(--border);background:rgba(10,12,15,0.95);backdrop-filter:blur(12px);flex-wrap:wrap;gap:10px;}
+  .logo{font-family:var(--font-display);font-size:1.7rem;letter-spacing:4px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .user-pill{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 6px;}
+  .user-avatar{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:0.82rem;color:#000;font-weight:700;}
+  .user-email{font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .live-badge{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:0.68rem;color:var(--green);letter-spacing:1px;}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+  .deriv-status{font-family:var(--font-mono);font-size:0.68rem;letter-spacing:1px;padding:4px 9px;border-radius:3px;}
+  .deriv-status.connected{color:var(--green);background:rgba(0,230,118,0.1);}
+  .deriv-status.disconnected{color:var(--red);background:rgba(255,23,68,0.1);}
+  .deriv-status.connecting{color:var(--yellow);background:rgba(255,214,0,0.1);}
+
+  .nav-tabs{position:relative;z-index:10;display:flex;gap:2px;padding:0 28px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;}
+  .tab{font-family:var(--font-ui);font-weight:600;font-size:0.82rem;letter-spacing:1.5px;text-transform:uppercase;padding:12px 18px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+  main{position:relative;z-index:5;max-width:1400px;margin:0 auto;padding:22px 28px;}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:13px;margin-bottom:22px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:17px;position:relative;overflow:hidden;transition:border-color .2s;}
+  .stat-card:hover{border-color:var(--accent);}
+  .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
+  .stat-label{font-family:var(--font-mono);font-size:0.6rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:7px;}
+  .stat-value{font-family:var(--font-display);font-size:1.9rem;letter-spacing:1px;line-height:1;}
+  .stat-sub{font-size:0.7rem;color:var(--muted);margin-top:5px;font-family:var(--font-mono);}
+  .stat-green{color:var(--green)}.stat-red{color:var(--red)}.stat-accent{color:var(--accent)}.stat-yellow{color:var(--yellow)}
+
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:18px;overflow:hidden;}
+  .panel-header{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);background:var(--surface2);}
+  .panel-title{font-family:var(--font-display);font-size:1rem;letter-spacing:2px;color:var(--accent);}
+  .panel-body{padding:18px;}
+
+  .curve-container{width:100%;height:190px;position:relative;}
+  canvas#equityCurve{width:100%;height:100%;display:block;}
+
+  .trades-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+  .trades-table th{font-family:var(--font-mono);font-size:0.6rem;letter-spacing:2px;color:var(--muted);text-align:left;padding:9px 13px;border-bottom:1px solid var(--border);text-transform:uppercase;}
+  .trades-table td{padding:9px 13px;border-bottom:1px solid rgba(30,37,48,0.6);font-family:var(--font-mono);font-size:0.76rem;}
+  .trades-table tr:hover td{background:rgba(0,212,255,0.03);}
+  .badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:0.65rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+  .badge-win{background:rgba(0,230,118,0.15);color:var(--green);}
+  .badge-loss{background:rgba(255,23,68,0.15);color:var(--red);}
+  .badge-be{background:rgba(255,214,0,0.15);color:var(--yellow);}
+
+  .journal-grid{display:grid;grid-template-columns:310px 1fr;gap:18px;align-items:start;}
+  @media(max-width:900px){.journal-grid{grid-template-columns:1fr;}}
+  .journal-form{display:flex;flex-direction:column;gap:11px;}
+  .emotion-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+  .emotion-btn{padding:7px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--muted);font-family:var(--font-ui);font-size:0.72rem;cursor:pointer;text-align:center;transition:all .2s;}
+  .emotion-btn:hover,.emotion-btn.selected{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,0.07);}
+  .journal-entries{display:flex;flex-direction:column;gap:12px;}
+  .journal-entry-card{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:15px;transition:border-color .2s;}
+  .journal-entry-card:hover{border-color:rgba(0,212,255,0.3);}
+  .entry-meta{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px;}
+  .entry-date{font-family:var(--font-mono);font-size:0.68rem;color:var(--accent);letter-spacing:1px;}
+  .entry-instrument{font-family:var(--font-display);font-size:1.05rem;letter-spacing:2px;}
+  .entry-emotion{display:inline-block;padding:2px 7px;border-radius:3px;font-size:0.65rem;background:rgba(0,212,255,0.1);color:var(--accent);font-family:var(--font-mono);}
+  .entry-text{font-size:0.76rem;color:var(--muted);line-height:1.6;font-family:var(--font-mono);}
+  .entry-section{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+  .entry-section-label{font-size:0.6rem;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:3px;font-family:var(--font-mono);}
+
+  .ftmo-section{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media(max-width:700px){.ftmo-section{grid-template-columns:1fr;}}
+  .progress-item{margin-bottom:14px;}
+  .progress-header{display:flex;justify-content:space-between;margin-bottom:5px;}
+  .progress-label{font-family:var(--font-mono);color:var(--muted);font-size:0.65rem;letter-spacing:1px;}
+  .progress-val{font-family:var(--font-mono);font-weight:500;font-size:0.8rem;}
+  .progress-bar-bg{height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+  .progress-bar-fill{height:100%;border-radius:3px;transition:width 1s ease;}
+
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:26px;width:450px;max-width:95vw;}
+  .modal-title{font-family:var(--font-display);font-size:1.4rem;letter-spacing:3px;color:var(--accent);margin-bottom:4px;}
+  .modal-sub{color:var(--muted);font-size:0.78rem;margin-bottom:18px;font-family:var(--font-mono);}
+  .modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:flex-end;}
+
+  .loading-state{text-align:center;padding:44px 18px;color:var(--muted);font-family:var(--font-mono);font-size:0.78rem;letter-spacing:1px;}
+  .toast{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--accent);border-radius:6px;padding:11px 16px;font-family:var(--font-mono);font-size:0.78rem;color:var(--accent);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;}
+  .toast.show{transform:translateY(0);opacity:1;}
+  .toast.error{border-color:var(--red);color:var(--red);}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media(max-width:800px){.two-col{grid-template-columns:1fr;}}
+  .no-entries{text-align:center;padding:42px;color:var(--muted);font-family:var(--font-mono);font-size:0.76rem;letter-spacing:1px;}
+  @media(max-width:600px){main{padding:14px;}header{padding:10px 14px;}.nav-tabs{padding:0 14px;}}
+
+  .reg-step{display:none;}.reg-step.active{display:flex;flex-direction:column;gap:14px;}
+  .step-indicator{display:flex;gap:8px;margin-bottom:20px;align-items:center;}
+  .step-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:0.65rem;color:var(--muted);transition:all .3s;flex-shrink:0;}
+  .step-dot.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,0.1);}
+  .step-dot.done{border-color:var(--green);color:var(--green);background:rgba(0,230,118,0.1);}
+  .step-line{flex:1;height:1px;background:var(--border);}
+  .phone-wrap{display:flex;gap:8px;}
+  .phone-code{width:100px;flex-shrink:0;}
+  .two-input{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .field-error{font-family:var(--font-mono);font-size:0.62rem;color:var(--red);margin-top:3px;display:none;}
+  .form-input.invalid{border-color:var(--red);}
+  .form-input.valid{border-color:var(--green);}
+
+  /* CONGRATS SCREEN */
+  #congratsScreen{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:var(--bg);}
+  #congratsScreen.show{display:flex;}
+  .congrats-card{width:480px;max-width:95vw;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;text-align:center;box-shadow:0 0 100px rgba(0,212,255,0.08);}
+  .congrats-header{padding:40px 36px 28px;background:var(--surface2);border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+  .congrats-header::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(0,212,255,0.08),transparent 70%);}
+  .congrats-icon{font-size:3.5rem;margin-bottom:14px;display:block;}
+  .congrats-title{font-family:var(--font-display);font-size:2.2rem;letter-spacing:4px;background:linear-gradient(135deg,var(--accent),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px;}
+  .congrats-name{font-family:var(--font-display);font-size:1.4rem;letter-spacing:3px;color:var(--text);margin-bottom:6px;}
+  .congrats-sub{font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);letter-spacing:1px;}
+  .congrats-body{padding:28px 36px;}
+  .congrats-steps{display:flex;flex-direction:column;gap:12px;margin-bottom:24px;text-align:left;}
+  .congrats-step{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;}
+  .congrats-step-num{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:0.85rem;color:#000;flex-shrink:0;}
+  .congrats-step-text{font-family:var(--font-mono);font-size:0.72rem;color:var(--text);line-height:1.6;}
+  .congrats-step-label{color:var(--accent);font-weight:600;display:block;margin-bottom:2px;}
+  .confetti{position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall linear forwards;}
+  .sub-nav{background:var(--bg) !important;padding-top:0 !important;border-top:1px solid rgba(0,212,255,0.08);}
+  .sub-tab{font-family:var(--font-ui);font-weight:600;font-size:0.82rem;letter-spacing:1.5px;text-transform:uppercase;padding:12px 18px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
+  .sub-tab:hover{color:var(--text);}
+  .sub-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .firm-container{display:block;}
+  .chart-canvas-wrap{position:relative;width:100%;height:200px;}
+  .chart-canvas-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
+  @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
+
+/* ── V2-STYLE KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;margin-bottom:16px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:13px;position:relative;overflow:hidden;transition:border-color .2s;}
+.kpi-card:hover{border-color:var(--muted);}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--border));}
+.kpi-card.g{--kc:var(--green);} .kpi-card.r{--kc:var(--red);} .kpi-card.b{--kc:var(--accent);} .kpi-card.o{--kc:var(--yellow);} .kpi-card.p{--kc:#a78bfa;}
+.kpi-label{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
+.kpi-value{font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1;}
+.kpi-value.g{color:var(--green);} .kpi-value.r{color:var(--red);} .kpi-value.b{color:var(--accent);} .kpi-value.o{color:var(--yellow);} .kpi-value.p{color:#a78bfa;}
+.kpi-sub{font-size:9px;color:var(--muted);margin-top:4px;font-family:var(--font-mono);}
+
+/* ── CHART CARDS ── */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;overflow:hidden;}
+.chart-title{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;}
+
+/* ── INSIGHT BAR ── */
+.insight{padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:14px;font-family:var(--font-mono);}
+.insight strong{color:var(--text);}
+
+/* ── CALENDAR ── */
+.cal-month{margin-bottom:28px;}
+.cal-month-title{font-family:var(--font-display);font-size:1.1rem;letter-spacing:2px;margin-bottom:10px;color:var(--text);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day-label{text-align:center;font-size:8px;color:var(--muted);padding:3px 0;font-family:var(--font-mono);}
+.cal-day{border-radius:5px;padding:5px 3px;text-align:center;min-height:46px;background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:all .2s;}
+.cal-day:hover{border-color:var(--muted);}
+.cal-day.profit{background:rgba(0,230,118,0.07);border-color:rgba(0,230,118,0.2);}
+.cal-day.loss{background:rgba(255,23,68,0.07);border-color:rgba(255,23,68,0.2);}
+.cal-day.empty{opacity:.15;cursor:default;}
+.cal-day-num{font-size:9px;color:var(--muted);margin-bottom:2px;font-family:var(--font-mono);}
+.cal-day-pnl{font-size:8px;font-weight:600;font-family:var(--font-mono);}
+
+/* ── CARD UTILITY ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;}
+.card-title{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.card-title span{color:var(--text);font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;}
+
+/* ── TABLE V2 STYLE ── */
+.tbl-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;}
+.tbl-header{padding:11px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;}
+.tbl-title{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;font-family:var(--font-mono);}
+
+/* ── PILL BADGES ── */
+.pill{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;font-family:var(--font-mono);}
+.pill-win{background:rgba(0,230,118,0.14);color:var(--green);}
+.pill-loss{background:rgba(255,23,68,0.14);color:var(--red);}
+.pill-be{background:rgba(255,214,0,0.14);color:var(--yellow);}
+.pill-buy{background:rgba(0,212,255,0.14);color:var(--accent);}
+.pill-sell{background:rgba(255,23,68,0.14);color:var(--red);}
+
+/* ── RANGE BUTTONS ── */
+.rbtn{padding:4px 11px;border-radius:5px;font-size:10px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .2s;font-family:var(--font-mono);}
+.rbtn.active{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.3);color:var(--accent);}
+
+</style>
 </head>
 <body>
 
@@ -153,13 +383,14 @@
     <div class="tab" onclick="switchMainTab(this,'alltrades')">📊 All Trades</div>
     <div class="tab" onclick="switchMainTab(this,'help')">❓ Help</div>
   </div>
-  <!-- SUB-NAV: shown when a firm tab is active -->
-  <div class="nav-tabs sub-nav" id="subNav" style="background:var(--bg);border-bottom:1px solid var(--border);padding-left:28px;">
+  <!-- SUB-NAV: hidden until a firm tab is clicked -->
+  <div class="nav-tabs sub-nav" id="subNav" style="display:none;background:var(--bg);border-bottom:1px solid var(--border);padding-left:28px;">
     <div class="sub-tab active" onclick="switchSubTab(this,'overview')">📊 Overview</div>
     <div class="sub-tab" onclick="switchSubTab(this,'upload')">⬆ Upload Trades</div>
     <div class="sub-tab" onclick="switchSubTab(this,'history')">📋 Trade History</div>
     <div class="sub-tab" onclick="switchSubTab(this,'journal')">📝 Journal</div>
     <div class="sub-tab" onclick="switchSubTab(this,'analysis')">📈 Analysis</div>
+    <div class="sub-tab" onclick="switchSubTab(this,'calendar')">📅 Calendar</div>
   </div>
   <main>
     <!-- FIRM CONTAINER: one per firm, each has its own sub-pages -->
@@ -169,6 +400,7 @@
       <div id="deriv-history" class="sub-page" style="display:none;"></div>
       <div id="deriv-journal" class="sub-page" style="display:none;"></div>
       <div id="deriv-analysis" class="sub-page" style="display:none;"></div>
+      <div id="deriv-calendar" class="sub-page" style="display:none;"></div>
     </div>
     <div id="firm-ftmo" class="firm-container" style="display:none;">
       <div id="ftmo-overview" class="sub-page active"></div>
@@ -176,6 +408,7 @@
       <div id="ftmo-history" class="sub-page" style="display:none;"></div>
       <div id="ftmo-journal" class="sub-page" style="display:none;"></div>
       <div id="ftmo-analysis" class="sub-page" style="display:none;"></div>
+      <div id="ftmo-calendar" class="sub-page" style="display:none;"></div>
     </div>
     <div id="firm-the5ers" class="firm-container" style="display:none;">
       <div id="the5ers-overview" class="sub-page active"></div>
@@ -183,6 +416,7 @@
       <div id="the5ers-history" class="sub-page" style="display:none;"></div>
       <div id="the5ers-journal" class="sub-page" style="display:none;"></div>
       <div id="the5ers-analysis" class="sub-page" style="display:none;"></div>
+      <div id="the5ers-calendar" class="sub-page" style="display:none;"></div>
     </div>
     <div id="firm-other" class="firm-container" style="display:none;">
       <div id="other-overview" class="sub-page active"></div>
@@ -190,6 +424,7 @@
       <div id="other-history" class="sub-page" style="display:none;"></div>
       <div id="other-journal" class="sub-page" style="display:none;"></div>
       <div id="other-analysis" class="sub-page" style="display:none;"></div>
+      <div id="other-calendar" class="sub-page" style="display:none;"></div>
     </div>
 
     <!-- ALL TRADES PAGE -->
@@ -294,39 +529,2082 @@
 
 
 
-<!-- ═══════════════════════════════════════════
-     SCRIPTS — plain <script> tags, load order matters
-     No ES modules — works on GitHub Pages as-is
-     ═══════════════════════════════════════════ -->
-
-<!-- 1. Supabase SDK (must be first) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const SUPABASE_URL='https://obliysgyuizoyxkevqxv.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ibGl5c2d5dWl6b3l4a2V2cXh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NzkzMjQsImV4cCI6MjA4OTI1NTMyNH0.x5G8rtTC8xisZAcQ7d251kYbATp8ihBARd02Mb_4Vyo';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let derivWS=null,derivToken='',allTrades=[],selectedEmotion='',currentUser=null;
 
-<!-- 2. Config: Supabase client, global vars, DOMContentLoaded boot -->
-<script src="js/config.js"></script>
+document.addEventListener('DOMContentLoaded',async()=>{
+  startClock();
 
-<!-- 3. UI helpers: clock, toast, modals -->
-<script src="js/ui.js"></script>
+  // Handle email confirmation redirect (token in URL hash or query)
+  const hash = window.location.hash;
+  const query = window.location.search;
+  if(hash.includes('access_token') || query.includes('access_token') || hash.includes('type=signup') || query.includes('type=signup')){
+    const { data, error } = await sb.auth.getSession();
+    if(data?.session){
+      // Clean the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      onLogin(data.session.user);
+      showToast('✅ Email confirmed! Welcome to FSH Empire!');
+      return;
+    }
+  }
 
-<!-- 4. Auth: login, register, Google, validation, country data -->
-<script src="js/auth.js"></script>
+  const{data:{session}}=await sb.auth.getSession();
+  if(session)onLogin(session.user);
+  sb.auth.onAuthStateChange((event,session)=>{
+    if(event==='SIGNED_IN')onLogin(session.user);
+    if(event==='SIGNED_OUT')onLogout();
+  });
+});
 
-<!-- 5. Nav: switchMainTab, switchSubTab, renderSubPage -->
-<script src="js/nav.js"></script>
+function startClock(){setInterval(()=>{document.getElementById('liveTime').textContent=new Date().toUTCString().slice(17,25)+' UTC';},1000);}
 
-<!-- 6. Pages: each file adds render functions to global scope -->
-<script src="pages/overview.js"></script>
-<script src="pages/upload.js"></script>
-<script src="pages/history.js"></script>
-<script src="pages/journal.js"></script>
-<script src="pages/analysis.js"></script>
-<script src="pages/alltrades.js"></script>
+function switchAuthTab(tab){
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('loginForm').style.display=tab==='login'?'flex':'none';
+  document.getElementById('registerForm').style.display=tab==='register'?'flex':'none';
+}
 
-<!-- 7. Core logic -->
-<script src="js/deriv.js"></script>
-<script src="js/data.js"></script>
-<script src="js/journal.js"></script>
-<script src="js/upload.js"></script>
+async function signInWithGoogle(){
+  const{error}=await sb.auth.signInWithOAuth({
+    provider:'google',
+    options:{redirectTo:'https://gentlestev.github.io/trading-journal'}
+  });
+  if(error)showToast('Google sign-in error: '+error.message,true);
+}
+
+
+
+// ── ALLOWED EMAIL PROVIDERS (standard only, no temp/disposable) ──
+const ALLOWED_EMAIL_DOMAINS = [
+  'gmail.com','yahoo.com','yahoo.co.uk','yahoo.ca','yahoo.com.au','yahoo.co.in',
+  'outlook.com','hotmail.com','hotmail.co.uk','hotmail.ca','live.com','live.co.uk',
+  'msn.com','icloud.com','me.com','mac.com','protonmail.com','proton.me',
+  'aol.com','zoho.com','yandex.com','yandex.ru','gmx.com','gmx.net',
+  'mail.com','tutanota.com','fastmail.com','fastmail.fm','hey.com',
+  // Nigerian providers
+  'yahoo.com.ng','gmail.com.ng',
+  // Canadian providers  
+  'shaw.ca','rogers.com','bell.net','telus.net','sympatico.ca','videotron.ca',
+  // UK providers
+  'btinternet.com','sky.com','talktalk.net','virginmedia.com','tiscali.co.uk',
+  // Work/edu - allow common patterns
+  'edu','ac.uk','gov','org'
+];
+
+// Disposable/temp email domains to block
+const BLOCKED_DOMAINS = [
+  'mailinator.com','guerrillamail.com','tempmail.com','throwaway.email',
+  'yopmail.com','sharklasers.com','guerrillamailblock.com','grr.la',
+  'guerrillamail.info','spam4.me','trashmail.com','trashmail.me',
+  'dispostable.com','mailnull.com','spamgourmet.com','spamgourmet.net',
+  'tempr.email','discard.email','maildrop.cc','harakirimail.com',
+  'fakeinbox.com','tempinbox.com','spambox.us','mailexpire.com',
+  'temporarymail.com','throwam.com','spamfree24.org','mailnew.com',
+  '10minutemail.com','10minutemail.net','20minutemail.com','minutemail.com',
+  'mytemp.email','temp-mail.org','tempmail.net','getnada.com','tnef.com',
+  'mohmal.com','mailtemp.info','emailondeck.com','dispostable.com'
+];
+
+function validateEmail(email){
+  const err = document.getElementById('regEmailError');
+  if(!err) return true;
+  err.style.display='none';
+  
+  if(!email || !email.includes('@')){
+    err.textContent='Enter a valid email address.';
+    err.style.display='block';
+    document.getElementById('regEmail').className='form-input invalid';
+    return false;
+  }
+  
+  const domain = email.split('@')[1]?.toLowerCase();
+  if(!domain){
+    err.textContent='Enter a valid email address.';
+    err.style.display='block';
+    document.getElementById('regEmail').className='form-input invalid';
+    return false;
+  }
+
+  // Block disposable
+  if(BLOCKED_DOMAINS.includes(domain)){
+    err.textContent='Temporary or disposable email addresses are not allowed.';
+    err.style.display='block';
+    document.getElementById('regEmail').className='form-input invalid';
+    return false;
+  }
+
+  // Check allowed — must match known provider or have edu/gov/org/ac.uk suffix
+  const isAllowed = ALLOWED_EMAIL_DOMAINS.some(d => domain === d || domain.endsWith('.'+d) || domain.endsWith('.edu') || domain.endsWith('.gov') || domain.endsWith('.org') || domain.endsWith('ac.uk'));
+  if(!isAllowed){
+    err.textContent='Please use a standard email provider (Gmail, Yahoo, Outlook, iCloud etc).';
+    err.style.display='block';
+    document.getElementById('regEmail').className='form-input invalid';
+    return false;
+  }
+
+  document.getElementById('regEmail').className='form-input valid';
+  err.style.display='none';
+  return true;
+}
+
+// ── COUNTRIES WITH STATES AND CITIES ──
+const COUNTRIES=[
+  {name:"Nigeria",code:"NG",dial:"+234",postal:/^\d{6}$/,
+   states:{
+    "Abia":["Aba","Umuahia","Ohafia","Arochukwu","Bende"],
+    "Adamawa":["Yola","Mubi","Jimeta","Numan","Ganye"],
+    "Akwa Ibom":["Uyo","Eket","Ikot Ekpene","Oron","Abak"],
+    "Anambra":["Awka","Onitsha","Nnewi","Ekwulobia","Aguata"],
+    "Bauchi":["Bauchi","Azare","Misau","Katagum","Ningi"],
+    "Bayelsa":["Yenagoa","Brass","Ogbia","Sagbama","Ekeremor"],
+    "Benue":["Makurdi","Gboko","Katsina-Ala","Otukpo","Vandeikya"],
+    "Borno":["Maiduguri","Biu","Gwoza","Bama","Dikwa"],
+    "Cross River":["Calabar","Ogoja","Ikom","Obudu","Ugep"],
+    "Delta":["Asaba","Warri","Sapele","Ughelli","Agbor"],
+    "Ebonyi":["Abakaliki","Afikpo","Onueke","Ikwo","Ezza"],
+    "Edo":["Benin City","Auchi","Ekpoma","Uromi","Igueben"],
+    "Ekiti":["Ado-Ekiti","Ikere","Oye","Ijero","Efon"],
+    "Enugu":["Enugu","Nsukka","Agbani","Oji River","Awgu"],
+    "FCT":["Abuja","Gwagwalada","Kuje","Bwari","Kwali"],
+    "Gombe":["Gombe","Kumo","Billiri","Kaltungo","Deba"],
+    "Imo":["Owerri","Orlu","Okigwe","Mbaise","Oguta"],
+    "Jigawa":["Dutse","Hadejia","Gumel","Kazaure","Birnin Kudu"],
+    "Kaduna":["Kaduna","Zaria","Kafanchan","Kagoro","Saminaka"],
+    "Kano":["Kano","Wudil","Gwarzo","Rano","Bebeji"],
+    "Katsina":["Katsina","Daura","Funtua","Malumfashi","Mani"],
+    "Kebbi":["Birnin Kebbi","Argungu","Yauri","Zuru","Jega"],
+    "Kogi":["Lokoja","Okene","Idah","Ankpa","Kabba"],
+    "Kwara":["Ilorin","Offa","Patigi","Kaiama","Lafiagi"],
+    "Lagos":["Lagos","Ikeja","Lekki","Victoria Island","Surulere","Yaba","Badagry","Epe","Ikorodu","Mushin"],
+    "Nasarawa":["Lafia","Keffi","Akwanga","Nasarawa","Doma"],
+    "Niger":["Minna","Bida","Suleja","Kontagora","Lapai"],
+    "Ogun":["Abeokuta","Sagamu","Ijebu-Ode","Ilaro","Ota"],
+    "Ondo":["Akure","Ondo","Owo","Ikare","Okitipupa"],
+    "Osun":["Osogbo","Ile-Ife","Ilesa","Ede","Ikirun"],
+    "Oyo":["Ibadan","Ogbomoso","Oyo","Iseyin","Saki"],
+    "Plateau":["Jos","Bukuru","Shendam","Pankshin","Wase"],
+    "Rivers":["Port Harcourt","Bonny","Degema","Ahoada","Omoku"],
+    "Sokoto":["Sokoto","Tambuwal","Gwadabawa","Illela","Isa"],
+    "Taraba":["Jalingo","Wukari","Bali","Sardauna","Zing"],
+    "Yobe":["Damaturu","Nguru","Potiskum","Geidam","Gashua"],
+    "Zamfara":["Gusau","Kaura Namoda","Talata Mafara","Anka","Bakura"]
+   }},
+  {name:"Canada",code:"CA",dial:"+1",postal:/^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/,
+   states:{
+    "Alberta":["Calgary","Edmonton","Red Deer","Lethbridge","St. Albert","Medicine Hat","Grande Prairie","Airdrie","Spruce Grove","Leduc"],
+    "British Columbia":["Vancouver","Victoria","Kelowna","Abbotsford","Kamloops","Nanaimo","Chilliwack","Prince George","Surrey","Burnaby"],
+    "Manitoba":["Winnipeg","Brandon","Steinbach","Thompson","Portage la Prairie","Winkler","Selkirk","Morden","Dauphin","The Pas"],
+    "New Brunswick":["Fredericton","Moncton","Saint John","Bathurst","Miramichi","Edmundston","Campbellton","Dieppe","Riverview","Quispamsis"],
+    "Newfoundland":["St. John's","Mount Pearl","Corner Brook","Conception Bay South","Grand Falls-Windsor","Gander","Happy Valley","Labrador City","Stephenville","Marystown"],
+    "Northwest Territories":["Yellowknife","Hay River","Inuvik","Fort Smith","Behchoko"],
+    "Nova Scotia":["Halifax","Sydney","Truro","New Glasgow","Glace Bay","Dartmouth","Bridgewater","Amherst","Antigonish","Kentville"],
+    "Nunavut":["Iqaluit","Rankin Inlet","Arviat","Baker Lake","Cambridge Bay"],
+    "Ontario":["Toronto","Ottawa","Mississauga","Brampton","Hamilton","London","Markham","Vaughan","Kitchener","Windsor","Barrie","Orillia","Sudbury","Thunder Bay","Kingston","Guelph","Burlington","Oshawa","Waterloo","Cambridge"],
+    "Prince Edward Island":["Charlottetown","Summerside","Stratford","Cornwall","Montague"],
+    "Quebec":["Montreal","Quebec City","Laval","Gatineau","Longueuil","Sherbrooke","Saguenay","Levis","Trois-Rivieres","Terrebonne"],
+    "Saskatchewan":["Saskatoon","Regina","Prince Albert","Moose Jaw","Swift Current","Yorkton","North Battleford","Estevan","Weyburn","Lloydminster"],
+    "Yukon":["Whitehorse","Dawson City","Watson Lake","Haines Junction","Carmacks"]
+   }},
+  {name:"United States",code:"US",dial:"+1",postal:/^\d{5}(-\d{4})?$/,
+   states:{
+    "California":["Los Angeles","San Francisco","San Diego","Sacramento","San Jose","Fresno","Long Beach","Oakland","Bakersfield","Anaheim"],
+    "Texas":["Houston","San Antonio","Dallas","Austin","Fort Worth","El Paso","Arlington","Corpus Christi","Plano","Laredo"],
+    "Florida":["Jacksonville","Miami","Tampa","Orlando","St. Petersburg","Hialeah","Tallahassee","Fort Lauderdale","Port St. Lucie","Cape Coral"],
+    "New York":["New York City","Buffalo","Rochester","Yonkers","Syracuse","Albany","New Rochelle","Mount Vernon","Schenectady","Utica"],
+    "Illinois":["Chicago","Aurora","Rockford","Joliet","Naperville","Springfield","Peoria","Elgin","Waukegan","Cicero"],
+    "Pennsylvania":["Philadelphia","Pittsburgh","Allentown","Erie","Reading","Scranton","Bethlehem","Lancaster","Harrisburg","York"],
+    "Ohio":["Columbus","Cleveland","Cincinnati","Toledo","Akron","Dayton","Parma","Canton","Youngstown","Lorain"],
+    "Georgia":["Atlanta","Augusta","Columbus","Macon","Savannah","Athens","Sandy Springs","Roswell","Johns Creek","Albany"],
+    "North Carolina":["Charlotte","Raleigh","Greensboro","Durham","Winston-Salem","Fayetteville","Cary","Wilmington","High Point","Concord"],
+    "Michigan":["Detroit","Grand Rapids","Warren","Sterling Heights","Ann Arbor","Lansing","Flint","Dearborn","Livonia","Clinton"],
+    "Other US State":["Major City","Other City"]
+   }},
+  {name:"United Kingdom",code:"GB",dial:"+44",postal:/^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$/i,
+   states:{
+    "England":["London","Birmingham","Manchester","Leeds","Liverpool","Sheffield","Bristol","Newcastle","Nottingham","Leicester","Coventry","Bradford","Stoke","Southampton","Portsmouth","Reading","Derby","Wolverhampton","Plymouth","Luton"],
+    "Scotland":["Glasgow","Edinburgh","Aberdeen","Dundee","Inverness","Perth","Stirling","Livingston","Dunfermline","Kilmarnock"],
+    "Wales":["Cardiff","Swansea","Newport","Bangor","Wrexham","Barry","Pontypridd","Neath","Bridgend","Cwmbran"],
+    "Northern Ireland":["Belfast","Derry","Lisburn","Newry","Armagh","Ballymena","Bangor","Newtownabbey","Carrickfergus","Craigavon"]
+   }},
+  {name:"Ghana",code:"GH",dial:"+233",postal:/^\d{5}$/,
+   states:{
+    "Greater Accra":["Accra","Tema","Ashaiman","Madina","Teshie","Nungua","Dome","Achimota","Adenta","Kasoa"],
+    "Ashanti":["Kumasi","Obuasi","Ejisu","Konongo","Mampong","Bekwai","Juaben","Agogo","Ashanti Mampong","Kumasi"],
+    "Western":["Sekondi-Takoradi","Tarkwa","Prestea","Sefwi Wiawso","Bibiani","Ahanta West","Nkroful","Axim","Elubo","Daboase"],
+    "Central":["Cape Coast","Winneba","Kasoa","Agona Swedru","Saltpond","Mankessim","Elmina","Assin Fosu","Dunkwa","Asikuma"],
+    "Eastern":["Koforidua","Nkawkaw","Suhum","Akim Oda","Somanya","Aburi","Nsawam","Akropong","Begoro","Akim Tafo"],
+    "Northern":["Tamale","Yendi","Bimbilla","Savelugu","Gushegu","Tolon","Kumbungu","Karaga","Zabzugu","Tatale"],
+    "Volta":["Ho","Hohoe","Keta","Kpando","Aflao","Sogakope","Akatsi","Denu","Anloga","Battor"],
+    "Brong-Ahafo":["Sunyani","Berekum","Techiman","Wenchi","Kintampo","Dormaa Ahenkro","Nkoranza","Atebubu","Prang","Bechem"],
+    "Upper East":["Bolgatanga","Bawku","Navrongo","Zebilla","Sandema","Paga","Bongo","Fumbisi","Tongo","Nangodi"],
+    "Upper West":["Wa","Lawra","Tumu","Nandom","Jirapa","Kaleo","Funsi","Wechiau","Babile","Daffiama"]
+   }},
+  {name:"Kenya",code:"KE",dial:"+254",postal:/^\d{5}$/,
+   states:{
+    "Nairobi":["Nairobi CBD","Westlands","Karen","Kibera","Kasarani","Embakasi","Langata","Dagoretti","Makadara","Starehe"],
+    "Mombasa":["Mombasa Island","Nyali","Bamburi","Kisauni","Likoni","Changamwe","Jomvu","Mikindani","Port Reitz","Tudor"],
+    "Kisumu":["Kisumu Central","Kisumu East","Kisumu West","Seme","Muhoroni","Nyando","Nyakach","Kasipul","Kabondo","Karachuonyo"],
+    "Nakuru":["Nakuru Town","Naivasha","Gilgil","Molo","Njoro","Rongai","Subukia","Bahati","Kuresoi","Ravine"],
+    "Eldoret":["Eldoret Town","Turbo","Moiben","Ainabkoi","Kapseret","Kesses","Soy","Wareng","Marakwet East","Marakwet West"]
+   }},
+  {name:"South Africa",code:"ZA",dial:"+27",postal:/^\d{4}$/,
+   states:{
+    "Gauteng":["Johannesburg","Pretoria","Soweto","Benoni","Boksburg","Tembisa","Vereeniging","Randburg","Sandton","Midrand"],
+    "Western Cape":["Cape Town","Stellenbosch","George","Paarl","Worcester","Knysna","Mossel Bay","Hermanus","Somerset West","Bellville"],
+    "KwaZulu-Natal":["Durban","Pietermaritzburg","Richards Bay","Newcastle","Pinetown","Umlazi","Chatsworth","Phoenix","Tongaat","Stanger"],
+    "Eastern Cape":["Port Elizabeth","East London","Mthatha","Queenstown","King William's Town","Bhisho","Grahamstown","Uitenhage","Graaff-Reinet","Cradock"],
+    "Limpopo":["Polokwane","Tzaneen","Thohoyandou","Mokopane","Bela-Bela","Giyani","Phalaborwa","Louis Trichardt","Burgersfort","Lebowakgomo"]
+   }},
+  {name:"Australia",code:"AU",dial:"+61",postal:/^\d{4}$/,
+   states:{
+    "New South Wales":["Sydney","Newcastle","Wollongong","Maitland","Coffs Harbour","Wagga Wagga","Albury","Port Macquarie","Tamworth","Orange"],
+    "Victoria":["Melbourne","Geelong","Ballarat","Bendigo","Shepparton","Melton","Mildura","Wodonga","Sunbury","Traralgon"],
+    "Queensland":["Brisbane","Gold Coast","Sunshine Coast","Townsville","Cairns","Toowoomba","Mackay","Rockhampton","Bundaberg","Hervey Bay"],
+    "Western Australia":["Perth","Mandurah","Bunbury","Rockingham","Joondalup","Fremantle","Armadale","Midland","Cannington","Gosnells"],
+    "South Australia":["Adelaide","Mount Gambier","Whyalla","Murray Bridge","Port Augusta","Gawler","Victor Harbor","Port Lincoln","Naracoorte","Kadina"]
+   }},
+  {name:"Jamaica",code:"JM",dial:"+1876",postal:/^(JM)?\w{3}\d{2}$/i,
+   states:{
+    "Kingston":["Kingston","Half Way Tree","New Kingston","Liguanea","Papine","Constant Spring","Barbican","Meadowbrook","Mona","August Town"],
+    "Saint Andrew":["Cross Roads","Matilda's Corner","Stony Hill","Gordon Town","Bull Bay","Irish Town","Red Hills","Beverly Hills","Havendale","Jack's Hill"],
+    "Saint James":["Montego Bay","Rose Hall","Ironshore","Anchovy","Cambridge","Catadupa","Adelphi","Flanker","Salt Spring","Bogue"],
+    "Saint Catherine":["Spanish Town","Portmore","Old Harbour","Linstead","Bog Walk","Ewarton","Angels","Waterford","Gregory Park","Braeton"],
+    "Clarendon":["May Pen","Chapelton","Lionel Town","Four Paths","Kellits","Frankfield","Rock River","Hayes","Toll Gate","Portland Cottage"]
+   }},
+  {name:"Trinidad and Tobago",code:"TT",dial:"+1868",postal:/^\d{6}$/,
+   states:{
+    "Port of Spain":["Port of Spain","Woodbrook","Newtown","St. Clair","Belmont","Laventille","St. James","Petit Valley","Diego Martin","Carenage"],
+    "San Fernando":["San Fernando","Marabella","Gasparillo","Claxton Bay","Couva","Chaguanas","Freeport","Felicity","Longdenville","Endeavour"],
+    "Tobago":["Scarborough","Crown Point","Buccoo","Plymouth","Speyside","Charlotteville","Roxborough","Castara","Parlatuvier","Moriah"]
+   }},
+  {name:"Zimbabwe",code:"ZW",dial:"+263",postal:/^\d{4}$/,
+   states:{
+    "Harare":["Harare CBD","Borrowdale","Avondale","Chitungwiza","Norton","Ruwa","Epworth","Budiriro","Highfield","Glen Norah"],
+    "Bulawayo":["Bulawayo CBD","Pumula","Nkulumane","Tshabalala","Luveve","Cowdray Park","Emakhandeni","Lobengula","Makokoba","Mpopoma"],
+    "Manicaland":["Mutare","Rusape","Chipinge","Chimanimani","Nyanga","Birchenough Bridge","Cashel","Odzi","Headlands","Juliasdale"]
+   }},
+  {name:"Other",code:"XX",dial:"+",postal:/./,states:{"Other":["Other City"]}}
+];
+
+function getCountry(name){return COUNTRIES.find(c=>c.name===name)||COUNTRIES[COUNTRIES.length-1];}
+
+function populateCountries(){
+  const sel=document.getElementById('regCountry');
+  if(!sel)return;
+  sel.innerHTML='<option value="">Select country...</option>'+
+    COUNTRIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+}
+
+function onCountryChange(){
+  const c=getCountry(document.getElementById('regCountry').value);
+  document.getElementById('regDial').value=c.dial;
+  // Populate states
+  const stSel=document.getElementById('regState');
+  const states=Object.keys(c.states||{});
+  stSel.innerHTML='<option value="">Select state/province...</option>'+
+    states.map(s=>`<option value="${s}">${s}</option>`).join('');
+  // Clear city and address
+  const citySel=document.getElementById('regCity');
+  citySel.innerHTML='<option value="">Select state first...</option>';
+  document.getElementById('regPostal').value='';
+  document.getElementById('postalHint').textContent='';
+  document.getElementById('regAddress').value='';
+}
+
+function onStateChange(){
+  const country=document.getElementById('regCountry').value;
+  const state=document.getElementById('regState').value;
+  const c=getCountry(country);
+  const cities=(c.states&&c.states[state])||[];
+  const citySel=document.getElementById('regCity');
+  citySel.innerHTML='<option value="">Select city...</option>'+
+    cities.map(city=>`<option value="${city}">${city}</option>`).join('');
+}
+
+function validatePhone(){
+  const dial=document.getElementById('regDial').value;
+  const num=document.getElementById('regPhone').value.trim();
+  const el=document.getElementById('regPhone');
+  const err=document.getElementById('phoneError');
+  if(num.length<6||num.length>13||!/^\d+$/.test(num)){
+    el.className='form-input invalid';
+    err.textContent='Enter a valid phone number (digits only, 6-13 digits)';
+    err.style.display='block';return false;
+  }
+  el.className='form-input valid';err.style.display='none';return true;
+}
+
+function validatePostal(){
+  const country=document.getElementById('regCountry').value;
+  const postal=document.getElementById('regPostal').value.trim();
+  const el=document.getElementById('regPostal');
+  const err=document.getElementById('postalError');
+  const hint=document.getElementById('postalHint');
+  if(!country){err.textContent='Select a country first';err.style.display='block';return false;}
+  const c=getCountry(country);
+  if(!c.postal.test(postal)){
+    el.className='form-input invalid';
+    err.textContent='Invalid postal/zip code for '+country;
+    err.style.display='block';hint.textContent='';
+    return false;
+  }
+  el.className='form-input valid';
+  err.style.display='none';
+  hint.textContent='✓ Valid format';hint.style.color='var(--green)';
+  return true;
+}
+
+function validateAddress(){
+  const addr=document.getElementById('regAddress').value.trim();
+  const el=document.getElementById('regAddress');
+  const err=document.getElementById('addressError');
+  // Must have a number and at least one word (e.g. "12 Main Street")
+  if(addr.length < 6 || !/\d/.test(addr) || addr.split(' ').length < 2){
+    el.className='form-input invalid';
+    err.textContent='Enter a valid street address including house/building number';
+    err.style.display='block';return false;
+  }
+  el.className='form-input valid';err.style.display='none';return true;
+}
+
+async function regNextStep(){
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const pass=document.getElementById('regPassword').value;
+  const confirm=document.getElementById('regConfirm').value;
+  const err=document.getElementById('registerError');
+  const btn=document.getElementById('regNextBtn');
+  err.style.display='none';
+
+  if(!name){err.textContent='Full name is required.';err.style.display='block';return;}
+  if(!validateEmail(email)){return;}
+  if(!pass||pass.length<6){err.textContent='Password must be at least 6 characters.';err.style.display='block';return;}
+  if(pass!==confirm){err.textContent='Passwords do not match.';err.style.display='block';return;}
+
+  // Check if email already exists in database
+  btn.textContent='CHECKING...';btn.disabled=true;
+  try{
+    const{data,error}=await sb.rpc('email_exists',{check_email:email});
+    if(error)throw error;
+    if(data===true){
+      err.textContent='⚠️ This email is already registered. Please sign in or use a different email.';
+      err.style.display='block';
+      document.getElementById('regEmail').className='form-input invalid';
+      btn.textContent='NEXT — CONTACT DETAILS →';btn.disabled=false;
+      return;
+    }
+  }catch(e){
+    // If RPC fails, continue anyway — Supabase will catch duplicate on signup
+    console.warn('Email check error:',e);
+  }
+
+  btn.textContent='NEXT — CONTACT DETAILS →';btn.disabled=false;
+  document.getElementById('regStep1').classList.remove('active');
+  document.getElementById('regStep2').classList.add('active');
+  document.getElementById('sdot1').classList.remove('active');document.getElementById('sdot1').classList.add('done');
+  document.getElementById('sdot2').classList.add('active');
+  populateCountries();
+}
+
+function regPrevStep(){
+  document.getElementById('regStep2').classList.remove('active');
+  document.getElementById('regStep1').classList.add('active');
+  document.getElementById('sdot2').classList.remove('active');
+  document.getElementById('sdot1').classList.remove('done');document.getElementById('sdot1').classList.add('active');
+}
+
+async function doRegister(){
+  const err=document.getElementById('registerError');
+  const suc=document.getElementById('registerSuccess');
+  err.style.display='none';suc.style.display='none';
+
+  // Final email duplicate check before submitting
+  const emailVal=document.getElementById('regEmail').value.trim();
+  try{
+    const{data:exists}=await sb.rpc('email_exists',{check_email:emailVal});
+    if(exists===true){
+      err.textContent='⚠️ This email is already registered. Please sign in or use a different email.';
+      err.style.display='block';return;
+    }
+  }catch(e){console.warn('Final email check error:',e);}
+
+  // Validate step 2 fields
+  const country=document.getElementById('regCountry').value;
+  const state=document.getElementById('regState').value;
+  const city=document.getElementById('regCity').value;
+  const address=document.getElementById('regAddress').value.trim();
+  const postal=document.getElementById('regPostal').value.trim();
+  const phone=document.getElementById('regPhone').value.trim();
+  const dial=document.getElementById('regDial').value;
+
+  if(!country||!state||!city){
+    err.textContent='Please select country, state and city.';err.style.display='block';return;
+  }
+  if(!address||!postal||!phone){
+    err.textContent='All fields are required.';err.style.display='block';return;
+  }
+  if(!validatePhone()){return;}
+  if(!validatePostal()){return;}
+  if(!validateAddress()){return;}
+
+  const name=document.getElementById('regName').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const pass=document.getElementById('regPassword').value;
+  const fullPhone=dial+phone;
+
+  const btn=document.getElementById('registerBtn');btn.textContent='CREATING...';btn.disabled=true;
+  const{data,error}=await sb.auth.signUp({
+    email,password:pass,
+    options:{data:{full_name:name,phone:fullPhone,country,state,city,address,postal_code:postal}}
+  });
+  if(error){
+    btn.textContent='CREATE ACCOUNT';btn.disabled=false;
+    if(error.message.includes('already registered')||error.message.includes('already exists')||error.message.includes('unique')){
+      err.textContent='An account with this email already exists. Please sign in instead.';
+    } else {
+      err.textContent=error.message;
+    }
+    err.style.display='block';return;
+  }
+
+  // Save profile to profiles table
+  if(data?.user){
+    await sb.from('profiles').upsert({
+      id:data.user.id,full_name:name,phone:fullPhone,
+      country,state,city,address,postal_code:postal
+    });
+  }
+  btn.textContent='CREATE ACCOUNT';btn.disabled=false;
+  showCongratsScreen(name);
+}
+
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  const err=document.getElementById('loginError');err.style.display='none';
+  if(!email||!pass){err.textContent='Email and password are required.';err.style.display='block';return;}
+  const btn=document.getElementById('loginBtn');btn.textContent='SIGNING IN...';btn.disabled=true;
+  const{error}=await sb.auth.signInWithPassword({email,password:pass});
+  btn.textContent='SIGN IN';btn.disabled=false;
+  if(error){err.textContent=error.message;err.style.display='block';}
+}
+
+async function forgotPassword(){
+  const email=prompt('Enter your email to receive a reset link:');
+  if(!email)return;
+  const{error}=await sb.auth.resetPasswordForEmail(email);
+  if(error)showToast('Error: '+error.message,true);
+  else showToast('✅ Reset link sent to your email!');
+}
+
+async function doLogout(){if(derivWS)derivWS.close();await sb.auth.signOut();}
+
+function onLogin(user){
+  currentUser=user;
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  const email=user.email||'';
+  const name=user.user_metadata?.full_name||email;
+  document.getElementById('userEmail').textContent=email;
+  document.getElementById('userAvatar').textContent=(name[0]||'?').toUpperCase();
+  document.getElementById('jDate').value=new Date().toISOString().split('T')[0];
+  const saved=localStorage.getItem('dt_'+user.id);
+  if(saved){derivToken=saved;connectDeriv(true);}
+  loadTradesFromSupabase();
+  // Boot to Deriv tab
+  setTimeout(()=>{
+    const firstTab=document.querySelector('#mainNav .tab');
+    if(firstTab)switchMainTab(firstTab,'deriv');
+  },300);
+}
+
+function onLogout(){
+  currentUser=null;allTrades=[];
+  document.getElementById('appScreen').style.display='none';
+  document.getElementById('authScreen').style.display='flex';
+  document.getElementById('loginEmail').value='';
+  document.getElementById('loginPassword').value='';
+  document.getElementById('loginError').style.display='none';
+}
+
+let activeFirm='deriv';
+let activeSubTab='overview';
+
+const FIRMS={deriv:'Deriv',ftmo:'FTMO',the5ers:'The5ers',other:'Other'};
+
+function switchMainTab(el,name){
+  document.querySelectorAll('#mainNav .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  activeFirm=name;
+  // Show/hide sub-nav
+  const subNav=document.getElementById('subNav');
+  const isFirm=FIRMS[name]!==undefined;
+  subNav.style.display=isFirm?'flex':'none';
+  // Show/hide firm containers
+  document.querySelectorAll('.firm-container').forEach(c=>c.style.display='none');
+  document.getElementById('firm-'+name).style.display='block';
+  if(isFirm){
+    // Reset to overview sub-tab
+    activeSubTab='overview';
+    document.querySelectorAll('#subNav .sub-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelector('#subNav .sub-tab').classList.add('active');
+    renderSubPage(name,'overview');
+  }
+  if(name==='alltrades'){renderAllTradesTable();renderAllAnalysis();}
+}
+
+function switchSubTab(el,sub){
+  document.querySelectorAll('#subNav .sub-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  activeSubTab=sub;
+  renderSubPage(activeFirm,sub);
+}
+
+function renderSubPage(firm,sub){
+  // Hide all sub-pages for this firm
+  document.querySelectorAll('#firm-'+firm+' .sub-page').forEach(p=>p.style.display='none');
+  const el=document.getElementById(firm+'-'+sub);
+  if(el) el.style.display='block';
+  const firmName=FIRMS[firm];
+  if(!firmName)return;
+  if(sub==='overview')  renderFirmOverview(firm,firmName);
+  if(sub==='upload')    renderFirmUpload(firm,firmName);
+  if(sub==='history')   renderFirmHistory(firm,firmName);
+  if(sub==='journal')   renderFirmJournal(firm,firmName);
+  if(sub==='analysis')  renderFirmAnalysis(firm,firmName);
+  if(sub==='calendar')  renderFirmCalendar(firm,firmName);
+}
+
+function renderFirmOverview(firm,firmName){
+  const container=document.getElementById(firm+'-overview');
+  if(!container)return;
+  const trades=allTrades.filter(t=>t.account_provider===firmName);
+
+  if(!trades.length){
+    container.innerHTML=`<div style="text-align:center;padding:60px 20px;color:var(--muted);font-size:12px;">
+      No trades for ${firmName} yet.<br><br>
+      <button class="btn btn-primary" style="margin-top:14px;width:auto;padding:10px 24px;"
+        onclick="switchSubTab(document.querySelectorAll('#subNav .sub-tab')[1],'upload')">⬆ Upload Trades</button>
+    </div>`;
+    return;
+  }
+
+  const wins   = trades.filter(t=>t.result==='Win');
+  const losses = trades.filter(t=>t.result==='Loss');
+  const tot    = trades.reduce((s,t)=>s+parseFloat(t.profit_loss||0),0);
+  const gw     = wins.reduce((s,t)=>s+parseFloat(t.profit_loss||0),0);
+  const gl     = Math.abs(losses.reduce((s,t)=>s+parseFloat(t.profit_loss||0),0));
+  const wr     = trades.length?(wins.length/trades.length*100):0;
+  const pf     = gl>0?(gw/gl):99;
+  const aw     = wins.length?gw/wins.length:0;
+  const al     = losses.length?gl/losses.length:0;
+  const rrr    = al>0?aw/al:0;
+  const exp    = trades.length?(tot/trades.length):0;
+  const best   = trades.length?Math.max(...trades.map(t=>parseFloat(t.profit_loss||0))):0;
+  const worst  = trades.length?Math.min(...trades.map(t=>parseFloat(t.profit_loss||0))):0;
+  const fmtK   = n=>{ const abs=Math.abs(n); const v=abs>=1000?(abs/1000).toFixed(1)+'K':abs.toFixed(0); return (n>=0?'+$':'-$')+v; };
+
+  // Monthly breakdown for KPIs
+  const byMonth={};
+  trades.forEach(t=>{ const m=t.date.slice(0,7); if(!byMonth[m])byMonth[m]=[]; byMonth[m].push(t); });
+  const monthKpis=Object.keys(byMonth).sort().slice(-3).map(m=>{
+    const ms=byMonth[m]; const mpnl=ms.reduce((s,t)=>s+parseFloat(t.profit_loss||0),0);
+    const label=new Date(m+'-01').toLocaleString('default',{month:'short',year:'2-digit'});
+    return `<div class="kpi-card ${mpnl>=0?'g':'r'}">
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-value ${mpnl>=0?'g':'r'}">${fmtK(mpnl)}</div>
+      <div class="kpi-sub">${ms.length} trades</div>
+    </div>`;
+  }).join('');
+
+  const limits={Deriv:{daily:500,overall:1000,target:1000,base:10000},FTMO:{daily:500,overall:1000,target:1000,base:10000},'The5ers':{daily:400,overall:800,target:800,base:8000},Other:{daily:500,overall:1000,target:1000,base:10000}};
+  const L=limits[firmName]||limits['Other'];
+  const totalLoss=Math.abs(Math.min(0,tot));
+  const overallPct=Math.min(100,totalLoss/L.overall*100);
+  const profitPct=Math.min(100,Math.max(0,tot)/L.target*100);
+  const overallColor=overallPct>70?'var(--red)':overallPct>40?'var(--gold)':'var(--green)';
+
+  container.innerHTML=`
+  <div class="kpi-grid">
+    <div class="kpi-card ${tot>=0?'g':'r'}">
+      <div class="kpi-label">NET P/L</div>
+      <div class="kpi-value ${tot>=0?'g':'r'}">${fmtK(tot)}</div>
+      <div class="kpi-sub">${firmName} account</div>
+    </div>
+    <div class="kpi-card b">
+      <div class="kpi-label">TOTAL TRADES</div>
+      <div class="kpi-value b">${trades.length}</div>
+      <div class="kpi-sub">${wins.length}W · ${losses.length}L</div>
+    </div>
+    <div class="kpi-card ${wr>=40?'g':'r'}">
+      <div class="kpi-label">WIN RATE</div>
+      <div class="kpi-value ${wr>=40?'g':'r'}">${wr.toFixed(1)}%</div>
+      <div class="kpi-sub">${wins.length} wins of ${trades.length}</div>
+    </div>
+    <div class="kpi-card ${pf>=1.5?'g':'r'}">
+      <div class="kpi-label">PROFIT FACTOR</div>
+      <div class="kpi-value ${pf>=1.5?'g':'r'}">${pf>=99?'∞':pf.toFixed(2)}</div>
+      <div class="kpi-sub">Target ≥ 1.5</div>
+    </div>
+    <div class="kpi-card o">
+      <div class="kpi-label">AVG RRR</div>
+      <div class="kpi-value o">${rrr.toFixed(2)}</div>
+      <div class="kpi-sub">Risk:Reward</div>
+    </div>
+    <div class="kpi-card ${exp>=0?'g':'r'}">
+      <div class="kpi-label">EXPECTANCY</div>
+      <div class="kpi-value ${exp>=0?'g':'r'}">${exp>=0?'+$':'-$'}${Math.abs(exp).toFixed(0)}</div>
+      <div class="kpi-sub">Per trade</div>
+    </div>
+    <div class="kpi-card g">
+      <div class="kpi-label">BEST TRADE</div>
+      <div class="kpi-value g">+$${best.toFixed(0)}</div>
+      <div class="kpi-sub">Largest win</div>
+    </div>
+    <div class="kpi-card r">
+      <div class="kpi-label">WORST TRADE</div>
+      <div class="kpi-value r">-$${Math.abs(worst).toFixed(0)}</div>
+      <div class="kpi-sub">Largest loss</div>
+    </div>
+    ${monthKpis}
+  </div>
+
+  <div class="two-col" style="margin-bottom:14px;">
+    <div class="chart-card">
+      <div class="chart-title">EQUITY CURVE <span id="eq-val-${firm}" style="color:var(--green);font-size:11px;"></span></div>
+      <canvas id="eq-${firm}" height="160"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">DAILY P&amp;L</div>
+      <canvas id="day-${firm}" height="160"></canvas>
+    </div>
+  </div>
+
+  <div class="two-col" style="margin-bottom:14px;">
+    <div class="chart-card">
+      <div class="chart-title">BY INSTRUMENT</div>
+      <canvas id="inst-${firm}" height="160"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">MONTHLY P&amp;L</div>
+      <canvas id="mo-${firm}" height="160"></canvas>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-title">RISK LIMITS — ${firmName.toUpperCase()} <span>Base $${L.base.toLocaleString()}</span></div>
+    <div class="two-col">
+      <div>
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+            <span style="font-size:9px;color:var(--muted);letter-spacing:1px;">MAX OVERALL LOSS (${(L.overall/L.base*100).toFixed(0)}%)</span>
+            <span style="font-size:11px;color:${overallColor};">$${totalLoss.toFixed(0)} / $${L.overall}</span>
+          </div>
+          <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${overallPct}%;background:${overallColor};border-radius:2px;transition:width 1s;"></div>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+            <span style="font-size:9px;color:var(--muted);letter-spacing:1px;">DAILY LOSS LIMIT (${(L.daily/L.base*100).toFixed(0)}%)</span>
+            <span style="font-size:11px;color:var(--green);">$0 / $${L.daily}</span>
+          </div>
+          <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:0%;background:var(--green);border-radius:2px;"></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+            <span style="font-size:9px;color:var(--muted);letter-spacing:1px;">PROFIT TARGET (${(L.target/L.base*100).toFixed(0)}%)</span>
+            <span style="font-size:11px;color:var(--gold);">$${Math.max(0,tot).toFixed(0)} / $${L.target}</span>
+          </div>
+          <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${profitPct}%;background:var(--gold);border-radius:2px;transition:width 1s;"></div>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+            <span style="font-size:9px;color:var(--muted);letter-spacing:1px;">CONSISTENCY</span>
+            <span style="font-size:11px;color:${wr>=50?'var(--green)':'var(--red)'};">${wr.toFixed(1)}%</span>
+          </div>
+          <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${Math.min(100,wr)}%;background:${wr>=50?'var(--green)':'var(--red)'};border-radius:2px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="insight" id="insight-${firm}">
+    ${pf>=1.5?'✅ PASSING':'⚠️ BELOW TARGET'} — Net P/L: <strong style="color:${tot>=0?'var(--green)':'var(--red)'}">${tot>=0?'+$':'-$'}${Math.abs(tot).toFixed(2)}</strong> · 
+    PF: <strong>${pf>=99?'∞':pf.toFixed(2)}</strong> · Win Rate: <strong>${wr.toFixed(1)}%</strong> · Trades: <strong>${trades.length}</strong>
+  </div>`;
+
+  // Draw Chart.js charts
+  setTimeout(()=>renderFirmCharts(firm, trades), 60);
+}
+
+function renderFirmCharts(firm, trades){
+  if(typeof Chart==='undefined') return;
+  const TICKS  = {color:'rgba(232,234,240,0.6)',font:{size:9}};
+  const GRID   = {color:'rgba(28,32,50,0.8)'};
+  const TOOLTIP= {backgroundColor:'#0f1117',borderColor:'#1c2032',borderWidth:1};
+  const sorted = trades.slice().sort((a,b)=>a.date.localeCompare(b.date));
+
+  function dc(id){ const c=Chart.getChart(id); if(c)c.destroy(); }
+
+  // Equity Curve
+  dc('eq-'+firm);
+  const eqLabels=['Start']; let bal=10000;
+  const eqData=[bal];
+  sorted.forEach(t=>{ bal+=parseFloat(t.profit_loss||0); eqLabels.push(t.date.slice(5)); eqData.push(parseFloat(bal.toFixed(2))); });
+  const eqEl=document.getElementById('eq-val-'+firm);
+  if(eqEl) eqEl.textContent='$'+eqData[eqData.length-1].toLocaleString();
+  const eqCtx=document.getElementById('eq-'+firm)?.getContext('2d');
+  if(eqCtx){
+    const g=eqCtx.createLinearGradient(0,0,0,200);
+    g.addColorStop(0,'rgba(0,229,176,0.2)');g.addColorStop(1,'rgba(0,229,176,0)');
+    new Chart(eqCtx,{type:'line',data:{labels:eqLabels,datasets:[{data:eqData,borderColor:'#00e5b0',backgroundColor:g,borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,tension:0.3}]},
+      options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{...TOOLTIP,callbacks:{label:c=>'Balance: $'+c.parsed.y.toLocaleString()}}},
+        scales:{x:{ticks:{...TICKS,maxTicksLimit:8},grid:GRID},y:{ticks:{...TICKS,callback:v=>'$'+v.toLocaleString()},grid:GRID}}}});
+  }
+
+  // Daily P&L
+  dc('day-'+firm);
+  const dayMap={}; trades.forEach(t=>{dayMap[t.date]=(dayMap[t.date]||0)+parseFloat(t.profit_loss||0);});
+  const days=Object.keys(dayMap).sort(); const dayVals=days.map(d=>parseFloat(dayMap[d].toFixed(2)));
+  const dayCtx=document.getElementById('day-'+firm)?.getContext('2d');
+  if(dayCtx) new Chart(dayCtx,{type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:[{data:dayVals,backgroundColor:dayVals.map(v=>v>=0?'rgba(0,229,176,0.7)':'rgba(255,77,106,0.7)'),borderRadius:3}]},
+    options:{responsive:true,plugins:{legend:{display:false},tooltip:{...TOOLTIP,callbacks:{label:c=>(c.parsed.y>=0?'+':'')+'$'+c.parsed.y.toFixed(2)}}},
+      scales:{x:{ticks:TICKS,grid:{display:false}},y:{ticks:{...TICKS,callback:v=>'$'+v},grid:GRID}}}});
+
+  // By Instrument (donut)
+  dc('inst-'+firm);
+  const instMap={}; trades.forEach(t=>{instMap[t.instrument]=(instMap[t.instrument]||0)+1;});
+  const instCtx=document.getElementById('inst-'+firm)?.getContext('2d');
+  if(instCtx&&Object.keys(instMap).length) new Chart(instCtx,{type:'doughnut',
+    data:{labels:Object.keys(instMap),datasets:[{data:Object.values(instMap),backgroundColor:['#00e5b0','#3d9bff','#f0b429','#a78bfa','#ff4d6a','#fb923c'],borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,cutout:'65%',plugins:{legend:{position:'right',labels:{color:'rgba(232,234,240,0.8)',font:{size:10},padding:10}}}}});
+
+  // Monthly P&L
+  dc('mo-'+firm);
+  const moMap={}; trades.forEach(t=>{const m=t.date.slice(0,7);moMap[m]=(moMap[m]||0)+parseFloat(t.profit_loss||0);});
+  const moKeys=Object.keys(moMap).sort(); const moVals=moKeys.map(k=>parseFloat(moMap[k].toFixed(2)));
+  const moCtx=document.getElementById('mo-'+firm)?.getContext('2d');
+  if(moCtx) new Chart(moCtx,{type:'bar',data:{labels:moKeys,datasets:[{data:moVals,backgroundColor:moVals.map(v=>v>=0?'rgba(0,229,176,0.7)':'rgba(255,77,106,0.7)'),borderRadius:5}]},
+    options:{responsive:true,plugins:{legend:{display:false},tooltip:{...TOOLTIP,callbacks:{label:c=>(c.parsed.y>=0?'+':'')+'$'+c.parsed.y.toFixed(2)}}},
+      scales:{x:{ticks:TICKS,grid:{display:false}},y:{ticks:{...TICKS,callback:v=>'$'+v},grid:GRID}}}});
+}
+
+// ── CALENDAR ──
+function renderFirmCalendar(firm,firmName){
+  const container=document.getElementById(firm+'-calendar');
+  if(!container)return;
+  const trades=allTrades.filter(t=>t.account_provider===firmName);
+  if(!trades.length){
+    container.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);font-size:12px;">No trades to display</div>';
+    return;
+  }
+  const m={};
+  trades.forEach(t=>{ if(t.date) m[t.date]=(m[t.date]||0)+parseFloat(t.profit_loss||0); });
+  const dates=Object.keys(m).sort();
+  const months=[...new Set(dates.map(d=>d.slice(0,7)))];
+  const dayLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html='';
+  months.sort().forEach(ym=>{
+    const [y,mo]=ym.split('-').map(Number);
+    const label=new Date(y,mo-1,1).toLocaleString('default',{month:'long',year:'numeric'});
+    const first=new Date(y,mo-1,1).getDay();
+    const total=new Date(y,mo,0).getDate();
+    html+=`<div class="cal-month"><div class="cal-month-title">${label}</div><div class="cal-grid">`;
+    dayLabels.forEach(d=>{html+=`<div class="cal-day-label">${d}</div>`;});
+    for(let i=0;i<first;i++) html+=`<div class="cal-day empty"></div>`;
+    for(let d=1;d<=total;d++){
+      const ds=`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const pnl=m[ds];
+      const cls=pnl===undefined?'':pnl>0?'profit':'loss';
+      html+=`<div class="cal-day ${cls}" title="${ds}${pnl!==undefined?' · '+(pnl>0?'+':'')+'$'+Math.abs(pnl).toFixed(0):''}">
+        <div class="cal-day-num">${d}</div>
+        ${pnl!==undefined?`<div class="cal-day-pnl" style="color:${pnl>0?'var(--green)':'var(--red)'}">${pnl>0?'+':'-'}$${Math.abs(pnl).toFixed(0)}</div>`:''}
+      </div>`;
+    }
+    html+=`</div></div>`;
+  });
+  container.innerHTML=html;
+}
+
+
+function renderFirmUpload(firm,firmName){
+  const container=document.getElementById(firm+'-upload');
+  container.innerHTML=`
+    <div class="two-col" style="margin-bottom:18px;">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">UPLOAD CSV / EXCEL / HTML</span></div>
+        <div class="panel-body">
+          <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">Upload .csv, .xlsx or .html/.htm exported from MT5 or ${firmName}. All trades saved under <strong style="color:var(--accent);">${firmName}</strong>.</p>
+          <div id="${firm}-csvDropZone" style="border:2px dashed var(--border);border-radius:6px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;"
+            onclick="document.getElementById('${firm}-csvInput').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+            ondragleave="this.style.borderColor='var(--border)'"
+            ondrop="handleFirmCSVDrop(event,'${firm}','${firmName}')">
+            <div style="font-size:2rem;margin-bottom:8px;">📁</div>
+            <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text);letter-spacing:1px;margin-bottom:4px;">DROP FILES HERE OR CLICK TO BROWSE</div>
+            <div style="font-family:var(--font-mono);font-size:0.62rem;color:var(--muted);">.csv .xlsx .html .htm — multiple files OK</div>
+          </div>
+          <input type="file" id="${firm}-csvInput" accept=".csv,.xlsx,.xls,.html,.htm" multiple style="display:none;" onchange="handleFirmCSVFiles(this.files,'${firm}','${firmName}')"/>
+          <div id="${firm}-csvPreview" style="margin-top:14px;display:none;">
+            <div style="font-family:var(--font-mono);font-size:0.68rem;color:var(--accent);margin-bottom:8px;" id="${firm}-csvPreviewLabel"></div>
+            <div style="overflow-x:auto;max-height:200px;overflow-y:auto;" id="${firm}-csvPreviewTable"></div>
+            <button class="btn btn-success btn-sm" onclick="saveFirmTrades('${firm}','${firmName}','csv')" style="margin-top:10px;width:100%;">SAVE TO ${firmName.toUpperCase()}</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">UPLOAD SCREENSHOTS</span><span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--accent);">AI-POWERED</span></div>
+        <div class="panel-body">
+          <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">Upload screenshots of your ${firmName} trade history. AI reads and extracts all trades.</p>
+          <div id="${firm}-imgDropZone" style="border:2px dashed var(--border);border-radius:6px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;"
+            onclick="document.getElementById('${firm}-imgInput').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+            ondragleave="this.style.borderColor='var(--border)'"
+            ondrop="handleFirmImgDrop(event,'${firm}','${firmName}')">
+            <div style="font-size:2rem;margin-bottom:8px;">🖼️</div>
+            <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text);letter-spacing:1px;margin-bottom:4px;">DROP SCREENSHOTS HERE OR CLICK TO BROWSE</div>
+            <div style="font-family:var(--font-mono);font-size:0.62rem;color:var(--muted);">.png .jpg .jpeg .heic — multiple files OK</div>
+          </div>
+          <input type="file" id="${firm}-imgInput" accept="image/*,.heic,.heif" multiple style="display:none;" onchange="handleFirmImgFiles(this.files,'${firm}','${firmName}')"/>
+          <div id="${firm}-imgProgressArea" style="display:none;margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--accent);" id="${firm}-imgProgressLabel">Processing...</span>
+              <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--muted);" id="${firm}-imgProgressCount">0/0</span>
+            </div>
+            <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+              <div id="${firm}-imgProgressBar" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width 0.3s;"></div>
+            </div>
+            <div id="${firm}-imgFileStatuses" style="margin-top:10px;display:flex;flex-direction:column;gap:5px;max-height:140px;overflow-y:auto;"></div>
+          </div>
+          <div id="${firm}-imgPreview" style="margin-top:10px;display:none;">
+            <div style="overflow-x:auto;max-height:200px;overflow-y:auto;" id="${firm}-imgPreviewTable"></div>
+            <button class="btn btn-success btn-sm" onclick="saveFirmTrades('${firm}','${firmName}','img')" style="margin-top:10px;width:100%;">SAVE TO ${firmName.toUpperCase()}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-bottom:18px;">
+      <div class="panel-header"><span class="panel-title">PASTE TRADE DATA</span></div>
+      <div class="panel-body">
+        <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6;">Paste raw trade data from ${firmName}. AI parses any format.</p>
+        <textarea id="${firm}-pasteData" class="form-textarea" style="min-height:110px;width:100%;" placeholder="Paste your ${firmName} trade history here..."></textarea>
+        <button class="btn btn-primary" onclick="parseFirmPaste('${firm}','${firmName}')" style="margin-top:10px;width:100%;padding:10px;">PARSE &amp; PREVIEW</button>
+        <div id="${firm}-pastePreview" style="margin-top:14px;display:none;">
+          <div style="font-family:var(--font-mono);font-size:0.68rem;color:var(--accent);margin-bottom:8px;" id="${firm}-pastePreviewLabel"></div>
+          <div style="overflow-x:auto;max-height:200px;overflow-y:auto;" id="${firm}-pastePreviewTable"></div>
+          <button class="btn btn-success btn-sm" onclick="saveFirmTrades('${firm}','${firmName}','paste')" style="margin-top:10px;width:100%;">SAVE TO ${firmName.toUpperCase()}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderFirmHistory(firm,firmName){
+  const container=document.getElementById(firm+'-history');
+  const trades=allTrades.filter(t=>t.account_provider===firmName);
+  if(!trades.length){
+    container.innerHTML=`<div class="panel"><div class="panel-body"><div class="loading-state">No trades for ${firmName} yet.</div></div></div>`;
+    return;
+  }
+  const rows=trades.slice().reverse().map(t=>{
+    const pnl=parseFloat(t.profit_loss||0);
+    const badge=t.result==='Win'?'badge-win':t.result==='Loss'?'badge-loss':'badge-be';
+    const pc=pnl>0?'stat-green':pnl<0?'stat-red':'stat-yellow';
+    return`<tr><td>${t.date}</td><td style="color:var(--accent);font-weight:600;">${t.instrument}</td><td>${t.direction||'—'}</td><td>${t.entry_price?'$'+parseFloat(t.entry_price).toFixed(2):'—'}</td><td>${t.exit_price?'$'+parseFloat(t.exit_price).toFixed(2):'—'}</td><td class="${pc}" style="font-weight:600;">${pnl>=0?'+':''}$${pnl.toFixed(2)}</td><td><span class="badge ${badge}">${t.result}</span></td><td><button class="btn btn-danger btn-sm" onclick="deleteTrade('${t.id}')" style="padding:3px 7px;font-size:0.65rem;">DEL</button></td></tr>`;
+  }).join('');
+  container.innerHTML=`
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">TRADE HISTORY — ${firmName.toUpperCase()}</span>
+        <div style="display:flex;gap:8px;">
+          <span style="font-family:var(--font-mono);font-size:0.68rem;color:var(--muted);">${trades.length} trades</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteFirmTrades('${firmName}')">DELETE ALL</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="trades-table">
+          <thead><tr><th>Date</th><th>Instrument</th><th>Direction</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function renderFirmJournal(firm,firmName){
+  const container=document.getElementById(firm+'-journal');
+  const firmTrades=allTrades.filter(t=>t.account_provider===firmName);
+  const instrumentOptions=`<option value="">Select instrument</option>`+
+    [...new Set(firmTrades.map(t=>t.instrument).filter(Boolean))].map(i=>`<option>${i}</option>`).join('')+
+    `<option>Other</option>`;
+  container.innerHTML=`
+    <div class="journal-grid">
+      <div class="panel" style="position:sticky;top:20px;">
+        <div class="panel-header"><span class="panel-title">NEW ENTRY — ${firmName.toUpperCase()}</span></div>
+        <div class="panel-body">
+          <div class="journal-form">
+            <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="${firm}-jDate"/></div>
+            <div class="form-group"><label class="form-label">Instrument</label><select class="form-select" id="${firm}-jInstrument">${instrumentOptions}</select></div>
+            <div class="form-group"><label class="form-label">Trade Result</label><select class="form-select" id="${firm}-jResult"><option value="">Select result</option><option>Win</option><option>Loss</option><option>Break Even</option></select></div>
+            <div class="form-group"><label class="form-label">Emotion Before Trade</label>
+              <div class="emotion-grid">
+                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Calm')">😌 Calm</button>
+                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Confident')">💪 Confident</button>
+                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','FOMO')">😰 FOMO</button>
+                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Revenge')">😤 Revenge</button>
+                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Anxious')">😟 Anxious</button>
+                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Bored')">😑 Bored</button>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Why I Entered</label><textarea class="form-textarea" id="${firm}-jReasoning" placeholder="Setup, confluence..."></textarea></div>
+            <div class="form-group"><label class="form-label">What Went Well</label><textarea class="form-textarea" id="${firm}-jWell" placeholder="Discipline, execution..."></textarea></div>
+            <div class="form-group"><label class="form-label">What To Improve</label><textarea class="form-textarea" id="${firm}-jImprove" placeholder="Mistakes, what I'd do differently..."></textarea></div>
+            <button class="btn btn-success" onclick="saveFirmJournal('${firm}','${firmName}')" style="width:100%;padding:11px;letter-spacing:2px;">SAVE ENTRY</button>
+          </div>
+        </div>
+      </div>
+      <div id="${firm}-journalEntries" class="journal-entries"><div class="no-entries">No entries for ${firmName} yet.</div></div>
+    </div>`;
+  document.getElementById(firm+'-jDate').value=new Date().toISOString().split('T')[0];
+  loadFirmJournalEntries(firm,firmName);
+}
+
+function renderFirmAnalysis(firm,firmName){
+  const container=document.getElementById(firm+'-analysis');
+  const trades=allTrades.filter(t=>t.account_provider===firmName);
+  if(!trades.length){
+    container.innerHTML=`<div class="panel"><div class="panel-body"><div class="loading-state">No trades for ${firmName} yet.</div></div></div>`;
+    return;
+  }
+  // Instrument win rate
+  const byInst={};
+  trades.forEach(t=>{
+    if(!byInst[t.instrument])byInst[t.instrument]={w:0,l:0};
+    if(t.result==='Win')byInst[t.instrument].w++;
+    else if(t.result==='Loss')byInst[t.instrument].l++;
+  });
+  const instRows=Object.entries(byInst).sort((a,b)=>(b[1].w+b[1].l)-(a[1].w+a[1].l)).map(([inst,d])=>{
+    const total=d.w+d.l;const wr=total?(d.w/total*100).toFixed(0):0;
+    return`<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-family:var(--font-mono);font-size:0.72rem;color:var(--accent);">${inst}</span><span style="font-family:var(--font-mono);font-size:0.72rem;">${wr}% (${d.w}W/${d.l}L)</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${wr}%;background:${wr>=50?'var(--green)':'var(--red)'}"></div></div></div>`;
+  }).join('');
+  // Monthly
+  const byMonth={};
+  trades.forEach(t=>{
+    const m=t.date?t.date.slice(0,7):'Unknown';
+    if(!byMonth[m])byMonth[m]={pnl:0,w:0,l:0};
+    byMonth[m].pnl+=parseFloat(t.profit_loss||0);
+    if(t.result==='Win')byMonth[m].w++;else if(t.result==='Loss')byMonth[m].l++;
+  });
+  const monthRows=Object.entries(byMonth).sort().reverse().map(([m,d])=>{
+    const pc=d.pnl>=0?'stat-green':'stat-red';
+    return`<tr><td>${m}</td><td class="${pc}" style="font-weight:600;">${d.pnl>=0?'+':''}$${d.pnl.toFixed(2)}</td><td>${d.w}</td><td>${d.l}</td><td>${d.w+d.l?(d.w/(d.w+d.l)*100).toFixed(0):0}%</td></tr>`;
+  }).join('');
+  container.innerHTML=`
+    <div class="two-col">
+      <div class="panel"><div class="panel-header"><span class="panel-title">WIN RATE BY INSTRUMENT</span></div><div class="panel-body">${instRows||'<div class="loading-state">No data</div>'}</div></div>
+      <div class="panel"><div class="panel-header"><span class="panel-title">EMOTION ANALYSIS</span></div><div class="panel-body" id="${firm}-emotionAnalysis"><div class="loading-state">Loading...</div></div></div>
+    </div>
+    <div class="panel" style="margin-top:18px;">
+      <div class="panel-header"><span class="panel-title">MONTHLY PERFORMANCE</span></div>
+      <div style="overflow-x:auto;"><table class="trades-table"><thead><tr><th>Month</th><th>P&L</th><th>Wins</th><th>Losses</th><th>Win Rate</th></tr></thead><tbody>${monthRows}</tbody></table></div>
+    </div>`;
+  loadFirmEmotionAnalysis(firm,firmName);
+}
+
+function renderAllAnalysis(){
+  // Instrument win rate across all trades
+  const byInst={};
+  allTrades.forEach(t=>{
+    if(!byInst[t.instrument])byInst[t.instrument]={w:0,l:0};
+    if(t.result==='Win')byInst[t.instrument].w++;
+    else if(t.result==='Loss')byInst[t.instrument].l++;
+  });
+  const instRows=Object.entries(byInst).sort((a,b)=>(b[1].w+b[1].l)-(a[1].w+a[1].l)).slice(0,10).map(([inst,d])=>{
+    const total=d.w+d.l;const wr=total?(d.w/total*100).toFixed(0):0;
+    return`<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-family:var(--font-mono);font-size:0.72rem;color:var(--accent);">${inst}</span><span style="font-family:var(--font-mono);font-size:0.72rem;">${wr}%</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${wr}%;background:${wr>=50?'var(--green)':'var(--red)'}"></div></div></div>`;
+  }).join('');
+  const aiEl=document.getElementById('allInstrumentAnalysis');
+  if(aiEl)aiEl.innerHTML=instRows||'<div class="loading-state">No data</div>';
+  // Monthly
+  const byMonth={};
+  allTrades.forEach(t=>{
+    const m=t.date?t.date.slice(0,7):'Unknown';
+    if(!byMonth[m])byMonth[m]={pnl:0,w:0,l:0};
+    byMonth[m].pnl+=parseFloat(t.profit_loss||0);
+    if(t.result==='Win')byMonth[m].w++;else if(t.result==='Loss')byMonth[m].l++;
+  });
+  const monthRows=Object.entries(byMonth).sort().reverse().map(([m,d])=>{
+    const pc=d.pnl>=0?'stat-green':'stat-red';
+    return`<tr><td>${m}</td><td class="${pc}">${d.pnl>=0?'+':''}$${d.pnl.toFixed(2)}</td><td>${d.w}</td><td>${d.l}</td><td>${d.w+d.l?(d.w/(d.w+d.l)*100).toFixed(0):0}%</td></tr>`;
+  }).join('');
+  const amEl=document.getElementById('allMonthlyAnalysis');
+  if(amEl)amEl.innerHTML=monthRows?`<table class="trades-table"><thead><tr><th>Month</th><th>P&L</th><th>Wins</th><th>Losses</th><th>Win Rate</th></tr></thead><tbody>${monthRows}</tbody></table>`:'<div class="loading-state">No data</div>';
+  // All stats grid
+  const wins=allTrades.filter(t=>t.result==='Win');
+  const losses=allTrades.filter(t=>t.result==='Loss');
+  const totalPnl=allTrades.reduce((s,t)=>s+parseFloat(t.profit_loss||0),0);
+  const wr=allTrades.length?(wins.length/allTrades.length*100).toFixed(1):0;
+  const grossWin=wins.reduce((s,t)=>s+parseFloat(t.profit_loss||0),0);
+  const grossLoss=Math.abs(losses.reduce((s,t)=>s+parseFloat(t.profit_loss||0),0));
+  const pf=grossLoss>0?(grossWin/grossLoss).toFixed(2):'∞';
+  const sg=document.getElementById('allStatsGrid');
+  if(sg)sg.innerHTML=`
+    <div class="stat-card"><div class="stat-label">Total Net P&L</div><div class="stat-value ${totalPnl>=0?'stat-green':'stat-red'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(2)}</div><div class="stat-sub">All firms combined</div></div>
+    <div class="stat-card"><div class="stat-label">Win Rate</div><div class="stat-value stat-green">${wr}%</div><div class="stat-sub">${allTrades.length} total trades</div></div>
+    <div class="stat-card"><div class="stat-label">Profit Factor</div><div class="stat-value stat-yellow">${pf}</div><div class="stat-sub">All firms</div></div>
+    <div class="stat-card"><div class="stat-label">Total Wins</div><div class="stat-value stat-green">${wins.length}</div><div class="stat-sub">${losses.length} losses</div></div>`;
+}
+
+// ── FIRM-SPECIFIC UPLOAD HANDLERS ──
+const firmParsedTrades={};
+
+async function handleFirmCSVDrop(event,firm,firmName){
+  event.preventDefault();
+  document.getElementById(firm+'-csvDropZone').style.borderColor='var(--border)';
+  await handleFirmCSVFiles(event.dataTransfer.files,firm,firmName);
+}
+async function handleFirmImgDrop(event,firm,firmName){
+  event.preventDefault();
+  document.getElementById(firm+'-imgDropZone').style.borderColor='var(--border)';
+  await handleFirmImgFiles(event.dataTransfer.files,firm,firmName);
+}
+
+async function handleFirmCSVFiles(files,firm,firmName){
+  if(!files||!files.length)return;
+  if(!firmParsedTrades[firm])firmParsedTrades[firm]={};
+  firmParsedTrades[firm].csv=[];
+  const label=document.getElementById(firm+'-csvPreviewLabel');
+  const preview=document.getElementById(firm+'-csvPreview');
+  label.textContent='Processing '+files.length+' file(s)...';
+  preview.style.display='block';
+  for(const file of Array.from(files)){
+    const trades=await parseFirmCSVFile(file,firm);
+    firmParsedTrades[firm].csv.push(...trades);
+  }
+  if(firmParsedTrades[firm].csv.length){
+    showFirmTradePreview(firm+'-csvPreviewTable',firm+'-csvPreviewLabel',firmParsedTrades[firm].csv);
+  } else {
+    label.textContent='No trades found in uploaded files.';
+  }
+}
+
+async function parseFirmCSVFile(file,firm){
+  const name=file.name.toLowerCase();
+  if(name.endsWith('.html')||name.endsWith('.htm')){
+    try{
+      const arrayBuf=await file.arrayBuffer();
+      const bytes=new Uint8Array(arrayBuf);
+      let htmlText='';
+      if((bytes[0]===0xFF&&bytes[1]===0xFE)||(bytes[0]===0xFE&&bytes[1]===0xFF)){
+        htmlText=new TextDecoder('utf-16').decode(arrayBuf);
+      } else {
+        htmlText=new TextDecoder('utf-8').decode(arrayBuf);
+      }
+      htmlText=htmlText.replace(/ /g,'');
+      return parseMT5Html(htmlText).map(t=>({...t,user_id:currentUser?.id}));
+    }catch(e){showToast('Could not read HTML file.',true);return[];}
+  }
+  const text=await file.text();
+  const lines=text.split('\n').filter(l=>l.trim());
+  const trades=[];
+  for(let i=1;i<lines.length;i++){
+    const cols=lines[i].split(',').map(c=>c.trim().replace(/"/g,''));
+    if(cols.length<3)continue;
+    const pnl=parseFloat(cols[5]||cols[4]||0);
+    trades.push({date:cols[0]||new Date().toISOString().split('T')[0],instrument:cols[1]||'Unknown',direction:cols[2]||'—',entry_price:parseFloat(cols[3])||0,exit_price:parseFloat(cols[4])||0,profit_loss:pnl,result:pnl>0?'Win':pnl<0?'Loss':'Break Even',user_id:currentUser?.id});
+  }
+  return trades;
+}
+
+async function handleFirmImgFiles(files,firm,firmName){
+  if(!files||!files.length)return;
+  if(!firmParsedTrades[firm])firmParsedTrades[firm]={};
+  firmParsedTrades[firm].img=[];
+  const fileArr=Array.from(files);
+  const total=fileArr.length;
+  const progressArea=document.getElementById(firm+'-imgProgressArea');
+  const progressLabel=document.getElementById(firm+'-imgProgressLabel');
+  const progressCount=document.getElementById(firm+'-imgProgressCount');
+  const progressBar=document.getElementById(firm+'-imgProgressBar');
+  const fileStatuses=document.getElementById(firm+'-imgFileStatuses');
+  const imgPreview=document.getElementById(firm+'-imgPreview');
+  progressArea.style.display='block';
+  imgPreview.style.display='none';
+  progressLabel.textContent='Processing '+total+' screenshot'+(total>1?'s':'')+'...';
+  progressCount.textContent='0/'+total;
+  progressBar.style.width='0%';
+  fileStatuses.innerHTML='';
+  fileArr.forEach((file,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:0.68rem;padding:5px 8px;background:var(--surface2);border-radius:3px;';
+    row.innerHTML=`<span id="${firm}-ficon_${i}" style="color:var(--muted);">[ ]</span><span style="color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${file.name||'Screenshot '+(i+1)}</span><span id="${firm}-ftrades_${i}" style="color:var(--muted);">waiting</span>`;
+    fileStatuses.appendChild(row);
+  });
+  let completed=0;
+  const results=await Promise.allSettled(fileArr.map(async(file,i)=>{
+    document.getElementById(firm+'-ficon_'+i).textContent='[~]';
+    document.getElementById(firm+'-ftrades_'+i).textContent='reading...';
+    try{
+      const {base64,mimeType}=await fileToBase64Safe(file);
+      const imgPrompt='You are a trading journal assistant. This screenshot shows trade history from a trading platform (MT5, Deriv, FTMO, The5ers, or similar). Extract ALL visible trades and return ONLY a JSON array, no explanation, no markdown. Each object: date (YYYY-MM-DD), instrument (string), direction (Buy or Sell), entry_price (number), exit_price (number), profit_loss (number, negative for losses), result (Win/Loss/Break Even). Use 0 for missing numbers, Unknown for missing strings. Return [] ONLY if truly no trade rows exist.';
+      const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:base64,mimeType:mimeType,prompt:imgPrompt})});
+      if(!resp.ok)throw new Error('Worker HTTP '+resp.status);
+      const data=await resp.json();
+      const text=data.response||data.content?.[0]?.text||'';
+      if(!text||text.trim()==='')throw new Error('Empty response');
+      const clean=text.replace(/```json|```/g,'').trim();
+      const jsonMatch=clean.match(/\[[\s\S]*\]/);
+      if(!jsonMatch)throw new Error('No JSON in response');
+      const parsed=JSON.parse(jsonMatch[0]);
+      if(!Array.isArray(parsed)||!parsed.length)throw new Error('Empty trade array');
+      document.getElementById(firm+'-ficon_'+i).style.color='var(--green)';
+      document.getElementById(firm+'-ficon_'+i).textContent='[OK]';
+      document.getElementById(firm+'-ftrades_'+i).style.color='var(--green)';
+      document.getElementById(firm+'-ftrades_'+i).textContent=parsed.length+' trade'+(parsed.length>1?'s':'');
+      completed++;progressBar.style.width=Math.round(completed/total*100)+'%';progressCount.textContent=completed+'/'+total;
+      return parsed.map(t=>({...t,user_id:currentUser?.id}));
+    }catch(e){
+      document.getElementById(firm+'-ficon_'+i).style.color='var(--red)';
+      document.getElementById(firm+'-ficon_'+i).textContent='[X]';
+      document.getElementById(firm+'-ftrades_'+i).style.color='var(--red)';
+      document.getElementById(firm+'-ftrades_'+i).textContent=e.message.slice(0,40);
+      completed++;progressBar.style.width=Math.round(completed/total*100)+'%';progressCount.textContent=completed+'/'+total;
+      return[];
+    }
+  }));
+  results.forEach(r=>{if(r.status==='fulfilled')firmParsedTrades[firm].img.push(...r.value);});
+  if(firmParsedTrades[firm].img.length){
+    progressLabel.textContent='Found '+firmParsedTrades[firm].img.length+' trades!';
+    progressLabel.style.color='var(--green)';
+    showFirmTradePreview(firm+'-imgPreviewTable',null,firmParsedTrades[firm].img);
+    imgPreview.style.display='block';
+  }else{
+    progressLabel.textContent='No trades found. Make sure screenshots show trade history rows.';
+    progressLabel.style.color='var(--yellow)';
+  }
+}
+
+async function parseFirmPaste(firm,firmName){
+  const text=document.getElementById(firm+'-pasteData').value.trim();
+  if(!text){showToast('Please paste some trade data first',true);return;}
+  showToast('🤖 Parsing trades...');
+  if(!firmParsedTrades[firm])firmParsedTrades[firm]={};
+  try{
+    const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text})});
+    const data=await resp.json();
+    const raw=data.response||data.content?.[0]?.text||'[]';
+    const clean=raw.replace(/```json|```/g,'').trim();
+    firmParsedTrades[firm].paste=JSON.parse(clean).map(t=>({...t,user_id:currentUser?.id}));
+    showFirmTradePreview(firm+'-pastePreviewTable',firm+'-pastePreviewLabel',firmParsedTrades[firm].paste);
+    document.getElementById(firm+'-pastePreview').style.display='block';
+    showToast('Found '+firmParsedTrades[firm].paste.length+' trades!');
+  }catch(e){showToast('Could not parse. Try a different format.',true);}
+}
+
+function showFirmTradePreview(tableId,labelId,trades){
+  if(labelId)document.getElementById(labelId).textContent='Found '+trades.length+' trades — review before saving:';
+  document.getElementById(tableId).innerHTML=`<table class="trades-table"><thead><tr><th>Date</th><th>Instrument</th><th>Direction</th><th>P&L</th><th>Result</th></tr></thead><tbody>`+
+    trades.map(t=>{
+      const pnl=parseFloat(t.profit_loss);
+      const badge=t.result==='Win'?'badge-win':t.result==='Loss'?'badge-loss':'badge-be';
+      return`<tr><td>${t.date}</td><td style="color:var(--accent)">${t.instrument}</td><td>${t.direction||'—'}</td><td class="${pnl>=0?'stat-green':'stat-red'}">${pnl>=0?'+':''}$${pnl.toFixed(2)}</td><td><span class="badge ${badge}">${t.result}</span></td></tr>`;
+    }).join('')+'</tbody></table>';
+}
+
+async function saveFirmTrades(firm,firmName,type){
+  const trades=(firmParsedTrades[firm]||{})[type]||[];
+  if(!trades.length){showToast('No trades to save',true);return;}
+  if(!currentUser){showToast('Please sign in first',true);return;}
+  const{data:existing}=await sb.from('trades').select('date,instrument,direction,entry_price,profit_loss').eq('user_id',currentUser.id);
+  const existingKeys=new Set((existing||[]).map(t=>tradeKey(t)));
+  const newTrades=trades.filter(t=>!existingKeys.has(tradeKey(t)));
+  const dupeCount=trades.length-newTrades.length;
+  if(!newTrades.length){showToast('All trades already exist — no duplicates saved.',true);return;}
+  const batch=newTrades.map(t=>({...t,user_id:currentUser.id,account_provider:firmName}));
+  let saved=0;
+  for(let i=0;i<batch.length;i+=50){
+    const{error}=await sb.from('trades').insert(batch.slice(i,i+50));
+    if(!error)saved+=Math.min(50,batch.length-i);
+    else console.warn('Insert error:',error.message);
+  }
+  let msg='Saved '+saved+' trades to '+firmName+'!';
+  if(dupeCount>0)msg+=' ('+dupeCount+' duplicates skipped)';
+  showToast(msg);
+  document.getElementById(firm+'-'+type+'Preview').style.display='none';
+  await loadTradesFromSupabase();
+  // Refresh current sub-page
+  renderSubPage(firm,activeSubTab);
+}
+
+async function deleteFirmTrades(firmName){
+  if(!currentUser)return;
+  if(!confirm('Delete ALL '+firmName+' trades? This CANNOT be undone.'))return;
+  const{error}=await sb.from('trades').delete().eq('user_id',currentUser.id).eq('account_provider',firmName);
+  if(error){showToast('Error: '+error.message,true);return;}
+  showToast('Deleted all '+firmName+' trades.');
+  await loadTradesFromSupabase();
+  renderSubPage(activeFirm,activeSubTab);
+}
+
+// ── FIRM JOURNAL ──
+const firmEmotions={};
+function selectFirmEmotion(btn,firm,emotion){
+  const container=btn.closest('.emotion-grid');
+  container.querySelectorAll('.emotion-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  firmEmotions[firm]=emotion;
+}
+
+async function saveFirmJournal(firm,firmName){
+  if(!currentUser){showToast('Sign in first',true);return;}
+  const date=document.getElementById(firm+'-jDate').value;
+  const instrument=document.getElementById(firm+'-jInstrument').value;
+  const result=document.getElementById(firm+'-jResult').value;
+  const emotion=firmEmotions[firm]||'';
+  const reasoning=document.getElementById(firm+'-jReasoning').value;
+  const went_well=document.getElementById(firm+'-jWell').value;
+  const improve=document.getElementById(firm+'-jImprove').value;
+  if(!date||!instrument||!result){showToast('Date, instrument and result are required',true);return;}
+  const{error}=await sb.from('journal_entries').insert({user_id:currentUser.id,date,instrument,result,emotion,reasoning,went_well,improve,account_provider:firmName});
+  if(error){showToast('Error: '+error.message,true);return;}
+  showToast('Journal entry saved!');
+  document.getElementById(firm+'-jReasoning').value='';
+  document.getElementById(firm+'-jWell').value='';
+  document.getElementById(firm+'-jImprove').value='';
+  firmEmotions[firm]='';
+  document.querySelectorAll('#firm-'+firm+' .emotion-btn').forEach(b=>b.classList.remove('selected'));
+  loadFirmJournalEntries(firm,firmName);
+}
+
+async function loadFirmJournalEntries(firm,firmName){
+  if(!currentUser)return;
+  const{data}=await sb.from('journal_entries').select('*').eq('user_id',currentUser.id).eq('account_provider',firmName).order('date',{ascending:false});
+  const container=document.getElementById(firm+'-journalEntries');
+  if(!container)return;
+  if(!data||!data.length){container.innerHTML='<div class="no-entries">No entries for '+firmName+' yet.</div>';return;}
+  container.innerHTML=data.map(e=>`
+    <div class="journal-entry-card">
+      <div class="entry-meta">
+        <div><div class="entry-date">${e.date}</div><div class="entry-instrument">${e.instrument}</div></div>
+        <div style="text-align:right;"><span class="badge ${e.result==='Win'?'badge-win':e.result==='Loss'?'badge-loss':'badge-be'}">${e.result}</span>${e.emotion?`<div style="margin-top:4px;" class="entry-emotion">${e.emotion}</div>`:''}</div>
+      </div>
+      ${e.reasoning?`<div class="entry-section"><div class="entry-section-label">Why I Entered</div><div class="entry-text">${e.reasoning}</div></div>`:''}
+      ${e.went_well?`<div class="entry-section"><div class="entry-section-label">What Went Well</div><div class="entry-text">${e.went_well}</div></div>`:''}
+      ${e.improve?`<div class="entry-section"><div class="entry-section-label">What To Improve</div><div class="entry-text">${e.improve}</div></div>`:''}
+    </div>`).join('');
+}
+
+async function loadFirmEmotionAnalysis(firm,firmName){
+  if(!currentUser)return;
+  const{data}=await sb.from('journal_entries').select('emotion,result').eq('user_id',currentUser.id).eq('account_provider',firmName);
+  const container=document.getElementById(firm+'-emotionAnalysis');
+  if(!container)return;
+  if(!data||!data.length){container.innerHTML='<div class="loading-state">No journal entries yet</div>';return;}
+  const byEmotion={};
+  data.forEach(e=>{
+    if(!e.emotion)return;
+    if(!byEmotion[e.emotion])byEmotion[e.emotion]={w:0,total:0};
+    byEmotion[e.emotion].total++;
+    if(e.result==='Win')byEmotion[e.emotion].w++;
+  });
+  container.innerHTML=Object.entries(byEmotion).map(([em,d])=>{
+    const wr=(d.w/d.total*100).toFixed(0);
+    return`<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-family:var(--font-mono);font-size:0.72rem;color:var(--accent);">${em}</span><span style="font-family:var(--font-mono);font-size:0.72rem;">${wr}% win (${d.total} entries)</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${wr}%;background:${wr>=50?'var(--green)':'var(--red)'}"></div></div></div>`;
+  }).join('');
+}
+
+function drawCurveOnCanvas(canvas,pts){
+  const W=canvas.offsetWidth||600,H=canvas.offsetHeight||190;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  if(pts.length<2)return;
+  const min=Math.min(...pts),max=Math.max(...pts);
+  const range=max-min||1;
+  const pad=20;
+  const toX=i=>(i/(pts.length-1))*(W-pad*2)+pad;
+  const toY=v=>H-pad-(v-min)/range*(H-pad*2);
+  ctx.strokeStyle='#00d4ff';ctx.lineWidth=2;ctx.lineJoin='round';
+  ctx.shadowColor='rgba(0,212,255,0.4)';ctx.shadowBlur=8;
+  ctx.beginPath();pts.forEach((v,i)=>i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)));ctx.stroke();
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(0,212,255,0.15)');grad.addColorStop(1,'rgba(0,212,255,0)');
+  ctx.fillStyle=grad;
+  ctx.beginPath();ctx.moveTo(toX(0),toY(pts[0]));pts.forEach((v,i)=>ctx.lineTo(toX(i),toY(v)));ctx.lineTo(toX(pts.length-1),H);ctx.lineTo(toX(0),H);ctx.closePath();ctx.fill();
+}
+
+function renderAllTradesTable(){
+  const tbody=document.getElementById('allTradesBody');
+  if(!tbody)return;
+  const filter=document.getElementById('allTradeFilter')?.value||'all';
+  const filtered=filter==='all'?allTrades:allTrades.filter(t=>t.account_provider===filter);
+  document.getElementById('allTradeCount').textContent=filtered.length+' of '+allTrades.length+' trades';
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="9"><div class="loading-state">No trades found</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML=filtered.slice().reverse().map(t=>{
+    const pnl=parseFloat(t.profit_loss||0);
+    const badge=t.result==='Win'?'badge-win':t.result==='Loss'?'badge-loss':'badge-be';
+    const pc=pnl>0?'stat-green':pnl<0?'stat-red':'stat-yellow';
+    const firm=t.account_provider||'—';
+    const firmColor=firm==='Deriv'?'var(--accent)':firm==='FTMO'?'var(--green)':firm==='The5ers'?'var(--yellow)':'var(--muted)';
+    return`<tr>
+      <td>${t.date}</td>
+      <td><span style="color:${firmColor};font-weight:600;font-size:0.72rem;">${firm}</span></td>
+      <td style="color:var(--accent);font-weight:600;">${t.instrument}</td>
+      <td>${t.direction||'—'}</td>
+      <td>${t.entry_price?'$'+parseFloat(t.entry_price).toFixed(2):'—'}</td>
+      <td>${t.exit_price?'$'+parseFloat(t.exit_price).toFixed(2):'—'}</td>
+      <td class="${pc}" style="font-weight:600;">${pnl>=0?'+':''}}$${pnl.toFixed(2)}</td>
+      <td><span class="badge ${badge}">${t.result}</span></td>
+      <td style="display:flex;gap:4px;">
+        <button class="btn btn-outline btn-sm" onclick="quickJournal('${t.instrument}','${t.date}')" style="padding:3px 7px;font-size:0.65rem;">+NOTE</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTrade('${t.id}')" style="padding:3px 7px;font-size:0.65rem;">DEL</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderFirmPage(pageId, firmName){
+  const container=document.getElementById('page-'+pageId);
+  const trades=allTrades.filter(t=>t.account_provider===firmName);
+  
+  const wins=trades.filter(t=>t.result==='Win');
+  const losses=trades.filter(t=>t.result==='Loss');
+  const totalPnl=trades.reduce((s,t)=>s+parseFloat(t.profit_loss||0),0);
+  const winRate=trades.length?(wins.length/trades.length*100).toFixed(1):0;
+  const grossWin=wins.reduce((s,t)=>s+parseFloat(t.profit_loss||0),0);
+  const grossLoss=Math.abs(losses.reduce((s,t)=>s+parseFloat(t.profit_loss||0),0));
+  const pf=grossLoss>0?(grossWin/grossLoss).toFixed(2):'∞';
+  const avgWin=wins.length?grossWin/wins.length:0;
+  const avgLoss=losses.length?grossLoss/losses.length:0;
+
+  // Firm-specific limits
+  const limits={
+    'Deriv':{daily:500,overall:1000,target:1000,base:10000},
+    'FTMO':{daily:500,overall:1000,target:1000,base:10000},
+    'The5ers':{daily:400,overall:800,target:800,base:8000},
+    'Other':{daily:500,overall:1000,target:1000,base:10000}
+  };
+  const L=limits[firmName]||limits['Other'];
+  const totalLoss=Math.abs(Math.min(0,totalPnl));
+  const overallPct=Math.min(100,totalLoss/L.overall*100);
+  const profitPct=Math.min(100,Math.max(0,totalPnl)/L.target*100);
+
+  const tradeRows=trades.slice().reverse().map(t=>{
+    const pnl=parseFloat(t.profit_loss||0);
+    const badge=t.result==='Win'?'badge-win':t.result==='Loss'?'badge-loss':'badge-be';
+    const pc=pnl>0?'stat-green':pnl<0?'stat-red':'stat-yellow';
+    return`<tr><td>${t.date}</td><td style="color:var(--accent);font-weight:600;">${t.instrument}</td><td>${t.direction||'—'}</td><td>${t.entry_price?'$'+parseFloat(t.entry_price).toFixed(2):'—'}</td><td>${t.exit_price?'$'+parseFloat(t.exit_price).toFixed(2):'—'}</td><td class="${pc}" style="font-weight:600;">${pnl>=0?'+':''}$${pnl.toFixed(2)}</td><td><span class="badge ${badge}">${t.result}</span></td></tr>`;
+  }).join('');
+
+  container.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-family:var(--font-display);font-size:1.6rem;letter-spacing:4px;color:var(--accent);">${firmName.toUpperCase()}</div>
+      <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);">${trades.length} trades tracked</div>
+    </div>
+
+    ${!trades.length ? `<div class="panel"><div class="panel-body"><div class="loading-state">No trades for ${firmName} yet.<br>Upload trades and tag them as ${firmName}.</div></div></div>` : `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Net P&L</div><div class="stat-value ${totalPnl>=0?'stat-green':'stat-red'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(2)}</div><div class="stat-sub">${wins.length}W / ${losses.length}L</div></div>
+      <div class="stat-card"><div class="stat-label">Win Rate</div><div class="stat-value stat-green">${winRate}%</div><div class="stat-sub">${trades.length} total trades</div></div>
+      <div class="stat-card"><div class="stat-label">Profit Factor</div><div class="stat-value stat-yellow">${pf}</div><div class="stat-sub">Gross profit / loss</div></div>
+      <div class="stat-card"><div class="stat-label">Avg Win</div><div class="stat-value stat-green">$${avgWin.toFixed(2)}</div><div class="stat-sub">${wins.length} wins</div></div>
+      <div class="stat-card"><div class="stat-label">Avg Loss</div><div class="stat-value stat-red">$${avgLoss.toFixed(2)}</div><div class="stat-sub">${losses.length} losses</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">RISK LIMITS — ${firmName.toUpperCase()}</span><span style="font-family:var(--font-mono);font-size:0.68rem;color:var(--muted);">Base $${L.base.toLocaleString()}</span></div>
+      <div class="panel-body">
+        <div class="ftmo-section">
+          <div>
+            <div class="progress-item"><div class="progress-header"><span class="progress-label">MAX OVERALL LOSS</span><span class="progress-val">$${totalLoss.toFixed(0)} / $${L.overall}</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${overallPct}%;background:${overallPct>70?'var(--red)':overallPct>40?'var(--yellow)':'var(--green)'}"></div></div></div>
+            <div class="progress-item"><div class="progress-header"><span class="progress-label">DAILY LOSS LIMIT</span><span class="progress-val stat-green">$0 / $${L.daily}</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:0%;background:var(--green)"></div></div></div>
+          </div>
+          <div>
+            <div class="progress-item"><div class="progress-header"><span class="progress-label">PROFIT TARGET</span><span class="progress-val stat-yellow">$${Math.max(0,totalPnl).toFixed(0)} / $${L.target}</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${profitPct}%;background:var(--yellow)"></div></div></div>
+            <div class="progress-item"><div class="progress-header"><span class="progress-label">CONSISTENCY</span><span class="progress-val stat-accent">${winRate}%</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${winRate}%;background:${parseFloat(winRate)>=50?'var(--green)':'var(--red)'}"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">TRADE HISTORY — ${firmName.toUpperCase()}</span></div>
+      <div style="overflow-x:auto;">
+        <table class="trades-table">
+          <thead><tr><th>Date</th><th>Instrument</th><th>Direction</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Result</th></tr></thead>
+          <tbody>${tradeRows||'<tr><td colspan="7"><div class="loading-state">No trades yet</div></td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`}
+  `;
+}
+
+
+function showCongratsScreen(name){
+  document.getElementById('congratsName').textContent = name.toUpperCase();
+  document.getElementById('congratsScreen').classList.add('show');
+  launchConfetti();
+}
+
+function closeCongratsScreen(){
+  document.getElementById('congratsScreen').classList.remove('show');
+  switchAuthTab('login');
+}
+
+function launchConfetti(){
+  const container = document.getElementById('confettiContainer');
+  container.innerHTML = '';
+  const colors = ['#00d4ff','#00e676','#ff6b35','#ffd600','#ff1744','#7c4dff'];
+  for(let i = 0; i < 80; i++){
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.cssText = [
+      'left:'+Math.random()*100+'vw',
+      'background:'+colors[Math.floor(Math.random()*colors.length)],
+      'width:'+(6+Math.random()*8)+'px',
+      'height:'+(6+Math.random()*8)+'px',
+      'animation-duration:'+(2+Math.random()*3)+'s',
+      'animation-delay:'+(Math.random()*2)+'s'
+    ].join(';');
+    container.appendChild(el);
+  }
+}
+
+function showToast(msg,isError=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(isError?' error':'');
+  setTimeout(()=>t.className='toast',3200);
+}
+
+function openDerivModal(){document.getElementById('connectModal').classList.add('open');if(derivToken)document.getElementById('derivTokenInput').value=derivToken;}
+function closeDerivModal(){document.getElementById('connectModal').classList.remove('open');}
+
+function connectDeriv(auto=false){
+  const token=auto?derivToken:document.getElementById('derivTokenInput').value.trim();
+  if(!token){showToast('Please enter your API token',true);return;}
+  derivToken=token;
+  if(currentUser)localStorage.setItem('dt_'+currentUser.id,token);
+  closeDerivModal();setDerivStatus('connecting');
+  if(derivWS)derivWS.close();
+  derivWS=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+  derivWS.onopen=()=>derivWS.send(JSON.stringify({authorize:token}));
+  derivWS.onmessage=(e)=>{
+    const data=JSON.parse(e.data);
+    if(data.msg_type==='authorize'){
+      if(data.error){setDerivStatus('disconnected');showToast('Deriv: '+data.error.message,true);return;}
+      setDerivStatus('connected');
+      const bal=parseFloat(data.authorize.balance);
+      document.getElementById('statBalance').textContent='$'+bal.toLocaleString('en-US',{minimumFractionDigits:2});
+      document.getElementById('statBalanceSub').textContent=data.authorize.currency+' · Real Account';
+      showToast('✅ Deriv connected — '+data.authorize.loginid);
+      derivWS.send(JSON.stringify({profit_table:1,description:1,limit:100,sort:'DESC'}));
+    }
+    if(data.msg_type==='profit_table'&&data.profit_table?.transactions)processDerivTrades(data.profit_table.transactions);
+  };
+  derivWS.onerror=()=>{setDerivStatus('disconnected');showToast('Deriv connection error',true);};
+  derivWS.onclose=()=>setDerivStatus('disconnected');
+}
+
+function setDerivStatus(s){const el=document.getElementById('derivStatus');el.className='deriv-status '+s;el.textContent='DERIV '+(s==='connected'?'LIVE':s==='connecting'?'...':'OFF');}
+
+async function processDerivTrades(transactions){
+  if(!currentUser)return;
+  const filtered=transactions.filter(t=>{const d=new Date(t.purchase_time*1000);return d>=new Date('2026-02-01')&&d<=new Date('2026-03-31');});
+  const trades=filtered.map(t=>{const pnl=parseFloat(t.sell_price)-parseFloat(t.buy_price);return{date:new Date(t.purchase_time*1000).toISOString().split('T')[0],instrument:t.shortcode?t.shortcode.split('_')[0]:'Unknown',direction:t.shortcode?.includes('CALL')?'Buy':'Sell',lots:1,entry_price:parseFloat(t.buy_price),exit_price:parseFloat(t.sell_price),profit_loss:pnl,result:pnl>0?'Win':pnl<0?'Loss':'Break Even',user_id:currentUser.id};});
+  for(const trade of trades)await sb.from('trades').upsert(trade,{onConflict:'date,instrument,entry_price'});
+  await loadTradesFromSupabase();showToast('✅ Synced '+trades.length+' trades');
+}
+
+async function syncTrades(){
+  if(!derivWS||derivWS.readyState!==WebSocket.OPEN){showToast('Connect Deriv first',true);return;}
+  showToast('Syncing...');derivWS.send(JSON.stringify({profit_table:1,description:1,limit:100,sort:'DESC'}));
+}
+
+async function deleteTrade(id){
+  if(!id||!currentUser) return;
+  if(!confirm('Delete this trade? This cannot be undone.')) return;
+  const{error}=await sb.from('trades').delete().eq('id',id).eq('user_id',currentUser.id);
+  if(error){showToast('Error deleting trade: '+error.message,true);return;}
+  showToast('Trade deleted.');
+  await loadTradesFromSupabase();
+}
+
+async function deleteAllTrades(){
+  if(!currentUser) return;
+  const filter=document.getElementById('tradeFilter')?.value||'all';
+  const label=filter==='all'?'ALL trades':'all '+filter+' trades';
+  if(!confirm('Delete '+label+'? This CANNOT be undone.')) return;
+  let query=sb.from('trades').delete().eq('user_id',currentUser.id);
+  if(filter!=='all') query=query.eq('account_provider',filter);
+  const{error}=await query;
+  if(error){showToast('Error: '+error.message,true);return;}
+  showToast('Deleted '+label+'.');
+  await loadTradesFromSupabase();
+}
+
+async function loadTradesFromSupabase(){
+  if(!currentUser)return;
+  const{data,error}=await sb.from('trades').select('*').eq('user_id',currentUser.id).order('date',{ascending:true});
+  if(error){console.warn(error);return;}
+  allTrades=data||[];renderAllTradesTable();
+  // Refresh active firm sub-page if on a firm
+  if(typeof activeFirm!=='undefined'&&typeof activeSubTab!=='undefined'&&activeFirm&&FIRMS[activeFirm]){
+    renderSubPage(activeFirm,activeSubTab);
+  }
+}
+
+function renderTradesTable(){
+  const tbody=document.getElementById('tradesBody');
+  document.getElementById('tradeCount').textContent=allTrades.length+' trades';
+  if(!allTrades.length){tbody.innerHTML='<tr><td colspan="8"><div class="loading-state">No trades yet — connect Deriv to sync</div></td></tr>';return;}
+  tbody.innerHTML=allTrades.slice().reverse().map(t=>{
+    const pnl=parseFloat(t.profit_loss);
+    const badge=t.result==='Win'?'badge-win':t.result==='Loss'?'badge-loss':'badge-be';
+    const pc=pnl>0?'stat-green':pnl<0?'stat-red':'stat-yellow';
+    return`<tr><td>${t.date}</td><td style="color:var(--accent);font-weight:600;">${t.instrument}</td><td>${t.direction||'—'}</td><td>${t.entry_price?'$'+parseFloat(t.entry_price).toFixed(2):'—'}</td><td>${t.exit_price?'$'+parseFloat(t.exit_price).toFixed(2):'—'}</td><td class="${pc}" style="font-weight:600;">${pnl>=0?'+':''}$${pnl.toFixed(2)}</td><td><span class="badge ${badge}">${t.result}</span></td><td><button class="btn btn-outline btn-sm" onclick="quickJournal('${t.instrument}','${t.date}')">+ NOTE</button></td></tr>`;
+  }).join('');
+}
+
+function renderDashboard(){}
+
+function drawEquityCurve(){}
+
+function selectEmotion(btn,emotion){document.querySelectorAll('.emotion-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');selectedEmotion=emotion;}
+
+function quickJournal(instrument,date){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===2));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-journal').classList.add('active');
+  document.getElementById('jInstrument').value=instrument;
+  document.getElementById('jDate').value=date;
+  document.getElementById('jReasoning').focus();
+}
+
+// ── JOURNAL IMAGE UPLOAD ──
+let journalImgBase64 = null;
+let journalImgMime = null;
+
+function handleJournalImgDrop(e){
+  e.preventDefault();
+  document.getElementById('jImgDropZone').style.borderColor='var(--border)';
+  if(e.dataTransfer.files[0]) handleJournalImg(e.dataTransfer.files[0]);
+}
+
+async function handleJournalImg(file){
+  if(!file) return;
+  const {base64, mimeType} = await fileToBase64Safe(file);
+  journalImgBase64 = base64;
+  journalImgMime = mimeType;
+  // Show preview
+  document.getElementById('jImgPreviewImg').src = 'data:'+mimeType+';base64,'+base64;
+  document.getElementById('jImgPreview').style.display = 'block';
+  document.getElementById('jImgDropZone').style.display = 'none';
+}
+
+function clearJournalImg(){
+  journalImgBase64 = null;
+  journalImgMime = null;
+  document.getElementById('jImgPreview').style.display = 'none';
+  document.getElementById('jImgDropZone').style.display = 'block';
+  document.getElementById('jImgInput').value = '';
+}
+
+async function uploadJournalImgToSupabase(){
+  if(!journalImgBase64 || !currentUser) return null;
+  try{
+    // Convert base64 to blob
+    const byteArr = Uint8Array.from(atob(journalImgBase64), c => c.charCodeAt(0));
+    const ext = journalImgMime === 'image/png' ? 'png' : 'jpg';
+    const filename = currentUser.id + '/' + Date.now() + '.' + ext;
+    const {data, error} = await sb.storage.from('journal-images').upload(filename, byteArr, {
+      contentType: journalImgMime, upsert: false
+    });
+    if(error){ console.warn('Storage error:', error); return null; }
+    const {data: urlData} = sb.storage.from('journal-images').getPublicUrl(filename);
+    return urlData?.publicUrl || null;
+  }catch(e){ console.warn('Image upload error:', e); return null; }
+}
+
+async function saveJournalEntry(){
+  if(!currentUser)return;
+  const entry={entry_date:document.getElementById('jDate').value,instrument:document.getElementById('jInstrument').value,result:document.getElementById('jResult').value,emotions:selectedEmotion,reasoning:document.getElementById('jReasoning').value,what_went_well:document.getElementById('jWell').value,what_to_improve:document.getElementById('jImprove').value,weekly_review:document.getElementById('jWeekly').value,user_id:currentUser.id};
+  if(!entry.entry_date||!entry.instrument){showToast('Date and instrument required',true);return;}
+  const{error}=await sb.from('journal_entries').insert([entry]);
+  if(error){showToast('Error: '+error.message,true);return;}
+  showToast('✅ Journal entry saved!');
+  ['jReasoning','jWell','jImprove','jWeekly'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('jResult').value='';document.getElementById('jInstrument').value='';
+  document.querySelectorAll('.emotion-btn').forEach(b=>b.classList.remove('selected'));selectedEmotion='';
+  loadJournalEntries();
+}
+
+async function deleteJournalEntry(id){
+  if(!id||!currentUser)return;
+  if(!confirm('Delete this journal entry? This cannot be undone.'))return;
+  const{error}=await sb.from('journal_entries').delete().eq('id',id).eq('user_id',currentUser.id);
+  if(error){showToast('Error: '+error.message,true);return;}
+  showToast('Journal entry deleted.');
+  loadJournalEntries();
+}
+
+async function editJournalEntry(id){
+  if(!id||!currentUser)return;
+  const{data,error}=await sb.from('journal_entries').select('*').eq('id',id).single();
+  if(error||!data){showToast('Could not load entry',true);return;}
+  // Populate form with existing data
+  document.getElementById('jDate').value=data.entry_date||'';
+  document.getElementById('jInstrument').value=data.instrument||'';
+  document.getElementById('jResult').value=data.result||'';
+  document.getElementById('jReasoning').value=data.reasoning||'';
+  document.getElementById('jWell').value=data.what_went_well||'';
+  document.getElementById('jImprove').value=data.what_to_improve||'';
+  document.getElementById('jWeekly').value=data.weekly_review||'';
+  // Set emotion
+  selectedEmotion=data.emotions||'';
+  document.querySelectorAll('.emotion-btn').forEach(b=>{
+    b.classList.toggle('selected',b.textContent.includes(selectedEmotion)&&selectedEmotion!=='');
+  });
+  // Mark as editing
+  window._editingJournalId=id;
+  const btn=document.querySelector('[onclick="saveJournalEntry()"]');
+  if(btn){btn.textContent='UPDATE ENTRY';btn.style.background='var(--accent2)';}
+  // Scroll to form
+  document.querySelector('.journal-grid').scrollIntoView({behavior:'smooth'});
+  showToast('Entry loaded — make changes and click UPDATE ENTRY');
+}
+
+async function loadJournalEntries(){
+  if(!currentUser)return;
+  const{data,error}=await sb.from('journal_entries').select('*').eq('user_id',currentUser.id).order('entry_date',{ascending:false});
+  if(error){console.warn(error);return;}
+  const container=document.getElementById('journalEntries');
+  if(!data||!data.length){container.innerHTML='<div class="no-entries">No journal entries yet.<br>Add your first entry →</div>';return;}
+  container.innerHTML=data.map(e=>{
+    const badgeClass=e.result==='Win'?'badge-win':e.result==='Loss'?'badge-loss':'badge-be';
+    return `<div class="journal-entry-card">
+      <div class="entry-meta">
+        <div><div class="entry-date">${e.entry_date}</div><div class="entry-instrument">${e.instrument||'—'}</div></div>
+        <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          ${e.emotions?`<span class="entry-emotion">${e.emotions}</span>`:''}
+          ${e.result?`<span class="badge ${badgeClass}">${e.result}</span>`:''}
+          <div style="display:flex;gap:5px;margin-top:4px;">
+            <button class="btn btn-outline btn-sm" onclick="editJournalEntry('${e.id}')" style="padding:3px 8px;font-size:0.65rem;">EDIT</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteJournalEntry('${e.id}')" style="padding:3px 8px;font-size:0.65rem;">DEL</button>
+          </div>
+        </div>
+      </div>
+      ${e.reasoning?`<div class="entry-section"><div class="entry-section-label">Reasoning</div><div class="entry-text">${e.reasoning}</div></div>`:''}
+      ${e.what_went_well?`<div class="entry-section"><div class="entry-section-label">What went well</div><div class="entry-text">${e.what_went_well}</div></div>`:''}
+      ${e.what_to_improve?`<div class="entry-section"><div class="entry-section-label">To improve</div><div class="entry-text">${e.what_to_improve}</div></div>`:''}
+      ${e.weekly_review?`<div class="entry-section"><div class="entry-section-label">Weekly Review</div><div class="entry-text">${e.weekly_review}</div></div>`:''}
+      ${e.image_url?`<div class="entry-section"><div class="entry-section-label">Screenshot</div><img src="${e.image_url}" style="width:100%;border-radius:4px;border:1px solid var(--border);margin-top:4px;max-height:200px;object-fit:cover;cursor:pointer;" onclick="window.open('${e.image_url}','_blank')"/></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderAnalysis(){}
+
+// ── CSV/EXCEL UPLOAD ──
+let csvParsedTrades = [];
+let imgParsedTrades = [];
+let _imgRawText = "";
+
+function handleCSVDrop(e){e.preventDefault();document.getElementById('csvDropZone').style.borderColor='var(--border)';if(e.dataTransfer.files.length)handleCSVFiles(e.dataTransfer.files);}
+function handleImgDrop(e){e.preventDefault();document.getElementById('imgDropZone').style.borderColor='var(--border)';handleImgFiles(e.dataTransfer.files);}
+
+function parseMT5Html(html){
+    const trades = [];
+    // Extract all table rows using regex
+    const rowMatches = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi)||[];
+    rowMatches.forEach(row=>{
+      const cellMatches = row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)||[];
+      const cells = cellMatches.map(c=>c.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim());
+      if(cells.length < 10) return;
+      // Must start with date pattern YYYY.MM.DD
+      if(!/^\d{4}\.\d{2}\.\d{2}/.test(cells[0])) return;
+      const dir = (cells[3]||'').toLowerCase();
+      if(dir!=='buy'&&dir!=='sell') return;
+      try{
+        const date = cells[0].slice(0,10).replace(/\./g,'-');
+        const symbol = cells[2]||'Unknown';
+        const entry = parseFloat((cells[6]||'0').replace(/\s/g,''))||0;
+        const exitP = parseFloat((cells[10]||'0').replace(/\s/g,''))||0;
+        const pnl = parseFloat((cells[13]||'0').replace(/[\s,]/g,''))||0;
+        trades.push({date,instrument:symbol,direction:dir.charAt(0).toUpperCase()+dir.slice(1),
+          entry_price:entry,exit_price:exitP,profit_loss:pnl,
+          result:pnl>0?'Win':pnl<0?'Loss':'Break Even'});
+      }catch(e){}
+    });
+    return trades;
+  }
+
+async function handleCSVFiles(files){
+  if(!files||!files.length)return;
+  csvParsedTrades=[];
+  document.getElementById('csvPreviewLabel').textContent='Processing '+files.length+' file(s)...';
+  document.getElementById('csvPreview').style.display='block';
+  document.getElementById('csvPreviewTable').innerHTML='<div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);padding:10px;">Reading files...</div>';
+  for(const file of Array.from(files)){
+    await handleCSVFile(file);
+  }
+  if(csvParsedTrades.length){
+    document.getElementById('csvPreviewLabel').textContent='Found '+csvParsedTrades.length+' total trades across '+files.length+' file(s) — review then save:';
+    showTradePreview('csvPreview','csvPreviewLabel','csvPreviewTable',csvParsedTrades);
+  } else {
+    document.getElementById('csvPreviewLabel').textContent='No trades found in uploaded files.';
+  }
+}
+
+async function handleCSVFile(file){
+  if(!file)return;
+  const text=await file.text();
+  const name=file.name.toLowerCase();
+
+  // HTML/HTM — handle MT5 UTF-16 export format
+  if(name.endsWith('.html')||name.endsWith('.htm')){
+    showToast('Reading MT5 HTML file...');
+    try{
+      const arrayBuf = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuf);
+      // Detect UTF-16 BOM (FF FE or FE FF)
+      let htmlText = '';
+      if((bytes[0]===0xFF&&bytes[1]===0xFE)||(bytes[0]===0xFE&&bytes[1]===0xFF)){
+        htmlText = new TextDecoder('utf-16').decode(arrayBuf);
+      } else {
+        htmlText = new TextDecoder('utf-8').decode(arrayBuf);
+      }
+      // Remove null chars
+      htmlText = htmlText.replace(/ /g,'');
+
+      const trades = parseMT5Html(htmlText);
+
+      if(trades.length){
+        _csvFirm = autoDetectFirm(htmlText) || 'Other';
+        showDetectedFirm('csvDetectedFirm', _csvFirm==='Other'?null:_csvFirm);
+        csvParsedTrades.push(...trades.map(t=>({...t,user_id:currentUser?.id})));
+        showTradePreview('csvPreview','csvPreviewLabel','csvPreviewTable',csvParsedTrades);
+        showToast('Found '+trades.length+' trades → '+_csvFirm);
+      } else {
+        showToast('No trades found. Make sure this is a MT5 Trade History Report.',true);
+      }
+    }catch(e){
+      console.warn('HTML parse error:',e);
+      showToast('Could not read HTML. Please export from MT5 as HTML and try again.',true);
+    }
+    return;
+  }
+
+
+
+  // CSV — parse directly
+  const lines=text.split('\n').filter(l=>l.trim());
+  const trades=[];
+  for(let i=1;i<lines.length;i++){
+    const cols=lines[i].split(',').map(c=>c.trim().replace(/"/g,''));
+    if(cols.length<3)continue;
+    const pnl=parseFloat(cols[5]||cols[4]||0);
+    trades.push({
+      date:cols[0]||new Date().toISOString().split('T')[0],
+      instrument:cols[1]||'Unknown',
+      direction:cols[2]||'—',
+      entry_price:parseFloat(cols[3])||0,
+      exit_price:parseFloat(cols[4])||0,
+      profit_loss:pnl,
+      result:pnl>0?'Win':pnl<0?'Loss':'Break Even',
+      user_id:currentUser?.id
+    });
+  }
+  // Auto-detect from instrument names in CSV
+  const instText = trades.map(t=>t.instrument||'').join(' ');
+  _csvFirm = autoDetectFirm(instText) || 'Other';
+  showDetectedFirm('csvDetectedFirm', _csvFirm==='Other'?null:_csvFirm);
+  csvParsedTrades.push(...trades);
+}
+
+// ── SCREENSHOT AI PARSE ──
+async function handleImgFiles(files){
+  if(!files||!files.length)return;
+  imgParsedTrades=[];
+  const fileArr=Array.from(files);
+  const total=fileArr.length;
+  const progressArea=document.getElementById('imgProgressArea');
+  const progressLabel=document.getElementById('imgProgressLabel');
+  const progressCount=document.getElementById('imgProgressCount');
+  const progressBar=document.getElementById('imgProgressBar');
+  const fileStatuses=document.getElementById('imgFileStatuses');
+  const imgPreview=document.getElementById('imgPreview');
+  progressArea.style.display='block';
+  imgPreview.style.display='none';
+  progressLabel.style.color='var(--accent)';
+  progressLabel.textContent='Processing '+total+' screenshot'+(total>1?'s':'')+'...';
+  progressCount.textContent='0/'+total;
+  progressBar.style.width='0%';
+  fileStatuses.innerHTML='';
+  fileArr.forEach((file,i)=>{
+    const row=document.createElement('div');
+    row.id='fstatus_'+i;
+    row.style.cssText='display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:0.68rem;padding:5px 8px;background:var(--surface2);border-radius:3px;';
+    const fname=file.name||('Screenshot '+(i+1));
+    row.innerHTML='<span id="ficon_'+i+'" style="color:var(--muted);">[ ]</span>'
+      +'<span style="color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+fname+'</span>'
+      +'<span id="ftrades_'+i+'" style="color:var(--muted);">waiting</span>';
+    fileStatuses.appendChild(row);
+  });
+  let completed=0;
+  function updateProgress(){
+    completed++;
+    const pct=Math.round(completed/total*100);
+    progressBar.style.width=pct+'%';
+    progressCount.textContent=completed+'/'+total;
+    if(completed===total) progressLabel.textContent='Done! Processed '+total+' file'+(total>1?'s':'');
+  }
+  const results=await Promise.allSettled(fileArr.map(async(file,i)=>{
+    document.getElementById('ficon_'+i).textContent='[~]';
+    document.getElementById('ftrades_'+i).textContent='reading...';
+    try{
+      const {base64,mimeType}=await fileToBase64Safe(file);
+      
+      // Show size info for debugging
+      const sizeKB = Math.round(base64.length * 0.75 / 1024);
+      document.getElementById('ftrades_'+i).textContent='sending '+sizeKB+'KB...';
+      
+      const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({image:base64,mimeType:mimeType,prompt:'You are a trading journal assistant. This screenshot shows trade history from MT5, Deriv, FTMO, The5ers, or similar. Extract ALL visible trades and return ONLY a JSON array, no explanation, no markdown. Each object: date (YYYY-MM-DD), instrument (string), direction (Buy or Sell), entry_price (number), exit_price (number), profit_loss (number, negative for losses), result (Win/Loss/Break Even). Use 0 for missing numbers, Unknown for missing strings. Return [] ONLY if truly no trade rows exist.'})
+      });
+      
+      if(!resp.ok) throw new Error('Worker returned HTTP '+resp.status);
+      
+      const data=await resp.json();
+      console.log('Worker response:', JSON.stringify(data).slice(0,300));
+      
+      if(data.error) throw new Error(JSON.stringify(data.error));
+      
+      const text=data.response||data.content?.[0]?.text||'';
+      console.log('Raw AI response:', text.slice(0,500));
+      
+      if(!text||text.trim()==='') throw new Error('Empty response from worker');
+      
+      const clean=text.replace(/```json|```/g,'').trim();
+      const jsonMatch=clean.match(/\[[\s\S]*\]/);
+      if(!jsonMatch) throw new Error('No JSON found in: '+clean.slice(0,100));
+      
+      const parsed=JSON.parse(jsonMatch[0]);
+      if(!Array.isArray(parsed)||!parsed.length) throw new Error('Empty trade array');
+      
+      document.getElementById('ficon_'+i).style.color='var(--green)';
+      document.getElementById('ficon_'+i).textContent='[OK]';
+      document.getElementById('ftrades_'+i).style.color='var(--green)';
+      document.getElementById('ftrades_'+i).textContent=parsed.length+' trade'+(parsed.length>1?'s':'');
+      updateProgress();
+      return parsed.map(t=>({...t,user_id:currentUser?.id}));
+    }catch(e){
+      document.getElementById('ficon_'+i).style.color='var(--red)';
+      document.getElementById('ficon_'+i).textContent='[X]';
+      document.getElementById('ftrades_'+i).style.color='var(--red)';
+      document.getElementById('ftrades_'+i).textContent=e.message.slice(0,40);
+      updateProgress();
+      console.error('Image parse error for',file.name,':',e.message);
+      return [];
+    }
+  }));
+  results.forEach(r=>{ if(r.status==='fulfilled') imgParsedTrades.push(...r.value); });
+  // Detect firm from extracted instruments + filenames
+  const imgInstText = imgParsedTrades.map(t=>t.instrument||'').join(' ');
+  const imgFileNames = fileArr.map(f=>f.name||'').join(' ');
+  _imgFirm = autoDetectFirm(imgInstText+' '+imgFileNames) || 'Other';
+  showDetectedFirm('imgDetectedFirm', _imgFirm==='Other'?null:_imgFirm);
+  if(imgParsedTrades.length){
+    progressLabel.textContent='Found '+imgParsedTrades.length+' trades across '+total+' file'+(total>1?'s':'')+'!';
+    progressLabel.style.color='var(--green)';
+    document.getElementById('imgPreviewLabel').textContent='Preview — '+imgParsedTrades.length+' trades found:';
+    showTradePreview('imgPreview',null,'imgPreviewTable',imgParsedTrades);
+    imgPreview.style.display='block';
+  } else {
+    progressLabel.textContent='No trades found. Make sure screenshots show trade history rows.';
+    progressLabel.style.color='var(--yellow)';
+  }
+}
+// Safe base64 converter — resizes and normalises phone images
+async function fileToBase64Safe(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=reject;
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>{
+        // Fallback: just return raw base64
+        resolve({base64:reader.result.split(',')[1],mimeType:'image/jpeg'});
+      };
+      img.onload=()=>{
+        // Resize to max 1600px wide for best AI reading while keeping file small
+        const MAX=1600;
+        let w=img.width,h=img.height;
+        if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+        const canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,w,h);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.92);
+        resolve({base64:dataUrl.split(',')[1],mimeType:'image/jpeg'});
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileToBase64(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});}
+
+// ── PASTE PARSE ──
+let pasteParsedTrades=[];
+async function parsePastedTrades(){
+  const text=document.getElementById('pasteTradeData').value.trim();
+  if(!text){showToast('Please paste some trade data first',true);return;}
+  showToast('🤖 Parsing trades...');
+  try{
+    const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:text})
+    });
+    const data=await resp.json();
+    const raw=data.response||data.content?.[0]?.text||'[]';
+    const clean=raw.replace(/```json|```/g,'').trim();
+    pasteParsedTrades=JSON.parse(clean).map(t=>({...t,user_id:currentUser?.id}));
+    _pasteFirm = autoDetectFirm(text) || 'Other';
+    showDetectedFirm('pasteDetectedFirm', _pasteFirm==='Other'?null:_pasteFirm);
+    showTradePreview('pastePreview','pastePreviewLabel','pastePreviewTable',pasteParsedTrades);
+    showToast('✅ Found '+pasteParsedTrades.length+' trades!');
+  }catch(e){showToast('Could not parse trades. Try a different format.',true);}
+}
+
+function showTradePreview(containerId, labelId, tableId, trades){
+  const container=document.getElementById(containerId);
+  if(labelId)document.getElementById(labelId).textContent='Found '+trades.length+' trades — review before saving:';
+  container.style.display='block';
+  const tableEl=document.getElementById(tableId);
+  tableEl.innerHTML=`<table class="trades-table"><thead><tr><th>Date</th><th>Instrument</th><th>Direction</th><th>P&L</th><th>Result</th></tr></thead><tbody>`+
+    trades.map(t=>{
+      const pnl=parseFloat(t.profit_loss);
+      const badge=t.result==='Win'?'badge-win':t.result==='Loss'?'badge-loss':'badge-be';
+      return`<tr><td>${t.date}</td><td style="color:var(--accent)">${t.instrument}</td><td>${t.direction||'—'}</td><td class="${pnl>=0?'stat-green':'stat-red'}">${pnl>=0?'+':''}$${pnl.toFixed(2)}</td><td><span class="badge ${badge}">${t.result}</span></td></tr>`;
+    }).join('')+'</tbody></table>';
+}
+
+// ── AUTO-DETECT FIRM FROM FILE CONTENT ──
+function autoDetectFirm(text){
+  const t = text.toLowerCase();
+  if(t.includes('fivepercent')||t.includes('five percent')||t.includes('5percent')||t.includes('the5ers')||t.includes('5%ers')) return 'The5ers';
+  if(t.includes('ftmo')) return 'FTMO';
+  if(t.includes('myforexfunds')||t.includes('mff')) return 'Other';
+  if(t.includes('deriv')||t.includes('volatility')||t.includes('binary')) return 'Deriv';
+  if(t.includes('fundedtrader')||t.includes('funded trader')) return 'Other';
+  if(t.includes('topstep')||t.includes('apex')||t.includes('trueforex')) return 'Other';
+  return null; // could not detect
+}
+
+// ── GENERATE DUPLICATE KEY ──
+function tradeKey(t){
+  // Robust key: normalise types so DB strings and parsed numbers match
+  const ep  = parseFloat(String(t.entry_price||0).replace(/[^0-9.\-]/g,'')||0);
+  const pnl = parseFloat(String(t.profit_loss||0).replace(/[^0-9.\-]/g,'')||0);
+  return [
+    String(t.date||'').trim(),
+    String(t.instrument||'').trim().toLowerCase(),
+    String(t.direction||'').trim().toLowerCase(),
+    ep.toFixed(2),
+    pnl.toFixed(2)
+  ].join('|');
+}
+
+
+async function saveCSVTrades(){
+  // Use already-detected firm from upload, fall back to dropdown, then instrument scan
+  const provider = (_csvFirm && _csvFirm!=='Other') ? _csvFirm : detectOrGetProvider('uploadProvider', csvParsedTrades);
+  await saveUploadedTrades(csvParsedTrades, 'csvPreview', provider);
+}
+async function saveImgTrades(){
+  const provider = (_imgFirm && _imgFirm!=='Other') ? _imgFirm : detectOrGetProvider('imgUploadProvider', imgParsedTrades);
+  await saveUploadedTrades(imgParsedTrades, 'imgPreview', provider);
+}
+async function savePastedTrades(){
+  const provider = (_pasteFirm && _pasteFirm!=='Other') ? _pasteFirm : detectOrGetProvider('pasteUploadProvider', pasteParsedTrades);
+  await saveUploadedTrades(pasteParsedTrades, 'pastePreview', provider);
+}
+
+function detectOrGetProvider(dropdownId, trades){
+  // Scan instrument names + any firm field on the trade objects
+  const combined = trades.map(t=>[(t.instrument||''),(t.account_provider||''),(t.firm||'')].join(' ')).join(' ').toLowerCase();
+  const detected = autoDetectFirm(combined);
+  if(detected) return detected;
+  // Fall back to dropdown selection
+  return document.getElementById(dropdownId)?.value || 'Other';
+}
+
+async function saveUploadedTrades(trades, containerId, provider){
+  if(!trades.length){showToast('No trades to save',true);return;}
+  if(!currentUser){showToast('Please sign in first',true);return;}
+
+  // Get existing trades to prevent duplicates
+  const{data:existing}=await sb.from('trades').select('date,instrument,direction,entry_price,profit_loss').eq('user_id',currentUser.id);
+  const existingKeys=new Set((existing||[]).map(t=>tradeKey(t)));
+
+  // Filter out duplicates
+  const newTrades=trades.filter(t=>!existingKeys.has(tradeKey(t)));
+  const dupeCount=trades.length-newTrades.length;
+
+  if(!newTrades.length){
+    showToast('All '+trades.length+' trades already exist — no duplicates saved.',true);
+    document.getElementById(containerId).style.display='none';
+    return;
+  }
+
+  // Batch insert
+  const batch=newTrades.map(t=>({
+    ...t,
+    user_id:currentUser.id,
+    account_provider:provider
+  }));
+
+  let saved=0;
+  const chunkSize=50;
+  for(let i=0;i<batch.length;i+=chunkSize){
+    const chunk=batch.slice(i,i+chunkSize);
+    const{error}=await sb.from('trades').insert(chunk);
+    if(!error) saved+=chunk.length;
+    else console.warn('Insert error:',error.message);
+  }
+
+  let msg='Saved '+saved+' trades to '+provider+'!';
+  if(dupeCount>0) msg+=' ('+dupeCount+' duplicates skipped)';
+  showToast(msg);
+  document.getElementById(containerId).style.display='none';
+  await loadTradesFromSupabase();
+
+  // Auto-navigate to firm history tab after save
+  // (handled by renderSubPage refresh in loadTradesFromSupabase)
+}
+
+window.addEventListener('resize',()=>{if(allTrades.length)drawEquityCurve();});
+
+</script>
 
 </body>
 </html>
