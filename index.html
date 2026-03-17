@@ -75,7 +75,7 @@
   .tab:hover:not(.active){color:var(--text);}
   .tab.active{color:var(--green);background:var(--bg);border-color:var(--border);}
 
-  main{position:relative;z-index:5;width:100%;padding:0 0 60px;box-sizing:border-box;}
+  main{position:relative;z-index:5;width:100%;padding:0;box-sizing:border-box;}
   .page{display:none;}
   .page.active{display:block;}
 
@@ -183,13 +183,13 @@
   .sub-tab:hover:not(.active){color:var(--text);}
   .sub-tab.active{color:var(--accent);background:var(--surface);border-color:var(--border);}
   .firm-container{display:block;}
-  .sub-page{padding:14px 14px 80px;box-sizing:border-box;}
+  .sub-page{padding:14px 14px 8px;box-sizing:border-box;}
   .chart-canvas-wrap{position:relative;width:100%;height:200px;}
   .chart-canvas-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
   @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
 
 /* ── V2-STYLE KPI CARDS ── */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;margin-bottom:16px;width:100%;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;margin-bottom:8px;width:100%;flex-shrink:0;}
 .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:13px;position:relative;overflow:hidden;transition:border-color .2s;}
 .kpi-card:hover{border-color:var(--muted);}
 .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--border));}
@@ -1231,25 +1231,31 @@ function renderFirmOverview(firm,firmName){
       <span style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">Sets equity curve baseline</span>
     </div>
   </div>
-  <div class="two-col" style="margin-bottom:14px;">
-    <div class="chart-card">
-      <div class="chart-title">EQUITY CURVE <span id="eq-val-${firm}" style="font-size:11px;"></span></div>
-      <canvas id="eq-${firm}" height="220"></canvas>
-    </div>
-    <div class="chart-card">
-      <div class="chart-title">DAILY P&amp;L</div>
-      <canvas id="day-${firm}" height="160"></canvas>
-    </div>
+  <!-- 8px invisible spacer above equity curve -->
+  <div style="height:8px;"></div>
+
+  <!-- Large equity curve -->
+  <div class="chart-card" style="margin-bottom:8px;">
+    <div class="chart-title">EQUITY CURVE <span id="eq-val-${firm}" style="font-size:11px;"></span></div>
+    <canvas id="eq-${firm}" height="160"></canvas>
   </div>
 
-  <div class="two-col" style="margin-bottom:14px;">
+  <!-- 8px invisible spacer below equity curve -->
+  <div style="height:8px;"></div>
+
+  <!-- 3 equal boxes below -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;">
+    <div class="chart-card">
+      <div class="chart-title">DAILY P&amp;L</div>
+      <canvas id="day-${firm}" height="100"></canvas>
+    </div>
     <div class="chart-card">
       <div class="chart-title">BY INSTRUMENT</div>
-      <canvas id="inst-${firm}" height="160"></canvas>
+      <canvas id="inst-${firm}" height="100"></canvas>
     </div>
     <div class="chart-card">
       <div class="chart-title">MONTHLY P&amp;L</div>
-      <canvas id="mo-${firm}" height="160"></canvas>
+      <canvas id="mo-${firm}" height="100"></canvas>
     </div>
   </div>
 
@@ -1299,7 +1305,7 @@ function renderFirmOverview(firm,firmName){
     </div>
   </div>
 
-  <div class="insight" id="insight-${firm}" style="margin-top:14px;padding:16px 20px;font-family:var(--font-mono);font-size:11px;line-height:2;">
+  <div class="insight" id="insight-${firm}" style="margin-top:8px;padding:10px 16px;font-family:var(--font-mono);font-size:10px;line-height:1.6;flex-shrink:0;">
     <div style="color:var(--accent);font-weight:700;margin-bottom:6px;letter-spacing:1px;">${firmName} Account — ${pf>=1.5?'✅ PASSING TARGET':'⚠️ WARNING: BELOW TARGET'}</div>
     <div style="color:var(--muted);">Net P/L:</div>
     <div style="color:${tot>=0?'var(--green)':'var(--red)'};font-size:15px;font-weight:700;">${tot>=0?'+$':'-$'}${Math.abs(tot).toFixed(2)}</div>
@@ -1358,99 +1364,99 @@ function renderFirmCharts(firm, trades){
     eqEl.textContent = (diff>=0?'+$':'-$')+Math.abs(diff).toLocaleString('en-US',{minimumFractionDigits:2});
     eqEl.style.color = diff>=0?'var(--green)':'var(--red)';
   }
-  const eqCtx = document.getElementById('eq-'+firm)?.getContext('2d');
-  if(eqCtx){
-    // Build the chart first with placeholder colours, then recolour after render
-    // using the real pixel position of the baseline from the Y axis
-    const chartInst = new Chart(eqCtx,{
-      type:'line',
-      data:{labels:eqLabels,datasets:[{
-        data:eqData,
-        borderColor:'#00e676',
-        backgroundColor:'rgba(0,230,118,0.15)',
-        borderWidth:2,
-        pointRadius:0,
-        pointHoverRadius:5,
-        fill:true,
-        tension:0.3
-      }]},
-      options:{
-        responsive:true,
-        interaction:{mode:'index',intersect:false},
-        plugins:{
-          legend:{display:false},
-          tooltip:{...TOOLTIP,callbacks:{
-            label:ctx=>{
-              const v=ctx.parsed.y;
-              const diff=v-startBal;
-              return 'Balance: $'+v.toLocaleString('en-US',{minimumFractionDigits:2})
-                    +(startBal?' ('+(diff>=0?'+':'')+diff.toFixed(2)+')':'');
-            }
-          }}
-        },
-        scales:{
-          x:{ticks:{...TICKS,maxTicksLimit:8},grid:GRID},
-          y:{ticks:{...TICKS,callback:v=>'$'+v.toLocaleString()},grid:GRID}
-        }
-      },
-      plugins:[{
-        id:'ftmoGradient',
-        afterRender(chart){
-          // afterRender fires after full paint — Y pixel coords are guaranteed accurate
-          const {ctx:cx, chartArea:{top,bottom}, scales:{y}} = chart;
-          const baselinePx = startBal ? y.getPixelForValue(startBal) : bottom;
-          const clampedPx  = Math.max(top, Math.min(bottom, baselinePx));
-          const totalH     = bottom - top;
-          const splitRatio = Math.max(0, Math.min(1, (clampedPx - top) / totalH));
+  const eqCanvas = document.getElementById('eq-'+firm);
+  if(!eqCanvas) return;
+  const eqCtx = eqCanvas.getContext('2d');
 
-          // Line gradient: green above baseline, red below
-          const lineG = cx.createLinearGradient(0, top, 0, bottom);
-          lineG.addColorStop(0,                              '#00e676');
-          lineG.addColorStop(Math.max(0,splitRatio-0.0001), '#00e676');
-          lineG.addColorStop(Math.min(1,splitRatio+0.0001), '#ff1744');
-          lineG.addColorStop(1,                              '#ff1744');
+  // Helper — builds the split gradient using actual rendered Y-axis positions
+  function buildEqGradients(chart){
+    const {ctx:cx, chartArea:{top,bottom}, scales:{y}} = chart;
+    const baselinePx = startBal ? y.getPixelForValue(startBal) : bottom;
+    const clamped    = Math.max(top, Math.min(bottom, baselinePx));
+    const ratio      = (clamped - top) / (bottom - top);
+    const sr         = Math.max(0, Math.min(1, ratio));
 
-          // Fill gradient: green above, red below
-          const fillG = cx.createLinearGradient(0, top, 0, bottom);
-          fillG.addColorStop(0,                              'rgba(0,230,118,0.22)');
-          fillG.addColorStop(Math.max(0,splitRatio-0.0001), 'rgba(0,230,118,0.06)');
-          fillG.addColorStop(Math.min(1,splitRatio+0.0001), 'rgba(255,23,68,0.06)');
-          fillG.addColorStop(1,                              'rgba(255,23,68,0.22)');
+    const lineG = cx.createLinearGradient(0, top, 0, bottom);
+    lineG.addColorStop(0,                   '#00e676');
+    lineG.addColorStop(Math.max(0,sr-0.001),'#00e676');
+    lineG.addColorStop(Math.min(1,sr+0.001),'#ff1744');
+    lineG.addColorStop(1,                   '#ff1744');
 
-          // Only update if gradient actually changed
-          const ds = chart.data.datasets[0];
-          ds.borderColor     = lineG;
-          ds.backgroundColor = fillG;
-          // Redraw once with updated gradients (prevent infinite loop with flag)
-          if(!chart._gradientApplied){
-            chart._gradientApplied = true;
-            chart.update('none'); // 'none' = no animation, just redraw
-          } else {
-            chart._gradientApplied = false; // reset for next real update
-          }
-        },
-        afterDraw(chart){
-          if(!startBal) return;
-          const {ctx:cx, chartArea:{left,right,top,bottom}, scales:{y}} = chart;
-          const yPx = y.getPixelForValue(startBal);
-          if(yPx < top || yPx > bottom) return;
-          cx.save();
-          cx.setLineDash([6,4]);
-          cx.strokeStyle = 'rgba(255,255,255,0.25)';
-          cx.lineWidth = 1;
-          cx.beginPath();
-          cx.moveTo(left, yPx);
-          cx.lineTo(right, yPx);
-          cx.stroke();
-          cx.fillStyle = 'rgba(255,255,255,0.4)';
-          cx.font = '9px monospace';
-          cx.textAlign = 'right';
-          cx.fillText('$'+startBal.toLocaleString(), right-4, yPx-4);
-          cx.restore();
-        }
-      }]
-    });
+    const fillG = cx.createLinearGradient(0, top, 0, bottom);
+    fillG.addColorStop(0,                   'rgba(0,230,118,0.22)');
+    fillG.addColorStop(Math.max(0,sr-0.001),'rgba(0,230,118,0.06)');
+    fillG.addColorStop(Math.min(1,sr+0.001),'rgba(255,23,68,0.06)');
+    fillG.addColorStop(1,                   'rgba(255,23,68,0.22)');
+
+    return {lineG, fillG};
   }
+
+  // Create chart with solid green first — gradient applied after first render
+  const eqChart = new Chart(eqCtx,{
+    type:'line',
+    data:{labels:eqLabels,datasets:[{
+      data:eqData,
+      borderColor:'#00e676',
+      backgroundColor:'rgba(0,230,118,0.15)',
+      borderWidth:2,
+      pointRadius:0,
+      pointHoverRadius:5,
+      fill:true,
+      tension:0.3
+    }]},
+    options:{
+      responsive:true,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{...TOOLTIP,callbacks:{
+          label:ctx=>{
+            const v=ctx.parsed.y;
+            const diff=v-startBal;
+            return 'Balance: $'+v.toLocaleString('en-US',{minimumFractionDigits:2})
+                  +(startBal?' ('+(diff>=0?'+':'')+diff.toFixed(2)+')':'');
+          }
+        }}
+      },
+      scales:{
+        x:{ticks:{...TICKS,maxTicksLimit:8},grid:GRID},
+        y:{ticks:{...TICKS,callback:v=>'$'+v.toLocaleString()},grid:GRID}
+      }
+    },
+    plugins:[{
+      id:'baseline',
+      afterDraw(chart){
+        if(!startBal) return;
+        const {ctx:cx,chartArea:{left,right,top,bottom},scales:{y}}=chart;
+        const yPx=y.getPixelForValue(startBal);
+        if(yPx<top||yPx>bottom) return;
+        cx.save();
+        cx.setLineDash([6,4]);
+        cx.strokeStyle='rgba(255,255,255,0.25)';
+        cx.lineWidth=1;
+        cx.beginPath();cx.moveTo(left,yPx);cx.lineTo(right,yPx);cx.stroke();
+        cx.fillStyle='rgba(255,255,255,0.4)';
+        cx.font='9px monospace';
+        cx.textAlign='right';
+        cx.fillText('$'+startBal.toLocaleString(),right-4,yPx-4);
+        cx.restore();
+      }
+    }]
+  });
+
+  // Apply correct gradient AFTER chart is in the DOM and fully sized
+  // Use requestAnimationFrame to guarantee paint has completed
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      try{
+        const {lineG,fillG} = buildEqGradients(eqChart);
+        eqChart.data.datasets[0].borderColor     = lineG;
+        eqChart.data.datasets[0].backgroundColor = fillG;
+        eqChart.update('none');
+      }catch(e){ console.warn('Gradient apply failed:',e); }
+    });
+  });
+
 
   // Daily P&L
   dc('day-'+firm);
