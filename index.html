@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>FSH Empire — Trading Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap&family=Bebas+Neue&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>"/>
 <style>
@@ -12,7 +12,7 @@
     --bg:#0a0c0f;--surface:#111418;--surface2:#181c22;--border:#1e2530;
     --accent:#00d4ff;--accent2:#ff6b35;--green:#00e676;--red:#ff1744;--yellow:#ffd600;
     --text:#e8edf5;--muted:#5a6478;
-    --font-display:'Bebas Neue',sans-serif;--font-ui:'Rajdhani',sans-serif;--font-mono:'IBM Plex Mono',monospace;
+    --font-display:'Syne',sans-serif;--font-ui:'Rajdhani',sans-serif;--font-mono:'IBM Plex Mono',monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:var(--font-ui);min-height:100vh;overflow-x:hidden;}
@@ -75,7 +75,7 @@
   .tab:hover:not(.active){color:var(--text);}
   .tab.active{color:var(--green);background:var(--bg);border-color:var(--border);}
 
-  main{position:relative;z-index:5;width:100%;padding:0;box-sizing:border-box;}
+  main{position:relative;z-index:5;width:100%;padding:0 0 60px;box-sizing:border-box;}
   .page{display:none;}
   .page.active{display:block;}
 
@@ -183,19 +183,22 @@
   .sub-tab:hover:not(.active){color:var(--text);}
   .sub-tab.active{color:var(--accent);background:var(--surface);border-color:var(--border);}
   .firm-container{display:block;}
-  .sub-page{padding:18px 22px;box-sizing:border-box;}
+  .sub-page{padding:14px 14px 80px;box-sizing:border-box;}
   .chart-canvas-wrap{position:relative;width:100%;height:200px;}
   .chart-canvas-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
   @keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
 
 /* ── V2-STYLE KPI CARDS ── */
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:16px;width:100%;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;margin-bottom:16px;width:100%;}
 .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:13px;position:relative;overflow:hidden;transition:border-color .2s;}
+.kpi-card:hover{border-color:var(--muted);}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--border));}
+.kpi-card.g{--kc:var(--green);}.kpi-card.r{--kc:var(--red);}.kpi-card.b{--kc:var(--accent);}.kpi-card.o{--kc:var(--yellow);}.kpi-card.p{--kc:#a78bfa;}
 .kpi-card:hover{border-color:var(--muted);}
 .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--border));}
 .kpi-card.g{--kc:var(--green);} .kpi-card.r{--kc:var(--red);} .kpi-card.b{--kc:var(--accent);} .kpi-card.o{--kc:var(--yellow);} .kpi-card.p{--kc:#a78bfa;}
 .kpi-label{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;}
-.kpi-value{font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1;}
+.kpi-value{font-family:var(--font-display);font-size:19px;font-weight:700;}
 .kpi-value.g{color:var(--green);} .kpi-value.r{color:var(--red);} .kpi-value.b{color:var(--accent);} .kpi-value.o{color:var(--yellow);} .kpi-value.p{color:#a78bfa;}
 .kpi-sub{font-size:9px;color:var(--muted);margin-top:4px;font-family:var(--font-mono);}
 
@@ -1167,6 +1170,7 @@ function renderFirmOverview(firm,firmName){
   const profitPct=Math.min(100,Math.max(0,tot)/L.target*100);
   const overallColor=overallPct>70?'var(--red)':overallPct>40?'var(--gold)':'var(--green)';
 
+  const _savedBal=localStorage.getItem('startBal_'+firm)||'';
   container.innerHTML=`
   <div class="kpi-grid">
     <div class="kpi-card ${tot>=0?'g':'r'}">
@@ -1212,10 +1216,25 @@ function renderFirmOverview(firm,firmName){
     ${monthKpis}
   </div>
 
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;flex-wrap:wrap;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Starting Balance</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="color:var(--muted);font-family:var(--font-mono);font-size:11px;">$</span>
+      <input type="number" id="${firm}-startBal"
+        style="width:130px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text);font-family:var(--font-mono);font-size:12px;outline:none;"
+        placeholder="e.g. 10000"
+        value="${localStorage.getItem('startBal_${firm}')||''}"
+        oninput="setFirmStartBal('${firm}',this.value)"
+        onfocus="this.style.borderColor='var(--accent)'"
+        onblur="this.style.borderColor='var(--border)'"
+      />
+      <span style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">Sets equity curve baseline</span>
+    </div>
+  </div>
   <div class="two-col" style="margin-bottom:14px;">
     <div class="chart-card">
-      <div class="chart-title">EQUITY CURVE <span id="eq-val-${firm}" style="color:var(--green);font-size:11px;"></span></div>
-      <canvas id="eq-${firm}" height="160"></canvas>
+      <div class="chart-title">EQUITY CURVE <span id="eq-val-${firm}" style="font-size:11px;"></span></div>
+      <canvas id="eq-${firm}" height="220"></canvas>
     </div>
     <div class="chart-card">
       <div class="chart-title">DAILY P&amp;L</div>
@@ -1238,7 +1257,7 @@ function renderFirmOverview(firm,firmName){
     <div class="card-title">RISK LIMITS — ${firmName.toUpperCase()} <span>Base $${L.base.toLocaleString()}</span></div>
     <div class="two-col">
       <div>
-        <div style="margin-bottom:14px;">
+        <div style="margin-bottom:28px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
             <span style="font-size:9px;color:var(--muted);letter-spacing:1px;">MAX OVERALL LOSS (${(L.overall/L.base*100).toFixed(0)}%)</span>
             <span style="font-size:11px;color:${overallColor};">$${totalLoss.toFixed(0)} / $${L.overall}</span>
@@ -1280,14 +1299,37 @@ function renderFirmOverview(firm,firmName){
     </div>
   </div>
 
-  <div class="insight" id="insight-${firm}">
-    ${pf>=1.5?'✅ PASSING':'⚠️ BELOW TARGET'} — Net P/L: <strong style="color:${tot>=0?'var(--green)':'var(--red)'}">${tot>=0?'+$':'-$'}${Math.abs(tot).toFixed(2)}</strong> · 
-    PF: <strong>${pf>=99?'∞':pf.toFixed(2)}</strong> · Win Rate: <strong>${wr.toFixed(1)}%</strong> · Trades: <strong>${trades.length}</strong>
+  <div class="insight" id="insight-${firm}" style="margin-top:14px;padding:16px 20px;font-family:var(--font-mono);font-size:11px;line-height:2;">
+    <div style="color:var(--accent);font-weight:700;margin-bottom:6px;letter-spacing:1px;">${firmName} Account — ${pf>=1.5?'✅ PASSING TARGET':'⚠️ WARNING: BELOW TARGET'}</div>
+    <div style="color:var(--muted);">Net P/L:</div>
+    <div style="color:${tot>=0?'var(--green)':'var(--red)'};font-size:15px;font-weight:700;">${tot>=0?'+$':'-$'}${Math.abs(tot).toFixed(2)}</div>
+    <div style="color:var(--muted);margin-top:2px;">· Profit Factor:</div>
+    <div style="color:${pf>=1.5?'var(--green)':'var(--red)'};font-weight:700;">${pf>=99?'∞':pf.toFixed(2)}</div>
+    <div style="color:var(--muted);">· Win Rate:</div>
+    <div style="color:${wr>=40?'var(--green)':'var(--red)'};font-weight:700;">${wr.toFixed(1)}%</div>
+    <div style="color:var(--muted);">· RRR:</div>
+    <div style="color:var(--yellow);font-weight:700;">${rrr.toFixed(2)}</div>
+    <div style="color:var(--muted);">· Trades:</div>
+    <div style="color:var(--accent);font-weight:700;">${trades.length}</div>
+    <div style="color:var(--muted);font-size:9px;margin-top:10px;letter-spacing:1px;">Showing ${firmName} performance — ${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
   </div>`;
 
   // Draw Chart.js charts
   setTimeout(()=>renderFirmCharts(firm, trades), 60);
 }
+
+function setFirmStartBal(firm, val){
+  const n = parseFloat(val)||0;
+  if(n > 0){
+    localStorage.setItem('startBal_'+firm, n);
+  } else {
+    localStorage.removeItem('startBal_'+firm);
+  }
+  // Redraw just the equity curve with new baseline
+  const trades = allTrades.filter(t=>t.account_provider===FIRMS[firm]);
+  if(trades.length) renderFirmCharts(firm, trades);
+}
+
 
 function renderFirmCharts(firm, trades){
   if(typeof Chart==='undefined') return;
@@ -1298,25 +1340,107 @@ function renderFirmCharts(firm, trades){
 
   function dc(id){ const c=Chart.getChart(id); if(c)c.destroy(); }
 
-  // Equity Curve — true cumulative P&L, starting from 0
+  // Equity Curve — FTMO style: green above starting balance, red below
   dc('eq-'+firm);
-  const eqLabels=['Start']; let cumPnl=0;
-  const eqData=[0];
+  const startBal = parseFloat(localStorage.getItem('startBal_'+firm)||'0')||0;
+  const eqLabels = ['Start'];
+  let bal = startBal;
+  const eqData = [startBal];
   sorted.forEach(t=>{
-    cumPnl+=parseFloat(t.profit_loss||0);
+    bal += parseFloat(t.profit_loss||0);
     eqLabels.push(t.date.slice(5));
-    eqData.push(parseFloat(cumPnl.toFixed(2)));
+    eqData.push(parseFloat(bal.toFixed(2)));
   });
-  const totalPnlCurve=cumPnl;
-  const eqEl=document.getElementById('eq-val-'+firm);
-  if(eqEl) eqEl.textContent=(totalPnlCurve>=0?'+$':'-$')+Math.abs(totalPnlCurve).toLocaleString('en-US',{minimumFractionDigits:2});
-  const eqCtx=document.getElementById('eq-'+firm)?.getContext('2d');
+  const finalBal = bal;
+  const eqEl = document.getElementById('eq-val-'+firm);
+  if(eqEl){
+    const diff = finalBal - startBal;
+    eqEl.textContent = (diff>=0?'+$':'-$')+Math.abs(diff).toLocaleString('en-US',{minimumFractionDigits:2});
+    eqEl.style.color = diff>=0?'var(--green)':'var(--red)';
+  }
+  const eqCtx = document.getElementById('eq-'+firm)?.getContext('2d');
   if(eqCtx){
-    const g=eqCtx.createLinearGradient(0,0,0,200);
-    g.addColorStop(0,'rgba(0,229,176,0.2)');g.addColorStop(1,'rgba(0,229,176,0)');
-    new Chart(eqCtx,{type:'line',data:{labels:eqLabels,datasets:[{data:eqData,borderColor:'#00e5b0',backgroundColor:g,borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:true,tension:0.3}]},
-      options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{...TOOLTIP,callbacks:{label:c=>'Balance: $'+c.parsed.y.toLocaleString()}}},
-        scales:{x:{ticks:{...TICKS,maxTicksLimit:8},grid:GRID},y:{ticks:{...TICKS,callback:v=>'$'+v.toLocaleString()},grid:GRID}}}});
+    // Build the chart first with placeholder colours, then recolour after render
+    // using the real pixel position of the baseline from the Y axis
+    const chartInst = new Chart(eqCtx,{
+      type:'line',
+      data:{labels:eqLabels,datasets:[{
+        data:eqData,
+        borderColor:'#00e676',
+        backgroundColor:'rgba(0,230,118,0.15)',
+        borderWidth:2,
+        pointRadius:0,
+        pointHoverRadius:5,
+        fill:true,
+        tension:0.3
+      }]},
+      options:{
+        responsive:true,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{display:false},
+          tooltip:{...TOOLTIP,callbacks:{
+            label:ctx=>{
+              const v=ctx.parsed.y;
+              const diff=v-startBal;
+              return 'Balance: $'+v.toLocaleString('en-US',{minimumFractionDigits:2})
+                    +(startBal?' ('+(diff>=0?'+':'')+diff.toFixed(2)+')':'');
+            }
+          }}
+        },
+        scales:{
+          x:{ticks:{...TICKS,maxTicksLimit:8},grid:GRID},
+          y:{ticks:{...TICKS,callback:v=>'$'+v.toLocaleString()},grid:GRID}
+        }
+      },
+      plugins:[{
+        id:'ftmoGradient',
+        afterLayout(chart){
+          // Called after axes are laid out — Y pixel positions are now accurate
+          const {ctx:cx, chartArea:{top,bottom}, scales:{y}} = chart;
+          const baselinePx = startBal ? y.getPixelForValue(startBal) : bottom;
+          const clampedPx  = Math.max(top, Math.min(bottom, baselinePx));
+          const totalH     = bottom - top;
+          const splitRatio = Math.max(0, Math.min(1, (clampedPx - top) / totalH));
+
+          // Line gradient: green above baseline pixel, red below
+          const lineG = cx.createLinearGradient(0, top, 0, bottom);
+          lineG.addColorStop(0,                         '#00e676');
+          lineG.addColorStop(Math.max(0,splitRatio-0.001), '#00e676');
+          lineG.addColorStop(Math.min(1,splitRatio+0.001), '#ff1744');
+          lineG.addColorStop(1,                         '#ff1744');
+
+          // Fill gradient: green above, red below
+          const fillG = cx.createLinearGradient(0, top, 0, bottom);
+          fillG.addColorStop(0,                         'rgba(0,230,118,0.22)');
+          fillG.addColorStop(Math.max(0,splitRatio-0.001), 'rgba(0,230,118,0.08)');
+          fillG.addColorStop(Math.min(1,splitRatio+0.001), 'rgba(255,23,68,0.08)');
+          fillG.addColorStop(1,                         'rgba(255,23,68,0.22)');
+
+          chart.data.datasets[0].borderColor     = lineG;
+          chart.data.datasets[0].backgroundColor = fillG;
+        },
+        afterDraw(chart){
+          if(!startBal) return;
+          const {ctx:cx, chartArea:{left,right,top,bottom}, scales:{y}} = chart;
+          const yPx = y.getPixelForValue(startBal);
+          if(yPx < top || yPx > bottom) return;
+          cx.save();
+          cx.setLineDash([6,4]);
+          cx.strokeStyle = 'rgba(255,255,255,0.25)';
+          cx.lineWidth = 1;
+          cx.beginPath();
+          cx.moveTo(left, yPx);
+          cx.lineTo(right, yPx);
+          cx.stroke();
+          cx.fillStyle = 'rgba(255,255,255,0.4)';
+          cx.font = '9px monospace';
+          cx.textAlign = 'right';
+          cx.fillText('$'+startBal.toLocaleString(), right-4, yPx-4);
+          cx.restore();
+        }
+      }]
+    });
   }
 
   // Daily P&L
@@ -2754,26 +2878,38 @@ function handleImgDrop(e){e.preventDefault();const _idz=document.getElementById(
 
 function parseMT5Html(html){
     const trades = [];
-    // Extract all table rows using regex
     const rowMatches = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi)||[];
     rowMatches.forEach(row=>{
       const cellMatches = row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)||[];
-      const cells = cellMatches.map(c=>c.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim());
-      if(cells.length < 10) return;
-      // Must start with date pattern YYYY.MM.DD
+      const cells = cellMatches.map(c=>c.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/\u00a0/g,' ').replace(/\u202f/g,' ').trim());
+      if(cells.length < 14) return;
+      // Must start with date YYYY.MM.DD
       if(!/^\d{4}\.\d{2}\.\d{2}/.test(cells[0])) return;
-      const dir = (cells[3]||'').toLowerCase();
+      // Direction must be exactly 'buy' or 'sell' — skip limit/stop orders
+      const dir = (cells[3]||'').toLowerCase().trim();
       if(dir!=='buy'&&dir!=='sell') return;
-      try{
-        const date = cells[0].slice(0,10).replace(/\./g,'-');
-        const symbol = cells[2]||'Unknown';
-        const entry = parseFloat((cells[6]||'0').replace(/\s/g,''))||0;
-        const exitP = parseFloat((cells[10]||'0').replace(/\s/g,''))||0;
-        const pnl = parseFloat((cells[13]||'0').replace(/[\s,]/g,''))||0;
-        trades.push({date,instrument:symbol,direction:dir.charAt(0).toUpperCase()+dir.slice(1),
-          entry_price:entry,exit_price:exitP,profit_loss:pnl,
-          result:pnl>0?'Win':pnl<0?'Loss':'Break Even'});
-      }catch(e){}
+      // Entry price must be a valid number (not empty — skips balance/summary rows)
+      const cleanNum = s => parseFloat((s||'').replace(/[\s\u00a0\u202f,]/g,''))||0;
+      const entry = cleanNum(cells[6]);
+      if(!entry) return; // skip rows without valid entry price
+      // Exit price is in cells[10], profit in cells[13]
+      const exitP = cleanNum(cells[10]);
+      const pnl   = cleanNum(cells[13]);
+      // Skip rows where profit looks like an account balance (> $5000 positive and no negative trades context)
+      // A real trade P&L is typically < $5000 per trade; balances are cumulative
+      // Better heuristic: close time must also be a valid date (cells[9])
+      if(!/^\d{4}\.\d{2}\.\d{2}/.test(cells[9])) return;
+      const date = cells[0].slice(0,10).replace(/\./g,'-');
+      const symbol = cells[2]||'Unknown';
+      trades.push({
+        date,
+        instrument:symbol,
+        direction:dir.charAt(0).toUpperCase()+dir.slice(1),
+        entry_price:entry,
+        exit_price:exitP,
+        profit_loss:pnl,
+        result:pnl>0?'Win':pnl<0?'Loss':'Break Even'
+      });
     });
     return trades;
   }
@@ -3128,14 +3264,10 @@ window.addEventListener('resize',()=>{if(allTrades.length)drawEquityCurve();});
 
 
 <!-- FOOTER -->
-<div style="text-align:center;padding:32px 22px 24px;border-top:1px solid var(--border);margin-top:40px;">
+<div style="text-align:center;padding:16px 22px;border-top:1px solid var(--border);position:fixed;bottom:0;left:0;right:0;z-index:90;background:var(--bg);">
   <div style="font-family:var(--font-mono);font-size:11px;margin-bottom:6px;">
     <span style="color:var(--accent);font-weight:700;">Trading Journal</span>
     &nbsp;·&nbsp; Built by <strong style="color:var(--green);">Osita Onyeje</strong>
     &nbsp;·&nbsp; <span style="color:var(--muted);">© 2026</span>
   </div>
-  <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);">stevenonyeje@gmail.com</div>
-</div>
-
-</body>
-</html>
+  <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono);"><a href="/cdn-cgi/l/email-protection" class="__cf_ema
