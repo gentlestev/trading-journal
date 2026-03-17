@@ -243,6 +243,22 @@
 .rbtn{padding:4px 11px;border-radius:5px;font-size:10px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .2s;font-family:var(--font-mono);}
 .rbtn.active{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.3);color:var(--accent);}
 
+
+  /* ── JOURNAL FILTER BUTTONS ── */
+  .jfilt{padding:5px 14px;border-radius:20px;font-size:10px;letter-spacing:1px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .2s;font-family:var(--font-mono);font-weight:600;text-transform:uppercase;}
+  .jfilt:hover{color:var(--text);}
+  .jfilt.active{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.35);color:var(--accent);}
+
+  /* ── JOURNAL ENTRY CARDS ── */
+  .journal-entry-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px;transition:border-color .2s;}
+  .journal-entry-card:hover{border-color:var(--muted);}
+  .entry-section{margin-bottom:8px;}
+  .entry-section-label{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;font-family:var(--font-mono);}
+  .entry-text{font-size:12px;color:var(--text);line-height:1.7;}
+
+  /* ── JOURNAL FORM SLIDE ── */
+  #\\[firm\\]-jFormWrap{animation:fadeIn .2s ease;}
+
 </style>
 </head>
 <body>
@@ -1477,36 +1493,92 @@ function renderFirmJournal(firm,firmName){
   const instrumentOptions=`<option value="">Select instrument</option>`+
     [...new Set(firmTrades.map(t=>t.instrument).filter(Boolean))].map(i=>`<option>${i}</option>`).join('')+
     `<option>Other</option>`;
+
   container.innerHTML=`
-    <div class="journal-grid">
-      <div class="panel" style="position:sticky;top:20px;">
-        <div class="panel-header"><span class="panel-title">NEW ENTRY — ${firmName.toUpperCase()}</span></div>
+    <!-- Journal header bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+      <button class="btn btn-primary" id="${firm}-jToggleBtn" onclick="toggleFirmJournalForm('${firm}','${firmName}')"
+        style="padding:9px 20px;font-size:11px;letter-spacing:1px;">
+        + New Journal Entry (${firmName})
+      </button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="${firm}-jFilters">
+        <button class="jfilt active" onclick="filterFirmJournal('${firm}','${firmName}','all',this)">All</button>
+        <button class="jfilt" onclick="filterFirmJournal('${firm}','${firmName}','win',this)">Wins</button>
+        <button class="jfilt" onclick="filterFirmJournal('${firm}','${firmName}','loss',this)">Losses</button>
+        <button class="jfilt" onclick="filterFirmJournal('${firm}','${firmName}','be',this)">Break Even</button>
+      </div>
+    </div>
+
+    <!-- Collapsible form — hidden by default -->
+    <div id="${firm}-jFormWrap" style="display:none;margin-bottom:22px;">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">NEW ENTRY — ${firmName.toUpperCase()}</span>
+          <button onclick="toggleFirmJournalForm('${firm}','${firmName}')"
+            style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;">✕</button>
+        </div>
         <div class="panel-body">
-          <div class="journal-form">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
             <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="${firm}-jDate"/></div>
             <div class="form-group"><label class="form-label">Instrument</label><select class="form-select" id="${firm}-jInstrument">${instrumentOptions}</select></div>
-            <div class="form-group"><label class="form-label">Trade Result</label><select class="form-select" id="${firm}-jResult"><option value="">Select result</option><option>Win</option><option>Loss</option><option>Break Even</option></select></div>
-            <div class="form-group"><label class="form-label">Emotion Before Trade</label>
-              <div class="emotion-grid">
-                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Calm')">😌 Calm</button>
-                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Confident')">💪 Confident</button>
-                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','FOMO')">😰 FOMO</button>
-                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Revenge')">😤 Revenge</button>
-                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Anxious')">😟 Anxious</button>
-                <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Bored')">😑 Bored</button>
-              </div>
+            <div class="form-group"><label class="form-label">Result</label>
+              <select class="form-select" id="${firm}-jResult">
+                <option value="">Select result</option>
+                <option>Win</option><option>Loss</option><option>Break Even</option>
+              </select>
             </div>
-            <div class="form-group"><label class="form-label">Why I Entered</label><textarea class="form-textarea" id="${firm}-jReasoning" placeholder="Setup, confluence..."></textarea></div>
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">Emotion Before Trade</label>
+            <div class="emotion-grid">
+              <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Calm')">😌 Calm</button>
+              <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Confident')">💪 Confident</button>
+              <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','FOMO')">😰 FOMO</button>
+              <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Revenge')">😤 Revenge</button>
+              <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Anxious')">😟 Anxious</button>
+              <button class="emotion-btn" onclick="selectFirmEmotion(this,'${firm}','Bored')">😑 Bored</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div class="form-group"><label class="form-label">Why I Entered</label><textarea class="form-textarea" id="${firm}-jReasoning" placeholder="Setup, confluence, reasons..."></textarea></div>
             <div class="form-group"><label class="form-label">What Went Well</label><textarea class="form-textarea" id="${firm}-jWell" placeholder="Discipline, execution..."></textarea></div>
             <div class="form-group"><label class="form-label">What To Improve</label><textarea class="form-textarea" id="${firm}-jImprove" placeholder="Mistakes, what I'd do differently..."></textarea></div>
-            <button class="btn btn-success" onclick="saveFirmJournal('${firm}','${firmName}')" style="width:100%;padding:11px;letter-spacing:2px;">SAVE ENTRY</button>
           </div>
+          <button class="btn btn-success" onclick="saveFirmJournal('${firm}','${firmName}')" style="width:100%;padding:11px;letter-spacing:2px;">SAVE ENTRY</button>
         </div>
       </div>
-      <div id="${firm}-journalEntries" class="journal-entries"><div class="no-entries">No entries for ${firmName} yet.</div></div>
-    </div>`;
-  document.getElementById(firm+'-jDate').value=new Date().toISOString().split('T')[0];
+    </div>
+
+    <!-- Entry list -->
+    <div id="${firm}-journalEntries"><div class="no-entries" style="padding:60px 20px;text-align:center;color:var(--muted);font-size:12px;">No journal entries for ${firmName} yet.<br><br>Click <strong style="color:var(--green);">+ New Journal Entry</strong> to get started.</div></div>`;
+
+  // Set today as default date
+  const dateEl=document.getElementById(firm+'-jDate');
+  if(dateEl) dateEl.value=new Date().toISOString().split('T')[0];
   loadFirmJournalEntries(firm,firmName);
+}
+
+function toggleFirmJournalForm(firm,firmName){
+  const wrap=document.getElementById(firm+'-jFormWrap');
+  const btn=document.getElementById(firm+'-jToggleBtn');
+  if(!wrap)return;
+  const open=wrap.style.display==='none';
+  wrap.style.display=open?'block':'none';
+  if(btn) btn.textContent=open?'✕ Cancel':'+ New Journal Entry ('+firmName+')';
+  if(open){
+    // Scroll to form and focus date
+    wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
+    const dateEl=document.getElementById(firm+'-jDate');
+    if(dateEl){dateEl.value=new Date().toISOString().split('T')[0];dateEl.focus();}
+  }
+}
+
+function filterFirmJournal(firm,firmName,filter,btn){
+  // Update active filter button
+  document.querySelectorAll('#'+firm+'-jFilters .jfilt').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  // Re-load entries with filter
+  loadFirmJournalEntries(firm,firmName,filter);
 }
 
 function renderFirmAnalysis(firm,firmName){
@@ -1983,8 +2055,7 @@ async function parseFirmCSVFile(file,firm){
         for(let p=1;p<=pdf.numPages;p++){
           const page=await pdf.getPage(p);
           const content=await page.getTextContent();
-          fullText+=content.items.map(i=>i.str).join(' ')+'
-';
+          fullText+=content.items.map(i=>i.str).join(' ')+'\n';
         }
         const trades=parseTextTrades(fullText);
         showToast(trades.length?`Found ${trades.length} trades in PDF`:'No trades detected in PDF — try CSV export instead.',!trades.length);
@@ -2010,11 +2081,10 @@ async function parseFirmCSVFile(file,firm){
 }
 
 function parseCSVText(text){
-  // Smart CSV parser — handles various column orders from MT4/MT5/cTrader/FTMO exports
-  const lines=text.split(/?\n/).filter(l=>l.trim());
+  // Smart CSV parser — auto-detects column order from headers
+  const lines=text.split('\n').map(l=>l.replace(/\r/g,'')).filter(l=>l.trim());
   if(!lines.length)return[];
   const trades=[];
-  // Find header row
   let headerIdx=0;
   let headers=[];
   for(let i=0;i<Math.min(5,lines.length);i++){
@@ -2024,150 +2094,52 @@ function parseCSVText(text){
     }
   }
   const col=(names)=>{ for(const n of names){ const i=headers.indexOf(n); if(i>=0)return i; } return -1; };
-  const iDate=col(['date','open time','opentime','time','close time']);
-  const iInst=col(['symbol','instrument','asset','market']);
-  const iDir =col(['type','direction','side','action']);
+  const iDate =col(['date','open time','opentime','time','close time']);
+  const iInst =col(['symbol','instrument','asset','market']);
+  const iDir  =col(['type','direction','side','action']);
   const iEntry=col(['open','entry','open price','openprice','price']);
   const iExit =col(['close','exit','close price','closeprice']);
   const iPnl  =col(['profit','p&l','pnl','net profit','netprofit','result']);
   for(let i=headerIdx+1;i<lines.length;i++){
     const cols=lines[i].split(',').map(s=>s.trim().replace(/"/g,''));
     if(cols.length<3)continue;
-    // Use detected columns or fallback to positional
     const rawDate=iDate>=0?cols[iDate]:cols[0];
     const inst   =iInst>=0?cols[iInst]:cols[1];
     const dirRaw =iDir>=0?cols[iDir]:cols[2];
     const entry  =parseFloat(iEntry>=0?cols[iEntry]:cols[3])||0;
     const exit_  =parseFloat(iExit>=0?cols[iExit]:cols[4])||0;
     const pnlRaw =parseFloat(iPnl>=0?cols[iPnl]:(cols[5]||cols[4]))||0;
-    if(!inst||inst==='Unknown')continue;
-    // Parse date
-    const date=rawDate?rawDate.slice(0,10).replace(/[./]/g,'-').replace(/^(\d{2})-(\d{2})-(\d{4})$/,'$3-$2-$1'):'';
+    if(!inst||inst==='Unknown'||!inst.trim())continue;
+    const date=rawDate?rawDate.slice(0,10).replace(/[./]/g,'-'):'';
     const dir=dirRaw.toLowerCase().includes('sell')?'Sell':'Buy';
     trades.push({date,instrument:inst,direction:dir,entry_price:entry,exit_price:exit_,profit_loss:pnlRaw,result:pnlRaw>0?'Win':pnlRaw<0?'Loss':'Break Even',user_id:currentUser?.id});
   }
   return trades;
 }
-
 function parseTextTrades(text){
   // Extract trades from plain text (PDF text, paste data)
-  // Look for lines with date patterns and numbers
+  // Look for lines with date pa
+function parseTextTrades(text){
+  // Extract trades from plain text (PDF, paste)
   const trades=[];
-  const lines=text.split(/\r?\n/);
+  const lines=text.split('\n');
   const dateRe=/\b(\d{4}[.\/-]\d{2}[.\/-]\d{2}|\d{2}[.\/-]\d{2}[.\/-]\d{4})\b/;
   const numRe=/[-+]?\d+\.\d{2,}/g;
-  lines.forEach(line=>{
+  lines.forEach(function(line){
     const dateM=line.match(dateRe);
     if(!dateM)return;
-    const nums=(line.match(numRe)||[]).map(Number).filter(n=>Math.abs(n)<1000000);
-    if(nums.length<1)return;
-    const pnl=nums[nums.length-1]; // last number usually P&L
-    const words=line.replace(/[0-9.\-+,]/g,' ').split(/\s+/).filter(w=>w.length>2&&w.length<12&&/^[A-Za-z]/.test(w));
-    const inst=words.find(w=>/^[A-Z]{3,8}$/.test(w.toUpperCase()))||'Unknown';
+    const nums=(line.match(numRe)||[]).map(Number).filter(function(n){return Math.abs(n)<1000000;});
+    if(!nums.length)return;
+    const pnl=nums[nums.length-1];
+    const words=line.replace(/[0-9.\-+,]/g,' ').split(/\s+/).filter(function(w){return w.length>2&&w.length<12&&/^[A-Za-z]/.test(w);});
+    const inst=words.find(function(w){return /^[A-Z]{3,8}$/.test(w.toUpperCase());})||'Unknown';
     const dir=line.toLowerCase().includes('sell')?'Sell':'Buy';
     const date=dateM[0].slice(0,10).replace(/[./]/g,'-');
-    trades.push({date,instrument:inst,direction:dir,entry_price:nums[0]||0,exit_price:nums[1]||0,profit_loss:pnl,result:pnl>0?'Win':pnl<0?'Loss':'Break Even'});
+    trades.push({date:date,instrument:inst,direction:dir,entry_price:nums[0]||0,exit_price:nums[1]||0,profit_loss:pnl,result:pnl>0?'Win':pnl<0?'Loss':'Break Even'});
   });
   return trades;
 }
-
-async function handleFirmImgFiles(files,firm,firmName){
-  if(!files||!files.length)return;
-  if(!firmParsedTrades[firm])firmParsedTrades[firm]={};
-  firmParsedTrades[firm].img=[];
-  const fileArr=Array.from(files);
-  const total=fileArr.length;
-  const progressArea  = document.getElementById(firm+'-imgProgressArea');
-  const progressLabel = document.getElementById(firm+'-imgProgressLabel');
-  const progressCount = document.getElementById(firm+'-imgProgressCount');
-  const progressBar   = document.getElementById(firm+'-imgProgressBar');
-  const fileStatuses  = document.getElementById(firm+'-imgFileStatuses');
-  const imgPreview    = document.getElementById(firm+'-imgPreview');
-  if(!progressArea){showToast('UI not ready — open Upload tab first',true);return;}
-  progressArea.style.display='block';
-  if(imgPreview)imgPreview.style.display='none';
-  progressLabel.textContent='Processing '+total+' screenshot'+(total>1?'s':'')+'...';
-  progressCount.textContent='0/'+total;
-  progressBar.style.width='0%';
-  fileStatuses.innerHTML='';
-  fileArr.forEach((file,i)=>{
-    const row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:0.68rem;padding:5px 8px;background:var(--surface2);border-radius:3px;';
-    row.innerHTML=`<span id="${firm}-ficon_${i}" style="color:var(--muted);">[ ]</span><span style="color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${file.name||'Screenshot '+(i+1)}</span><span id="${firm}-ftrades_${i}" style="color:var(--muted);">waiting</span>`;
-    fileStatuses.appendChild(row);
-  });
-  let completed=0;
-  const results=await Promise.allSettled(fileArr.map(async(file,i)=>{
-    document.getElementById(firm+'-ficon_'+i).textContent='[~]';
-    document.getElementById(firm+'-ftrades_'+i).textContent='reading...';
-    try{
-      const {base64,mimeType}=await fileToBase64Safe(file);
-      const imgPrompt='You are a trading data extraction tool. The image shows a trade history table from a trading platform (MT5, Deriv, FTMO, The5ers, or cTrader). Your job: extract EVERY row in the table as a JSON array. Return ONLY the raw JSON array - no markdown fences, no explanation text, nothing else before or after the array. Required fields per trade: date (YYYY-MM-DD format), instrument (symbol string e.g. EURUSD), direction (exactly "Buy" or "Sell"), entry_price (number), exit_price (number), profit_loss (positive number for profits, negative for losses), result (exactly "Win", "Loss", or "Break Even"). If any field is not visible use: 0 for numbers, "Unknown" for strings. Example of valid response: [{"date":"2024-03-15","instrument":"EURUSD","direction":"Buy","entry_price":1.0850,"exit_price":1.0920,"profit_loss":70.00,"result":"Win"}]';
-      const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:base64,mimeType:mimeType,prompt:imgPrompt})});
-      if(!resp.ok)throw new Error('Worker HTTP '+resp.status);
-      const data=await resp.json();
-      const text=data.response||data.content?.[0]?.text||'';
-      if(!text||text.trim()==='')throw new Error('Empty response');
-      const clean=text.replace(/```json|```/g,'').trim();
-      const jsonMatch=clean.match(/\[[\s\S]*\]/);
-      if(!jsonMatch)throw new Error('No JSON in response');
-      const parsed=JSON.parse(jsonMatch[0]);
-      if(!Array.isArray(parsed)||!parsed.length)throw new Error('Empty trade array');
-      document.getElementById(firm+'-ficon_'+i).style.color='var(--green)';
-      document.getElementById(firm+'-ficon_'+i).textContent='[OK]';
-      document.getElementById(firm+'-ftrades_'+i).style.color='var(--green)';
-      document.getElementById(firm+'-ftrades_'+i).textContent=parsed.length+' trade'+(parsed.length>1?'s':'');
-      completed++;progressBar.style.width=Math.round(completed/total*100)+'%';progressCount.textContent=completed+'/'+total;
-      return parsed.map(t=>({...t,user_id:currentUser?.id}));
-    }catch(e){
-      document.getElementById(firm+'-ficon_'+i).style.color='var(--red)';
-      document.getElementById(firm+'-ficon_'+i).textContent='[X]';
-      document.getElementById(firm+'-ftrades_'+i).style.color='var(--red)';
-      document.getElementById(firm+'-ftrades_'+i).textContent=e.message.slice(0,40);
-      completed++;progressBar.style.width=Math.round(completed/total*100)+'%';progressCount.textContent=completed+'/'+total;
-      return[];
-    }
-  }));
-  results.forEach(r=>{if(r.status==='fulfilled')firmParsedTrades[firm].img.push(...r.value);});
-  if(firmParsedTrades[firm].img.length){
-    progressLabel.textContent='Found '+firmParsedTrades[firm].img.length+' trades!';
-    progressLabel.style.color='var(--green)';
-    showFirmTradePreview(firm+'-imgPreviewTable',null,firmParsedTrades[firm].img);
-    imgPreview.style.display='block';
-  }else{
-    progressLabel.textContent='No trades found. Make sure screenshots show trade history rows.';
-    progressLabel.style.color='var(--yellow)';
-  }
 }
-
-async function parseFirmPaste(firm,firmName){
-  const text=document.getElementById(firm+'-pasteData').value.trim();
-  if(!text){showToast('Please paste some trade data first',true);return;}
-  showToast('🤖 Parsing trades...');
-  if(!firmParsedTrades[firm])firmParsedTrades[firm]={};
-  try{
-    const resp=await fetch('https://empty-tree-0b19.nwaogalanyapaulinus.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text})});
-    const data=await resp.json();
-    const raw=data.response||data.content?.[0]?.text||'[]';
-    const clean=raw.replace(/```json|```/g,'').trim();
-    firmParsedTrades[firm].paste=JSON.parse(clean).map(t=>({...t,user_id:currentUser?.id}));
-    showFirmTradePreview(firm+'-pastePreviewTable',firm+'-pastePreviewLabel',firmParsedTrades[firm].paste);
-    document.getElementById(firm+'-pastePreview').style.display='block';
-    showToast('Found '+firmParsedTrades[firm].paste.length+' trades!');
-  }catch(e){showToast('Could not parse. Try a different format.',true);}
-}
-
-function showFirmTradePreview(tableId,labelId,trades){
-  if(labelId)document.getElementById(labelId).textContent='Found '+trades.length+' trades — review before saving:';
-  document.getElementById(tableId).innerHTML=`<table class="trades-table"><thead><tr><th>Date</th><th>Instrument</th><th>Direction</th><th>P&L</th><th>Result</th></tr></thead><tbody>`+
-    trades.map(t=>{
-      const pnl=parseFloat(t.profit_loss);
-      const badge=t.result==='Win'?'badge-win':t.result==='Loss'?'badge-loss':'badge-be';
-      return`<tr><td>${t.date}</td><td style="color:var(--accent)">${t.instrument}</td><td>${t.direction||'—'}</td><td class="${pnl>=0?'stat-green':'stat-red'}">${pnl>=0?'+':''}$${pnl.toFixed(2)}</td><td><span class="badge ${badge}">${t.result}</span></td></tr>`;
-    }).join('')+'</tbody></table>';
-}
-
-
 async function addManualTrade(firm, firmName){
   if(!currentUser){showToast('Please sign in first',true);return;}
   const date   = document.getElementById(firm+'-mt-date')?.value;
@@ -2327,31 +2299,72 @@ async function saveFirmJournal(firm,firmName){
   try{insertData.account_provider=firmName;}catch(e){}
   const{error}=await sb.from('journal_entries').insert(insertData);
   if(error){showToast('Error: '+error.message,true);return;}
-  showToast('Journal entry saved!');
-  document.getElementById(firm+'-jReasoning').value='';
-  document.getElementById(firm+'-jWell').value='';
-  document.getElementById(firm+'-jImprove').value='';
+  showToast('✅ Journal entry saved!');
+  // Reset form fields
+  ['jReasoning','jWell','jImprove','jResult','jInstrument'].forEach(f=>{
+    const el=document.getElementById(firm+'-'+f);if(el)el.value='';
+  });
   firmEmotions[firm]='';
-  document.querySelectorAll('#firm-'+firm+' .emotion-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('#firm-'+firm+' .emotion-btn').forEach(b=>b.classList.remove('selected','active'));
+  // Reset date to today
+  const dateEl=document.getElementById(firm+'-jDate');
+  if(dateEl)dateEl.value=new Date().toISOString().split('T')[0];
+  // Close form after save
+  const wrap=document.getElementById(firm+'-jFormWrap');
+  const btn=document.getElementById(firm+'-jToggleBtn');
+  if(wrap)wrap.style.display='none';
+  if(btn)btn.textContent='+ New Journal Entry ('+firmName+')';
   loadFirmJournalEntries(firm,firmName);
 }
 
-async function loadFirmJournalEntries(firm,firmName){
+async function loadFirmJournalEntries(firm,firmName,filter='all'){
   if(!currentUser)return;
   const{data}=await sb.from('journal_entries').select('*').eq('user_id',currentUser.id).eq('account_provider',firmName).order('date',{ascending:false});
   const container=document.getElementById(firm+'-journalEntries');
   if(!container)return;
-  if(!data||!data.length){container.innerHTML='<div class="no-entries">No entries for '+firmName+' yet.</div>';return;}
-  container.innerHTML=data.map(e=>`
-    <div class="journal-entry-card">
-      <div class="entry-meta">
-        <div><div class="entry-date">${e.date}</div><div class="entry-instrument">${e.instrument}</div></div>
-        <div style="text-align:right;"><span class="badge ${e.result==='Win'?'badge-win':e.result==='Loss'?'badge-loss':'badge-be'}">${e.result}</span>${e.emotion?`<div style="margin-top:4px;" class="entry-emotion">${e.emotion}</div>`:''}</div>
+  if(!data||!data.length){
+    container.innerHTML='<div class="no-entries" style="padding:60px 20px;text-align:center;color:var(--muted);font-size:12px;">No journal entries for '+firmName+' yet.</div>';
+    return;
+  }
+  // Apply filter
+  const filtered=data.filter(e=>{
+    if(filter==='all') return true;
+    if(filter==='win')  return e.result==='Win';
+    if(filter==='loss') return e.result==='Loss';
+    if(filter==='be')   return e.result==='Break Even';
+    return true;
+  });
+  if(!filtered.length){
+    container.innerHTML='<div class="no-entries" style="padding:40px;text-align:center;color:var(--muted);font-size:12px;">No '+filter+' entries yet.</div>';
+    return;
+  }
+  container.innerHTML=filtered.map(e=>{
+    const badge=e.result==='Win'?'badge-win':e.result==='Loss'?'badge-loss':'badge-be';
+    return`<div class="journal-entry-card">
+      <div class="entry-meta" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div class="entry-date" style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-bottom:3px;">${e.date}</div>
+          <div class="entry-instrument" style="font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--accent);">${e.instrument||'—'}</div>
+        </div>
+        <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+          <span class="badge ${badge}">${e.result||'—'}</span>
+          ${e.emotion?`<span style="font-size:10px;color:var(--muted);font-family:var(--font-mono);">${e.emotion}</span>`:''}
+          <button class="btn btn-danger btn-sm" onclick="deleteFirmJournalEntry('${e.id}','${firm}','${firmName}')" style="padding:2px 8px;font-size:9px;">DEL</button>
+        </div>
       </div>
       ${e.reasoning?`<div class="entry-section"><div class="entry-section-label">Why I Entered</div><div class="entry-text">${e.reasoning}</div></div>`:''}
       ${e.went_well?`<div class="entry-section"><div class="entry-section-label">What Went Well</div><div class="entry-text">${e.went_well}</div></div>`:''}
       ${e.improve?`<div class="entry-section"><div class="entry-section-label">What To Improve</div><div class="entry-text">${e.improve}</div></div>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+async function deleteFirmJournalEntry(id,firm,firmName){
+  if(!currentUser||!confirm('Delete this entry?'))return;
+  const{error}=await sb.from('journal_entries').delete().eq('id',id).eq('user_id',currentUser.id);
+  if(error){showToast('Error: '+error.message,true);return;}
+  showToast('Entry deleted.');
+  loadFirmJournalEntries(firm,firmName);
 }
 
 async function loadFirmEmotionAnalysis(firm,firmName){
