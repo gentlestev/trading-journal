@@ -590,6 +590,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script>if(typeof pdfjsLib!=='undefined')pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';</script>
 <script>
@@ -1385,12 +1387,13 @@ function renderFirmOverview(firm,firmName){
     <!-- TOP-RIGHT: scale zoom — stays fixed as card scales -->
     <div id="eqZoomControls" style="display:none;position:absolute;top:8px;right:8px;z-index:50;display:flex;align-items:center;gap:5px;">
       <span id="eq-zoom-pct" style="font-size:9px;color:var(--muted);font-family:var(--font-mono);letter-spacing:1px;">100%</span>
+      <span style="font-size:8px;color:var(--muted);font-family:var(--font-mono);opacity:0.6;" title="Scroll to zoom · Drag to pan · Double-click to reset">⟳</span>
       <button onclick="zoomEqChart(-1)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;">−</button>
       <button onclick="zoomEqChart(1)"  style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:22px;height:22px;border-radius:4px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;">+</button>
     </div>
 
     <!-- Chart card — height zoom buttons INSIDE, bottom-right, moves with box -->
-    <div class="chart-card" id="eq-card-${firm}" style="position:relative;">
+    <div class="chart-card" id="eq-card-${firm}" style="position:relative;" ondblclick="resetEqZoom('${firm}')" title="Double-click to reset zoom">
       <div class="chart-title">EQUITY CURVE <span id="eq-val-${firm}" style="font-size:11px;"></span></div>
       <canvas id="eq-${firm}" height="160"></canvas>
 
@@ -1552,10 +1555,24 @@ function zoomEqChart(dir){
   const current = getEqScale();
   const next = parseFloat(Math.max(EQ_SCALE_MIN, Math.min(EQ_SCALE_MAX, current + dir * EQ_SCALE_STEP)).toFixed(1));
   localStorage.setItem(EQ_SCALE_KEY, next);
-  // Apply to whichever firm is currently active
   applyEqScale(activeFirm);
+  // When restored to 100% also reset chart pan/zoom to show all data
+  if(next >= EQ_SCALE_MAX){
+    const chart = Chart.getChart('eq-'+activeFirm);
+    if(chart && chart.resetZoom) chart.resetZoom();
+  }
   const lbl = document.getElementById('eq-zoom-pct');
   if(lbl) lbl.textContent = Math.round(next*100)+'%';
+}
+
+// Double-click equity card → reset chart pan/zoom to show all history
+function resetEqZoom(firm){
+  const chart = Chart.getChart('eq-'+firm);
+  if(chart && chart.resetZoom){
+    chart.resetZoom();
+    const lbl = document.getElementById('eq-zoom-pct');
+    if(lbl) lbl.textContent = Math.round(getEqScale()*100)+'%';
+  }
 }
 
 
@@ -1648,7 +1665,21 @@ function renderFirmCharts(firm, trades){
             return 'Balance: $'+v.toLocaleString('en-US',{minimumFractionDigits:2})
                   +(startBal?' ('+(diff>=0?'+':'')+diff.toFixed(2)+')':'');
           }
-        }}
+        }},
+        zoom:{
+          pan:{enabled:true,mode:'x'},
+          zoom:{
+            wheel:{enabled:true},
+            pinch:{enabled:true},
+            mode:'x',
+            onZoomComplete({chart}){
+              chart._zoomed=true;
+              const lbl=document.getElementById('eq-zoom-pct');
+              if(lbl) lbl.textContent='ZOOM';
+            }
+          },
+          limits:{x:{min:'original',max:'original'}}
+        }
       },
       scales:{
         x:{ticks:{...TICKS,maxTicksLimit:8},grid:GRID},
