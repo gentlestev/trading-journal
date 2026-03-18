@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>FSH Empire</title>
+  <script>
+    // GitHub Pages 404 redirect hack
+    // Preserves the full URL including query params and hash
+    // and redirects to index.html which handles the token
+    var path = window.location.pathname;
+    var search = window.location.search;
+    var hash = window.location.hash;
+    
+    // Redirect to index with the full query string
+    window.location.replace(
+      'https://gentlestev.github.io/trading-journal/' + 
+      (search ? search : '') + 
+      (hash ? hash : '')
+    );
+  </script>
+</head>
+<body>
+  Redirecting...
+</body>
+</html>
