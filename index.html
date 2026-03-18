@@ -178,7 +178,17 @@
   .sub-tab{padding:8px 18px;border-radius:6px 6px 0 0;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;color:var(--muted);border:1px solid transparent;border-bottom:none;transition:all .2s;background:transparent;white-space:nowrap;font-family:var(--font-mono);font-weight:600;}
   .sub-tab:hover:not(.active){color:var(--text);}
   .sub-tab.active{color:var(--accent);background:var(--surface);border-color:var(--border);}
-  .firm-container{display:block;}
+  .firm-container{display:block;opacity:1;transition:opacity 0.2s ease;}
+  .sub-page{
+    animation:none;
+  }
+  @keyframes fadeSlideIn{
+    from{opacity:0;transform:translateY(8px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  .page-enter{
+    animation:fadeSlideIn 0.22s cubic-bezier(.4,0,.2,1) both;
+  }
   .sub-page{padding:14px 14px 8px;box-sizing:border-box;}
   .chart-canvas-wrap{position:relative;width:100%;height:200px;}
   .chart-canvas-wrap canvas{position:absolute;inset:0;width:100%!important;height:100%!important;}
@@ -466,24 +476,7 @@
     <div id="firm-help" class="firm-container" style="display:none;">
       <div style="max-width:800px;margin:0 auto;">
 
-        <!-- Anthropic API Key setting -->
-        <div class="panel" style="margin-bottom:20px;">
-          <div class="panel-header"><span class="panel-title">🔑 ANTHROPIC API KEY</span><span style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">Required for image upload</span></div>
-          <div class="panel-body">
-            <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6;">
-              Needed to read trade screenshots. Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--accent);">console.anthropic.com</a>. Stored locally in your browser only — never sent anywhere except Anthropic.
-            </p>
-            <div style="display:flex;gap:10px;align-items:center;">
-              <input type="password" id="anthropicKeyInput" class="form-input"
-                style="flex:1;font-family:var(--font-mono);font-size:11px;"
-                placeholder="sk-ant-..."
-                value="${localStorage.getItem('anthropic_key')||''}"/>
-              <button class="btn btn-primary" onclick="saveAnthropicKey()" style="white-space:nowrap;padding:9px 18px;">SAVE KEY</button>
-              <button class="btn btn-danger btn-sm" onclick="clearAnthropicKey()" style="padding:9px 12px;">CLEAR</button>
-            </div>
-            <div id="anthropicKeyStatus" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--muted);"></div>
-          </div>
-        </div>
+        
 
         <div style="font-family:var(--font-display);font-size:2rem;letter-spacing:4px;color:var(--accent);margin-bottom:6px;">HELP &amp; GUIDE</div>
         <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:28px;letter-spacing:1px;">HOW TO USE YOUR FSH EMPIRE DASHBOARD</div>
@@ -493,6 +486,56 @@
           <div style="margin-bottom:12px;"><span style="color:var(--accent);font-weight:600;">Step 3 — Review stats &amp; history</span><br/>Use Overview for stats, Trade History to see all trades for that firm.</div>
           <div><span style="color:var(--accent);font-weight:600;">Step 4 — Journal &amp; Analysis</span><br/>Each firm has its own Journal and Analysis sub-tab for focused tracking.</div>
         </div></div>
+        <!-- MT5 Export Guide -->
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-header"><span class="panel-title">📤 HOW TO EXPORT TRADES FROM MT5</span></div>
+          <div class="panel-body" style="font-family:var(--font-mono);font-size:0.72rem;line-height:1.9;color:var(--muted);">
+
+            <div style="color:var(--accent);font-weight:700;margin-bottom:10px;font-size:0.75rem;">DERIV MT5</div>
+            <div style="color:var(--text);font-weight:600;margin-bottom:4px;">Step 1 — Open MT5 Terminal</div>
+            <div>Log into your Deriv MT5 account at <a href="https://app.deriv.com" target="_blank" style="color:var(--accent);">app.deriv.com</a> and open the MT5 platform.</div>
+
+            <div style="color:var(--text);font-weight:600;margin-top:10px;margin-bottom:4px;">Step 2 — Go to History</div>
+            <div>Click the <span style="color:var(--text);">History</span> tab at the bottom of MT5 (next to Trade, Exposure, News).</div>
+
+            <div style="color:var(--text);font-weight:600;margin-top:10px;margin-bottom:4px;">Step 3 — Set date range</div>
+            <div>Right-click anywhere in the History panel → <span style="color:var(--text);">Custom Period</span> → select your date range → OK.</div>
+
+            <div style="color:var(--text);font-weight:600;margin-top:10px;margin-bottom:4px;">Step 4 — Save as HTML</div>
+            <div>Right-click in the History panel → <span style="color:var(--text);">Report</span> → save the file anywhere on your computer. The file will be named something like <span style="color:var(--green);">ReportHistory-XXXXXXXX.html</span></div>
+
+            <div style="color:var(--text);font-weight:600;margin-top:10px;margin-bottom:4px;">Step 5 — Upload to Dashboard</div>
+            <div>Go to <span style="color:var(--text);">Deriv → Upload Trades</span> → drag and drop or click to select the HTML file. Your trades will be parsed and previewed before saving.</div>
+
+            <div style="border-top:1px solid var(--border);margin:16px 0;"></div>
+
+            <div style="color:var(--accent);font-weight:700;margin-bottom:10px;font-size:0.75rem;">FTMO / THE5ERS MT5</div>
+            <div style="color:var(--text);font-weight:600;margin-bottom:4px;">Step 1 — Log into your prop firm MT5</div>
+            <div>Open MetaTrader 5 using the server credentials provided by FTMO or The5ers.</div>
+
+            <div style="color:var(--text);font-weight:600;margin-top:10px;margin-bottom:4px;">Step 2 — Open Account History</div>
+            <div>Click <span style="color:var(--text);">View → Terminal</span> (or press Ctrl+T) → click the <span style="color:var(--text);">History</span> tab.</div>
+
+            <div style="color:var(--text);font-weight:600;margin-top:10px;margin-bottom:4px;">Step 3 — Set full history</div>
+            <div>Right-click in the History tab → <span style="color:var(--text);">All History</span> (or Custom Period for a specific range).</div>
+
+            <div style="color:var(--text);font-weight:600;margin-top:10px;margin-bottom:4px;">Step 4 — Save as Report</div>
+            <div>Right-click → <span style="color:var(--text);">Report</span> → choose <span style="color:var(--green);">HTML format</span> → save to your computer.</div>
+
+            <div style="color:var(--text);font-weight:600;margin-top:10px;margin-bottom:4px;">Step 5 — Upload to Dashboard</div>
+            <div>Go to <span style="color:var(--text);">FTMO → Upload Trades</span> or <span style="color:var(--text);">The5ers → Upload Trades</span> → upload the HTML file. The dashboard automatically detects the FTMO format.</div>
+
+            <div style="border-top:1px solid var(--border);margin:16px 0;"></div>
+
+            <div style="color:var(--yellow);font-size:0.7rem;">
+              ⚠️ Supported upload formats: <strong style="color:var(--text);">HTML · CSV · XML · PDF</strong><br>
+              ⚠️ Make sure you are saving the <strong style="color:var(--text);">History Report</strong> not the Statement report.<br>
+              ⚠️ If trades show incorrect direction, your broker may use a different MT5 layout — contact support.
+            </div>
+
+          </div>
+        </div>
+
         <div class="panel"><div class="panel-header"><span class="panel-title">⚡ DERIV API</span></div><div class="panel-body" style="font-family:var(--font-mono);font-size:0.78rem;line-height:2;color:var(--text);">
           <div>1. Go to app.deriv.com/account/api-token</div>
           <div>2. Switch to Real account (not Demo)</div>
@@ -1092,11 +1135,33 @@ function onLogin(user){
   // Restore Deriv token
   const saved=localStorage.getItem('dt_'+user.id);
   if(saved){derivToken=saved;connectDeriv(true);}
-  // Load trades then boot to first firm tab
+  // Load trades then restore last active tab
   loadTradesFromSupabase().then(()=>{
-    const firstTab=document.querySelector('#mainNav .tab');
-    if(firstTab)switchMainTab(firstTab,'deriv');
-    // Restore saved zoom label
+    const lastFirm = localStorage.getItem('lastFirm')||'deriv';
+    const lastSubTab = localStorage.getItem('lastSubTab')||'overview';
+    // Find and activate the correct main tab
+    let activated = false;
+    document.querySelectorAll('#mainNav .tab').forEach(t=>{
+      const onclick = t.getAttribute('onclick')||'';
+      if(onclick.includes("'"+lastFirm+"'")){
+        switchMainTab(t, lastFirm);
+        activated = true;
+      }
+    });
+    if(!activated){
+      const first=document.querySelector('#mainNav .tab');
+      if(first) switchMainTab(first,'deriv');
+    }
+    // Restore sub-tab
+    setTimeout(()=>{
+      document.querySelectorAll('#subNav .sub-tab').forEach(t=>{
+        const onclick = t.getAttribute('onclick')||'';
+        if(onclick.includes("'"+lastSubTab+"'")){
+          switchSubTab(t, lastSubTab);
+        }
+      });
+    }, 100);
+    // Restore zoom label
     const lbl=document.getElementById('eq-zoom-pct');
     if(lbl) lbl.textContent=Math.round(getEqScale()*100)+'%';
   });
@@ -1117,6 +1182,7 @@ function switchMainTab(el,name){
   document.querySelectorAll('#mainNav .tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   activeFirm=name;
+  localStorage.setItem('lastFirm', name);
   const subNav=document.getElementById('subNav');
   // Show sub-nav for firm tabs AND alltrades; hide only for help
   const showSub=(FIRMS[name]!==undefined||name==='alltrades');
@@ -1125,8 +1191,13 @@ function switchMainTab(el,name){
   const uploadTab=document.querySelector('#subNav .sub-tab:nth-child(2)');
   if(uploadTab) uploadTab.style.display=(name==='alltrades')?'none':'';
   // Show firm container
-  document.querySelectorAll('.firm-container').forEach(cont=>cont.style.display='none');
-  document.getElementById('firm-'+name).style.display='block';
+  document.querySelectorAll('.firm-container').forEach(cont=>{
+    cont.style.opacity='0';
+    cont.style.display='none';
+  });
+  const fc=document.getElementById('firm-'+name);
+  fc.style.display='block';
+  requestAnimationFrame(()=>{ fc.style.opacity='1'; });
   // Populate API key field when help tab opened
   if(name==='help'){
     const ki=document.getElementById('anthropicKeyInput');
@@ -1135,13 +1206,11 @@ function switchMainTab(el,name){
     if(st){ const k=localStorage.getItem('anthropic_key'); st.style.color=k?'var(--green)':'var(--muted)'; st.textContent=k?'✅ Key saved — image upload ready.':'No key saved yet.'; }
   }
   if(showSub){
-    activeSubTab='overview';
+    activeSubTab=localStorage.getItem('lastSubTab')||'overview';
     document.querySelectorAll('#subNav .sub-tab').forEach(t=>t.classList.remove('active'));
-    // Find first visible sub-tab
     const firstVisible=[...document.querySelectorAll('#subNav .sub-tab')].find(t=>t.style.display!=='none');
     if(firstVisible)firstVisible.classList.add('active');
-    renderSubPage(name,'overview');
-
+    renderSubPageAnimated(name, activeSubTab);
   }
 }
 
@@ -1149,9 +1218,31 @@ function switchSubTab(el,sub){
   document.querySelectorAll('#subNav .sub-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   activeSubTab=sub;
-  renderSubPage(activeFirm,sub);
-
+  localStorage.setItem('lastSubTab',sub);
+  renderSubPageAnimated(activeFirm,sub);
 }
+
+function renderSubPageAnimated(firm, sub){
+  // Find the target sub-page element and animate it in
+  const container = document.getElementById('firm-'+firm);
+  if(!container) { renderSubPage(firm,sub); return; }
+  
+  // Fade out current content
+  const current = container.querySelector('.sub-page[style*="block"], .sub-page:not([style*="none"])');
+  
+  renderSubPage(firm, sub);
+  
+  // Apply entrance animation to the newly shown page
+  requestAnimationFrame(()=>{
+    const target = container.querySelector('.sub-page');
+    if(target){
+      target.classList.remove('page-enter');
+      void target.offsetWidth; // force reflow
+      target.classList.add('page-enter');
+    }
+  });
+}
+
 
 function renderSubPage(firm,sub){
   document.querySelectorAll('#firm-'+firm+' .sub-page').forEach(p=>p.style.display='none');
