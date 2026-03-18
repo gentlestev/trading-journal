@@ -465,6 +465,26 @@
     <!-- HELP PAGE -->
     <div id="firm-help" class="firm-container" style="display:none;">
       <div style="max-width:800px;margin:0 auto;">
+
+        <!-- Anthropic API Key setting -->
+        <div class="panel" style="margin-bottom:20px;">
+          <div class="panel-header"><span class="panel-title">🔑 ANTHROPIC API KEY</span><span style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">Required for image upload</span></div>
+          <div class="panel-body">
+            <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+              Needed to read trade screenshots. Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--accent);">console.anthropic.com</a>. Stored locally in your browser only — never sent anywhere except Anthropic.
+            </p>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <input type="password" id="anthropicKeyInput" class="form-input"
+                style="flex:1;font-family:var(--font-mono);font-size:11px;"
+                placeholder="sk-ant-..."
+                value="${localStorage.getItem('anthropic_key')||''}"/>
+              <button class="btn btn-primary" onclick="saveAnthropicKey()" style="white-space:nowrap;padding:9px 18px;">SAVE KEY</button>
+              <button class="btn btn-danger btn-sm" onclick="clearAnthropicKey()" style="padding:9px 12px;">CLEAR</button>
+            </div>
+            <div id="anthropicKeyStatus" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--muted);"></div>
+          </div>
+        </div>
+
         <div style="font-family:var(--font-display);font-size:2rem;letter-spacing:4px;color:var(--accent);margin-bottom:6px;">HELP &amp; GUIDE</div>
         <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:28px;letter-spacing:1px;">HOW TO USE YOUR FSH EMPIRE DASHBOARD</div>
         <div class="panel"><div class="panel-header"><span class="panel-title">🚀 GETTING STARTED</span></div><div class="panel-body" style="font-family:var(--font-mono);font-size:0.78rem;line-height:2;color:var(--text);">
@@ -532,8 +552,22 @@
 <script>
 const SUPABASE_URL='https://obliysgyuizoyxkevqxv.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ibGl5c2d5dWl6b3l4a2V2cXh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NzkzMjQsImV4cCI6MjA4OTI1NTMyNH0.x5G8rtTC8xisZAcQ7d251kYbATp8ihBARd02Mb_4Vyo';
+// Anthropic API key — stored in localStorage, set once in Help tab
+function getAnthropicKey(){ return localStorage.getItem('anthropic_key')||''; }
+const ANTHROPIC_KEY = getAnthropicKey();
+
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let derivWS=null,derivToken='',allTrades=[],selectedEmotion='',currentUser=null;
+
+// ── GLOBAL STATE — declared first to avoid initialization errors ──
+let activeFirm='deriv';
+let activeSubTab='overview';
+let currentUser=null;
+let allTrades=[];
+let derivWS=null;
+let derivToken='';
+let selectedEmotion='';
+const FIRMS={deriv:'Deriv',ftmo:'FTMO',the5ers:'The5ers',other:'Other'};
+
 
 document.addEventListener('DOMContentLoaded',async()=>{
   startClock();
@@ -1060,10 +1094,7 @@ function onLogout(){
   document.getElementById('loginError').style.display='none';
 }
 
-let activeFirm='deriv';
-let activeSubTab='overview';
 
-const FIRMS={deriv:'Deriv',ftmo:'FTMO',the5ers:'The5ers',other:'Other'};
 
 function switchMainTab(el,name){
   document.querySelectorAll('#mainNav .tab').forEach(t=>t.classList.remove('active'));
@@ -1079,6 +1110,13 @@ function switchMainTab(el,name){
   // Show firm container
   document.querySelectorAll('.firm-container').forEach(cont=>cont.style.display='none');
   document.getElementById('firm-'+name).style.display='block';
+  // Populate API key field when help tab opened
+  if(name==='help'){
+    const ki=document.getElementById('anthropicKeyInput');
+    if(ki) ki.value=localStorage.getItem('anthropic_key')||'';
+    const st=document.getElementById('anthropicKeyStatus');
+    if(st){ const k=localStorage.getItem('anthropic_key'); st.style.color=k?'var(--green)':'var(--muted)'; st.textContent=k?'✅ Key saved — image upload ready.':'No key saved yet.'; }
+  }
   if(showSub){
     activeSubTab='overview';
     document.querySelectorAll('#subNav .sub-tab').forEach(t=>t.classList.remove('active'));
@@ -1333,11 +1371,33 @@ function renderFirmOverview(firm,firmName){
 
   // Draw Chart.js charts
   setTimeout(()=>{
-    applySavedEqHeight(firm);
+    restoreStartBal(firm);
     renderFirmCharts(firm, trades);
     setTimeout(()=>applyEqScale(firm), 80);
   }, 60);
 }
+
+function saveAnthropicKey(){
+  const val = document.getElementById('anthropicKeyInput')?.value?.trim();
+  if(!val||!val.startsWith('sk-ant-')){
+    showToast('Invalid key — must start with sk-ant-',true);
+    return;
+  }
+  localStorage.setItem('anthropic_key', val);
+  const st = document.getElementById('anthropicKeyStatus');
+  if(st){ st.style.color='var(--green)'; st.textContent='✅ Key saved — image upload ready.'; }
+  showToast('✅ Anthropic API key saved!');
+}
+
+function clearAnthropicKey(){
+  localStorage.removeItem('anthropic_key');
+  const inp = document.getElementById('anthropicKeyInput');
+  if(inp) inp.value='';
+  const st = document.getElementById('anthropicKeyStatus');
+  if(st){ st.style.color='var(--red)'; st.textContent='Key cleared.'; }
+  showToast('API key cleared.');
+}
+
 
 function setFirmStartBal(firm, val){
   const n = parseFloat(val)||0;
@@ -1346,9 +1406,17 @@ function setFirmStartBal(firm, val){
   } else {
     localStorage.removeItem('startBal_'+firm);
   }
-  // Redraw just the equity curve with new baseline
+  // Redraw equity curve with new baseline
   const trades = allTrades.filter(t=>t.account_provider===FIRMS[firm]);
   if(trades.length) renderFirmCharts(firm, trades);
+}
+
+function restoreStartBal(firm){
+  // Restore saved starting balance into the input field
+  const saved = localStorage.getItem('startBal_'+firm);
+  if(!saved) return;
+  const inp = document.getElementById(firm+'-startBal');
+  if(inp) inp.value = saved;
 }
 
 
@@ -1426,6 +1494,7 @@ function renderFirmCharts(firm, trades){
 
   // Equity Curve — FTMO style: green above starting balance, red below
   dc('eq-'+firm);
+  // Persist starting balance per firm in localStorage
   const startBal = parseFloat(localStorage.getItem('startBal_'+firm)||'0')||0;
   const eqLabels = ['Start'];
   let bal = startBal;
@@ -1446,40 +1515,17 @@ function renderFirmCharts(firm, trades){
   if(!eqCanvas) return;
   const eqCtx = eqCanvas.getContext('2d');
 
-  // Helper — builds the split gradient using actual rendered Y-axis positions
-  function buildEqGradients(chart){
-    const {ctx:cx, chartArea:{top,bottom}, scales:{y}} = chart;
-    const baselinePx = startBal ? y.getPixelForValue(startBal) : bottom;
-    const clamped    = Math.max(top, Math.min(bottom, baselinePx));
-    const ratio      = (clamped - top) / (bottom - top);
-    const sr         = Math.max(0, Math.min(1, ratio));
-
-    const lineG = cx.createLinearGradient(0, top, 0, bottom);
-    lineG.addColorStop(0,                   '#00e676');
-    lineG.addColorStop(Math.max(0,sr-0.001),'#00e676');
-    lineG.addColorStop(Math.min(1,sr+0.001),'#ff1744');
-    lineG.addColorStop(1,                   '#ff1744');
-
-    const fillG = cx.createLinearGradient(0, top, 0, bottom);
-    fillG.addColorStop(0,                   'rgba(0,230,118,0.22)');
-    fillG.addColorStop(Math.max(0,sr-0.001),'rgba(0,230,118,0.06)');
-    fillG.addColorStop(Math.min(1,sr+0.001),'rgba(255,23,68,0.06)');
-    fillG.addColorStop(1,                   'rgba(255,23,68,0.22)');
-
-    return {lineG, fillG};
-  }
-
-  // Create chart with solid green first — gradient applied after first render
+  // Use clip regions to paint green above baseline and red below — pixel perfect
   const eqChart = new Chart(eqCtx,{
     type:'line',
     data:{labels:eqLabels,datasets:[{
       data:eqData,
-      borderColor:'#00e676',
-      backgroundColor:'rgba(0,230,118,0.15)',
-      borderWidth:2,
+      borderColor:'transparent',
+      backgroundColor:'transparent',
+      borderWidth:0,
       pointRadius:0,
       pointHoverRadius:5,
-      fill:true,
+      fill:false,
       tension:0.3
     }]},
     options:{
@@ -1502,37 +1548,105 @@ function renderFirmCharts(firm, trades){
       }
     },
     plugins:[{
-      id:'baseline',
-      afterDraw(chart){
-        if(!startBal) return;
-        const {ctx:cx,chartArea:{left,right,top,bottom},scales:{y}}=chart;
-        const yPx=y.getPixelForValue(startBal);
-        if(yPx<top||yPx>bottom) return;
+      id:'ftmoPaint',
+      afterDatasetsDraw(chart){
+        const {ctx:cx, chartArea:{left,right,top,bottom}, scales:{y,x}} = chart;
+        const ds = chart.data.datasets[0];
+        const meta = chart.getDatasetMeta(0);
+        if(!meta.data.length) return;
+
+        const baseY = startBal ? Math.max(top, Math.min(bottom, y.getPixelForValue(startBal))) : bottom;
+
+        // Build the line path
+        const pts = meta.data.map(pt=>({x:pt.x, y:pt.y}));
+
+        // Helper: draw smooth bezier path using Chart.js control points
+        function drawSmooth(ctx, points){
+          if(!points.length) return;
+          ctx.moveTo(points[0].x, points[0].y);
+          for(let i=1;i<points.length;i++){
+            const prev=points[i-1], curr=points[i];
+            const cp1x=prev.cp2x!==undefined?prev.cp2x:(prev.x+curr.x)/2;
+            const cp1y=prev.cp2y!==undefined?prev.cp2y:prev.y;
+            const cp2x=curr.cp1x!==undefined?curr.cp1x:(prev.x+curr.x)/2;
+            const cp2y=curr.cp1y!==undefined?curr.cp1y:curr.y;
+            ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,curr.x,curr.y);
+          }
+        }
+
+                // ── GREEN fill: clip to ABOVE baseline ──
         cx.save();
-        cx.setLineDash([6,4]);
-        cx.strokeStyle='rgba(255,255,255,0.25)';
-        cx.lineWidth=1;
-        cx.beginPath();cx.moveTo(left,yPx);cx.lineTo(right,yPx);cx.stroke();
-        cx.fillStyle='rgba(255,255,255,0.4)';
-        cx.font='9px monospace';
-        cx.textAlign='right';
-        cx.fillText('$'+startBal.toLocaleString(),right-4,yPx-4);
+        cx.beginPath();
+        cx.rect(left, top, right-left, baseY-top);
+        cx.clip();
+        cx.beginPath();
+        drawSmooth(cx, meta.data);
+        cx.lineTo(meta.data[meta.data.length-1].x, baseY);
+        cx.lineTo(meta.data[0].x, baseY);
+        cx.closePath();
+        cx.fillStyle='rgba(0,230,118,0.2)';
+        cx.fill();
         cx.restore();
+
+        // ── RED fill: clip to BELOW baseline ──
+        cx.save();
+        cx.beginPath();
+        cx.rect(left, baseY, right-left, bottom-baseY);
+        cx.clip();
+        cx.beginPath();
+        drawSmooth(cx, meta.data);
+        cx.lineTo(meta.data[meta.data.length-1].x, bottom);
+        cx.lineTo(meta.data[0].x, bottom);
+        cx.closePath();
+        cx.fillStyle='rgba(255,23,68,0.2)';
+        cx.fill();
+        cx.restore();
+
+        // ── LINE: green above baseline, red below — using clip ──
+        // Green portion of line
+        cx.save();
+        cx.beginPath();
+        cx.rect(left, top, right-left, baseY-top);
+        cx.clip();
+        cx.beginPath();
+        drawSmooth(cx, meta.data);
+        cx.strokeStyle='#00e676';
+        cx.lineWidth=2.5;
+        cx.lineJoin='round';
+        cx.stroke();
+        cx.restore();
+
+        // Red portion of line
+        cx.save();
+        cx.beginPath();
+        cx.rect(left, baseY, right-left, bottom-baseY);
+        cx.clip();
+        cx.beginPath();
+        drawSmooth(cx, meta.data);
+        cx.strokeStyle='#ff1744';
+        cx.lineWidth=2.5;
+        cx.lineJoin='round';
+        cx.stroke();
+        cx.restore();
+
+        // ── Baseline dashed line ──
+        if(startBal){
+          cx.save();
+          cx.setLineDash([6,4]);
+          cx.strokeStyle='rgba(255,255,255,0.3)';
+          cx.lineWidth=1;
+          cx.beginPath();
+          cx.moveTo(left, baseY);
+          cx.lineTo(right, baseY);
+          cx.stroke();
+          cx.fillStyle='rgba(255,255,255,0.45)';
+          cx.font='9px monospace';
+          cx.textAlign='right';
+          cx.fillText('$'+startBal.toLocaleString(), right-4, baseY-4);
+          cx.restore();
+        }
       }
     }]
-  });
-
-  // Apply correct gradient AFTER chart is in the DOM and fully sized
-  // Use requestAnimationFrame to guarantee paint has completed
-  requestAnimationFrame(()=>{
-    requestAnimationFrame(()=>{
-      try{
-        const {lineG,fillG} = buildEqGradients(eqChart);
-        eqChart.data.datasets[0].borderColor     = lineG;
-        eqChart.data.datasets[0].backgroundColor = fillG;
-        eqChart.update('none');
-      }catch(e){ console.warn('Gradient apply failed:',e); }
-    });
   });
 
 
@@ -1658,6 +1772,46 @@ function renderFirmUpload(firm,firmName){
       </div>
 
     </div>
+    <!-- IMAGE UPLOAD PANEL -->
+    <div class="panel" style="margin-bottom:18px;">
+      <div class="panel-header">
+        <span class="panel-title">UPLOAD SCREENSHOTS</span>
+        <span style="font-size:9px;color:var(--accent);font-family:var(--font-mono);letter-spacing:1px;">AI-POWERED</span>
+      </div>
+      <div class="panel-body">
+        <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-bottom:14px;line-height:1.6;">
+          Upload screenshots of your ${firmName} trade history. Supports <strong style="color:var(--text);">JPG · PNG · TIFF · HEIC</strong>. Multiple files OK.
+        </p>
+        <div id="${firm}-imgDropZone"
+          style="border:2px dashed var(--border);border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;"
+          onclick="document.getElementById('${firm}-imgInput').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+          ondragleave="this.style.borderColor='var(--border)'"
+          ondrop="handleFirmImgDrop(event,'${firm}','${firmName}')">
+          <div style="font-size:2.2rem;margin-bottom:10px;">🖼️</div>
+          <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text);letter-spacing:1px;margin-bottom:4px;">DROP SCREENSHOTS HERE OR CLICK TO BROWSE</div>
+          <div style="font-family:var(--font-mono);font-size:0.62rem;color:var(--muted);">.jpg .png .tiff .heic — multiple files OK</div>
+        </div>
+        <input type="file" id="${firm}-imgInput" accept=".jpg,.jpeg,.png,.tiff,.tif,.heic,.heif" multiple style="display:none;"
+          onchange="handleFirmImgFiles(this.files,'${firm}','${firmName}')"/>
+        <div id="${firm}-imgProgressArea" style="display:none;margin-top:14px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--accent);" id="${firm}-imgProgressLabel">Processing...</span>
+            <span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--muted);" id="${firm}-imgProgressCount">0/0</span>
+          </div>
+          <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div id="${firm}-imgProgressBar" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width 0.3s;"></div>
+          </div>
+          <div id="${firm}-imgFileStatuses" style="margin-top:10px;display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;"></div>
+        </div>
+        <div id="${firm}-imgPreview" style="margin-top:12px;display:none;">
+          <div style="font-family:var(--font-mono);font-size:0.68rem;color:var(--accent);margin-bottom:8px;" id="${firm}-imgPreviewLabel"></div>
+          <div style="overflow-x:auto;max-height:200px;overflow-y:auto;" id="${firm}-imgPreviewTable"></div>
+          <button class="btn btn-success btn-sm" onclick="saveFirmTrades('${firm}','${firmName}','img')" style="margin-top:10px;width:100%;">SAVE TO ${firmName.toUpperCase()}</button>
+        </div>
+      </div>
+    </div>
+
     <div class="panel" style="margin-bottom:18px;">
       <div class="panel-header"><span class="panel-title">PASTE TRADE DATA</span></div>
       <div class="panel-body">
@@ -2410,6 +2564,130 @@ async function addManualTrade(firm, firmName){
 
   await loadTradesFromSupabase();
 }
+
+async function handleFirmImgFiles(files, firm, firmName){
+  if(!files||!files.length) return;
+  if(!firmParsedTrades[firm]) firmParsedTrades[firm]={};
+  firmParsedTrades[firm].img=[];
+  const fileArr = Array.from(files);
+
+  // Only accept jpg, png, tiff, heic
+  const valid = fileArr.filter(f=>{
+    const ext = f.name.toLowerCase().split('.').pop();
+    return ['jpg','jpeg','png','tiff','tif','heic','heif'].includes(ext);
+  });
+  if(!valid.length){ showToast('Only JPG, PNG, TIFF, HEIC files are supported.',true); return; }
+
+  const progressArea  = document.getElementById(firm+'-imgProgressArea');
+  const progressLabel = document.getElementById(firm+'-imgProgressLabel');
+  const progressCount = document.getElementById(firm+'-imgProgressCount');
+  const progressBar   = document.getElementById(firm+'-imgProgressBar');
+  const fileStatuses  = document.getElementById(firm+'-imgFileStatuses');
+  const imgPreview    = document.getElementById(firm+'-imgPreview');
+
+  if(!progressArea){ showToast('Open Upload tab first',true); return; }
+  progressArea.style.display='block';
+  if(imgPreview) imgPreview.style.display='none';
+  progressLabel.textContent='Processing '+valid.length+' image'+(valid.length>1?'s':'')+'...';
+  progressCount.textContent='0/'+valid.length;
+  progressBar.style.width='0%';
+  fileStatuses.innerHTML='';
+
+  valid.forEach((file,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:0.68rem;padding:4px 6px;background:var(--surface2);border-radius:3px;';
+    row.innerHTML=`<span id="${firm}-ficon_${i}" style="color:var(--muted);">[ ]</span>`
+      +`<span style="flex:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${file.name}</span>`
+      +`<span id="${firm}-ftrades_${i}" style="color:var(--muted);">waiting</span>`;
+    fileStatuses.appendChild(row);
+  });
+
+  let completed=0;
+
+  const results = await Promise.allSettled(valid.map(async(file,i)=>{
+    const iconEl  = document.getElementById(firm+'-ficon_'+i);
+    const tradeEl = document.getElementById(firm+'-ftrades_'+i);
+    if(iconEl)  iconEl.textContent='[~]';
+    if(tradeEl) tradeEl.textContent='reading...';
+    try{
+      // Convert image to base64
+      const {base64, mimeType} = await fileToBase64Safe(file);
+      if(tradeEl) tradeEl.textContent='analysing...';
+
+      // Call Anthropic API directly with native image support
+      const resp = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'x-api-key': getAnthropicKey(),
+          'anthropic-version':'2023-06-01'
+        },
+        body:JSON.stringify({
+          model:'claude-opus-4-6',
+          max_tokens:2000,
+          messages:[{
+            role:'user',
+            content:[
+              {
+                type:'image',
+                source:{type:'base64', media_type:mimeType, data:base64}
+              },
+              {
+                type:'text',
+                text:'Extract ALL trade rows from this trading platform screenshot. Return ONLY a raw JSON array with no markdown or explanation. Each object: date (YYYY-MM-DD), instrument (symbol string), direction ("Buy" or "Sell"), entry_price (number), exit_price (number), profit_loss (number, negative for losses), result ("Win", "Loss", or "Break Even"). Use 0 for missing numbers, "Unknown" for missing strings.'
+              }
+            ]
+          }]
+        })
+      });
+
+      if(!resp.ok){
+        const err = await resp.json().catch(()=>({error:{message:'HTTP '+resp.status}}));
+        throw new Error(err.error?.message||'HTTP '+resp.status);
+      }
+
+      const data  = await resp.json();
+      const text  = data.content?.[0]?.text||'';
+      if(!text.trim()) throw new Error('Empty response from Claude');
+
+      const clean = text.replace(/```json|```/g,'').trim();
+      const match = clean.match(/\[[\s\S]*\]/);
+      if(!match) throw new Error('No JSON array in response');
+
+      const parsed = JSON.parse(match[0]);
+      if(!Array.isArray(parsed)||!parsed.length) throw new Error('No trades found in image');
+
+      if(iconEl){ iconEl.style.color='var(--green)'; iconEl.textContent='[OK]'; }
+      if(tradeEl){ tradeEl.style.color='var(--green)'; tradeEl.textContent=parsed.length+' trade'+(parsed.length>1?'s':''); }
+      completed++;
+      progressBar.style.width=Math.round(completed/valid.length*100)+'%';
+      progressCount.textContent=completed+'/'+valid.length;
+      return parsed.map(t=>({...t,user_id:currentUser?.id}));
+
+    }catch(e){
+      if(iconEl){ iconEl.style.color='var(--red)'; iconEl.textContent='[X]'; }
+      if(tradeEl){ tradeEl.style.color='var(--red)'; tradeEl.textContent=e.message.slice(0,40); }
+      completed++;
+      progressBar.style.width=Math.round(completed/valid.length*100)+'%';
+      progressCount.textContent=completed+'/'+valid.length;
+      console.error('Image parse error:',file.name,e);
+      return [];
+    }
+  }));
+
+  results.forEach(r=>{ if(r.status==='fulfilled') firmParsedTrades[firm].img.push(...r.value); });
+
+  if(firmParsedTrades[firm].img.length){
+    progressLabel.style.color='var(--green)';
+    progressLabel.textContent='Found '+firmParsedTrades[firm].img.length+' trades from '+valid.length+' image'+(valid.length>1?'s':'')+'!';
+    showFirmTradePreview(firm+'-imgPreviewTable', firm+'-imgPreviewLabel', firmParsedTrades[firm].img);
+    if(imgPreview) imgPreview.style.display='block';
+  } else {
+    progressLabel.style.color='var(--yellow)';
+    progressLabel.textContent='No trades found. Ensure screenshots show trade history rows.';
+  }
+}
+
 
 async function saveFirmTrades(firm,firmName,type){
   const trades=(firmParsedTrades[firm]||{})[type]||[];
