@@ -556,7 +556,13 @@ const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 function getAnthropicKey(){ return localStorage.getItem('anthropic_key')||''; }
 const ANTHROPIC_KEY = getAnthropicKey();
 
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+  auth:{
+    flowType:'implicit',
+    detectSessionInUrl:true,
+    persistSession:true
+  }
+});
 
 // ── GLOBAL STATE — declared first to avoid initialization errors ──
 let activeFirm='deriv';
@@ -593,27 +599,6 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(event==='SIGNED_OUT')onLogout();
   });
 });
-
-// ── AUTO-LOGOUT AFTER 2 HOURS IDLE ──
-const IDLE_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours in ms
-let idleTimer = null;
-
-function resetIdleTimer(){
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(async ()=>{
-    if(currentUser){
-      showToast('Session expired after 2 hours of inactivity. Logging out...');
-      await new Promise(r=>setTimeout(r,2000));
-      doLogout();
-    }
-  }, IDLE_TIMEOUT);
-}
-
-// Track user activity
-['mousedown','mousemove','keydown','scroll','touchstart','click'].forEach(evt=>{
-  document.addEventListener(evt, resetIdleTimer, {passive:true});
-});
-
 
 function startClock(){
   function updateClock(){
@@ -1096,7 +1081,6 @@ async function doLogout(){
 
 function onLogin(user){
   currentUser=user;
-  resetIdleTimer(); // Start idle countdown
   document.getElementById('authScreen').style.display='none';
   document.getElementById('appScreen').style.display='block';
   const email=user.email||'';
@@ -1108,30 +1092,11 @@ function onLogin(user){
   // Restore Deriv token
   const saved=localStorage.getItem('dt_'+user.id);
   if(saved){derivToken=saved;connectDeriv(true);}
-  // Load trades then restore last active tab (or default to deriv)
+  // Load trades then boot to first firm tab
   loadTradesFromSupabase().then(()=>{
-    const lastFirm   = localStorage.getItem('lastFirm') || 'deriv';
-    const lastSubTab = localStorage.getItem('lastSubTab') || 'overview';
-    // Find and click the correct main tab
-    const tabs = document.querySelectorAll('#mainNav .tab');
-    let targetTab = null;
-    tabs.forEach(t=>{
-      if(t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'"+lastFirm+"'")){
-        targetTab = t;
-      }
-    });
-    if(targetTab) switchMainTab(targetTab, lastFirm);
-    else { const first=document.querySelector('#mainNav .tab'); if(first) switchMainTab(first,'deriv'); }
-    // Restore sub-tab
-    if(FIRMS[lastFirm]!==undefined || lastFirm==='alltrades'){
-      const subTabs = document.querySelectorAll('#subNav .sub-tab');
-      subTabs.forEach(t=>{
-        if(t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'"+lastSubTab+"'")){
-          switchSubTab(t, lastSubTab);
-        }
-      });
-    }
-    // Restore zoom label
+    const firstTab=document.querySelector('#mainNav .tab');
+    if(firstTab)switchMainTab(firstTab,'deriv');
+    // Restore saved zoom label
     const lbl=document.getElementById('eq-zoom-pct');
     if(lbl) lbl.textContent=Math.round(getEqScale()*100)+'%';
   });
@@ -1152,7 +1117,6 @@ function switchMainTab(el,name){
   document.querySelectorAll('#mainNav .tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   activeFirm=name;
-  localStorage.setItem('lastFirm', name);
   const subNav=document.getElementById('subNav');
   // Show sub-nav for firm tabs AND alltrades; hide only for help
   const showSub=(FIRMS[name]!==undefined||name==='alltrades');
@@ -1185,8 +1149,8 @@ function switchSubTab(el,sub){
   document.querySelectorAll('#subNav .sub-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   activeSubTab=sub;
-  localStorage.setItem('lastSubTab', sub);
   renderSubPage(activeFirm,sub);
+
 }
 
 function renderSubPage(firm,sub){
@@ -3269,40 +3233,64 @@ function handleImgDrop(e){e.preventDefault();const _idz=document.getElementById(
 function parseMT5Html(html){
     const trades = [];
     const rowMatches = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi)||[];
+
+    function clean(s){ return s.replace(/<[^>]+>/g,'').replace(/\u00a0/g,' ').replace(/\u202f/g,' ').trim(); }
+    function cleanNum(s){ const n=parseFloat((s||'').replace(/[\s,]/g,'')); return isNaN(n)?0:n; }
+
+    const format_a = []; // 14-col: completed trades
+    const format_b = []; // 15-col: position legs (FTMO style)
+
     rowMatches.forEach(row=>{
-      const cellMatches = row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)||[];
-      const cells = cellMatches.map(c=>c.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/\u00a0/g,' ').replace(/\u202f/g,' ').trim());
-      if(cells.length < 14) return;
-      // Must start with date YYYY.MM.DD
-      if(!/^\d{4}\.\d{2}\.\d{2}/.test(cells[0])) return;
-      // Direction must be exactly 'buy' or 'sell' — skip limit/stop orders
-      const dir = (cells[3]||'').toLowerCase().trim();
-      if(dir!=='buy'&&dir!=='sell') return;
-      // Entry price must be a valid number (not empty — skips balance/summary rows)
-      const cleanNum = s => parseFloat((s||'').replace(/[\s\u00a0\u202f,]/g,''))||0;
-      const entry = cleanNum(cells[6]);
-      if(!entry) return; // skip rows without valid entry price
-      // Exit price is in cells[10], profit in cells[13]
-      const exitP = cleanNum(cells[10]);
-      const pnl   = cleanNum(cells[13]);
-      // Skip rows where profit looks like an account balance (> $5000 positive and no negative trades context)
-      // A real trade P&L is typically < $5000 per trade; balances are cumulative
-      // Better heuristic: close time must also be a valid date (cells[9])
-      if(!/^\d{4}\.\d{2}\.\d{2}/.test(cells[9])) return;
-      const date = cells[0].slice(0,10).replace(/\./g,'-');
-      const symbol = cells[2]||'Unknown';
-      trades.push({
-        date,
-        instrument:symbol,
-        direction:dir.charAt(0).toUpperCase()+dir.slice(1),
-        entry_price:entry,
-        exit_price:exitP,
-        profit_loss:pnl,
-        result:pnl>0?'Win':pnl<0?'Loss':'Break Even'
-      });
+      const rawCells = row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)||[];
+      const cells = rawCells.map(c=>clean(c));
+      const n = cells.length;
+      if(!cells[0]||!/^\d{4}\.\d{2}\.\d{2}/.test(cells[0])) return;
+
+      // FORMAT A: 14 columns — standard MT5 closed trade
+      if(n===14){
+        const dir=cells[3].toLowerCase().trim();
+        if(dir!=='buy'&&dir!=='sell') return;
+        const entry=cleanNum(cells[6]);
+        if(!entry) return;
+        if(!/^\d{4}\.\d{2}\.\d{2}/.test(cells[9])) return;
+        const pnl=cleanNum(cells[13]);
+        format_a.push({
+          date:cells[0].slice(0,10).replace(/\./g,'-'),
+          instrument:cells[2]||'Unknown',
+          direction:dir.charAt(0).toUpperCase()+dir.slice(1),
+          entry_price:entry,
+          exit_price:cleanNum(cells[10]),
+          profit_loss:pnl,
+          result:pnl>0?'Win':pnl<0?'Loss':'Break Even'
+        });
+      }
+
+      // FORMAT B: 15 columns — FTMO/position deals, only 'out' (closing) legs
+      else if(n===15&&cells[4]==='out'&&cells[2]){
+        const dir=cells[3].toLowerCase().trim();
+        if(dir!=='buy'&&dir!=='sell') return;
+        const pnl=cleanNum(cells[12]);
+        const price=cleanNum(cells[6]);
+        // Reverse direction: closing sell = original buy trade
+        const origDir=dir==='sell'?'Buy':'Sell';
+        format_b.push({
+          date:cells[0].slice(0,10).replace(/\./g,'-'),
+          instrument:cells[2]||'Unknown',
+          direction:origDir,
+          entry_price:price,
+          exit_price:price,
+          profit_loss:pnl,
+          result:pnl>0?'Win':pnl<0?'Loss':'Break Even'
+        });
+      }
     });
-    return trades;
+
+    // Prefer Format A (complete trade records) if it has data
+    // Fall back to Format B (FTMO position legs) if Format A is empty
+    const result = format_a.length > 0 ? format_a : format_b;
+    return result;
   }
+
 
 async function handleCSVFiles(files){
   if(!files||!files.length)return;
