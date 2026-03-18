@@ -594,7 +594,39 @@ document.addEventListener('DOMContentLoaded',async()=>{
   });
 });
 
-function startClock(){setInterval(()=>{document.getElementById('liveTime').textContent=new Date().toUTCString().slice(17,25)+' UTC';},1000);}
+// ── AUTO-LOGOUT AFTER 2 HOURS IDLE ──
+const IDLE_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours in ms
+let idleTimer = null;
+
+function resetIdleTimer(){
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(async ()=>{
+    if(currentUser){
+      showToast('Session expired after 2 hours of inactivity. Logging out...');
+      await new Promise(r=>setTimeout(r,2000));
+      doLogout();
+    }
+  }, IDLE_TIMEOUT);
+}
+
+// Track user activity
+['mousedown','mousemove','keydown','scroll','touchstart','click'].forEach(evt=>{
+  document.addEventListener(evt, resetIdleTimer, {passive:true});
+});
+
+
+function startClock(){
+  function updateClock(){
+    const now=new Date();
+    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timeStr=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:tz});
+    const tzLabel=now.toLocaleTimeString('en-US',{timeZoneName:'short',timeZone:tz}).split(' ').pop();
+    const el=document.getElementById('liveTime');
+    if(el) el.textContent=timeStr+' '+tzLabel;
+  }
+  updateClock();
+  setInterval(updateClock,1000);
+}
 
 function switchAuthTab(tab){
   document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));
@@ -1064,6 +1096,7 @@ async function doLogout(){
 
 function onLogin(user){
   currentUser=user;
+  resetIdleTimer(); // Start idle countdown
   document.getElementById('authScreen').style.display='none';
   document.getElementById('appScreen').style.display='block';
   const email=user.email||'';
@@ -1075,11 +1108,30 @@ function onLogin(user){
   // Restore Deriv token
   const saved=localStorage.getItem('dt_'+user.id);
   if(saved){derivToken=saved;connectDeriv(true);}
-  // Load trades then boot to first firm tab
+  // Load trades then restore last active tab (or default to deriv)
   loadTradesFromSupabase().then(()=>{
-    const firstTab=document.querySelector('#mainNav .tab');
-    if(firstTab)switchMainTab(firstTab,'deriv');
-    // Restore saved zoom label
+    const lastFirm   = localStorage.getItem('lastFirm') || 'deriv';
+    const lastSubTab = localStorage.getItem('lastSubTab') || 'overview';
+    // Find and click the correct main tab
+    const tabs = document.querySelectorAll('#mainNav .tab');
+    let targetTab = null;
+    tabs.forEach(t=>{
+      if(t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'"+lastFirm+"'")){
+        targetTab = t;
+      }
+    });
+    if(targetTab) switchMainTab(targetTab, lastFirm);
+    else { const first=document.querySelector('#mainNav .tab'); if(first) switchMainTab(first,'deriv'); }
+    // Restore sub-tab
+    if(FIRMS[lastFirm]!==undefined || lastFirm==='alltrades'){
+      const subTabs = document.querySelectorAll('#subNav .sub-tab');
+      subTabs.forEach(t=>{
+        if(t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'"+lastSubTab+"'")){
+          switchSubTab(t, lastSubTab);
+        }
+      });
+    }
+    // Restore zoom label
     const lbl=document.getElementById('eq-zoom-pct');
     if(lbl) lbl.textContent=Math.round(getEqScale()*100)+'%';
   });
@@ -1100,6 +1152,7 @@ function switchMainTab(el,name){
   document.querySelectorAll('#mainNav .tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   activeFirm=name;
+  localStorage.setItem('lastFirm', name);
   const subNav=document.getElementById('subNav');
   // Show sub-nav for firm tabs AND alltrades; hide only for help
   const showSub=(FIRMS[name]!==undefined||name==='alltrades');
@@ -1132,8 +1185,8 @@ function switchSubTab(el,sub){
   document.querySelectorAll('#subNav .sub-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   activeSubTab=sub;
+  localStorage.setItem('lastSubTab', sub);
   renderSubPage(activeFirm,sub);
-
 }
 
 function renderSubPage(firm,sub){
